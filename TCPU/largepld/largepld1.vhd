@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.9 2005-01-21 16:54:47 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.10 2005-01-25 17:29:52 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -167,8 +167,9 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- input signals from TDIG after demux
 
-  SIGNAL tdig1_data, tdig2_data, tdig3_data, tdig4_data : std_logic_vector(31 DOWNTO 0);
-  SIGNAL tdig_strobe                                    : std_logic_vector(4 DOWNTO 1);  -- signal from cable demux to input fifo
+  SIGNAL tdig1_data, tdig2_data : std_logic_vector(31 DOWNTO 0);
+  SIGNAL tdig3_data, tdig4_data : std_logic_vector(31 DOWNTO 0);
+  SIGNAL tdig_strobe            : std_logic_vector( 4 DOWNTO 1);  -- signal from cable demux to input fifo
 
   -- clock enable strobes for TDIG data after demux : used to clock data into input fifos
 
@@ -190,16 +191,6 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   SIGNAL opmode, error_word : std_logic_vector(7 DOWNTO 0);
   SIGNAL ddl_read_fifo      : std_logic;
-
-  SIGNAL test_pattern_1234     : std_logic_vector(15 DOWNTO 0);
-  SIGNAL test_pattern_aaaa     : std_logic_vector(15 DOWNTO 0);
-  SIGNAL test_pattern_5555     : std_logic_vector(15 DOWNTO 0);
-  SIGNAL test_pattern_0000     : std_logic_vector(15 DOWNTO 0);
-  SIGNAL test_pattern_ffff     : std_logic_vector(15 DOWNTO 0);
-  SIGNAL test_pattern_ffffffff : std_logic_vector(31 DOWNTO 0);
-  SIGNAL test_pattern_00000000 : std_logic_vector(31 DOWNTO 0);
-  SIGNAL test_pattern_aaaaaaaa : std_logic_vector(31 DOWNTO 0);
-  SIGNAL test_pattern_55555555 : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL bus_enable, tristate_signal_enable, trigger_strobe_to_tdig, star_trigger_level_zero : std_logic;
 
@@ -265,6 +256,7 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- signal which selects which state machine is in control (set by MCU config bit)
   SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : std_logic;
+  SIGNAL sel_eq_3                                    : std_logic;
   SIGNAL clr_timeout, timeout_valid                  : std_logic;
   SIGNAL ctr_sel                                     : std_logic_vector(2 DOWNTO 0);
 
@@ -292,6 +284,7 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   SIGNAL mode_0_reset, mode_1_reset : std_logic;            -- state machine reset signals decoded from mode bit(s)
   
+  SIGNAL geo_data       : std_logic_vector (31 DOWNTO 0);
   SIGNAL stuff_value    : std_logic_vector (31 DOWNTO 0);   -- stuff value selected by control_one state machine
   SIGNAL stuff          : std_logic_vector ( 1 DOWNTO 0);   -- control signal from control_one which selects stuff value
 
@@ -416,12 +409,9 @@ BEGIN
 
   --------------------------------------------------------------------------------------
 
-
   ddl_read_fifo <= '1';
 
   opmode <= "00000001";
-
-  test_pattern_ffffffff <= X"ffffffff";
 
   -- make clock and reset global
 
@@ -602,7 +592,7 @@ BEGIN
     empty => infifo_empty(0) );
 
   infifo_mux : COMPONENT mux_5x32_unreg PORT MAP (
-    data0x(31 DOWNTO 20) => "101000000000",  --"000000000000",
+    data0x(31 DOWNTO 20) => X"A00",
     data0x(19 DOWNTO 0)  => infifo0_dout,
     data1x               => infifo1_dout,
     data2x               => infifo2_dout,
@@ -612,7 +602,6 @@ BEGIN
     result               => inmux_dout );                        
 
   -- CONTROL SECTION *******************************************************************************            
-
 
   control_select <= mcu_mode_data(0);  -- selects between CTL0 and ctl_one as main controller
 
@@ -639,17 +628,19 @@ BEGIN
 
 
   -- this signal detects that select ctr has rolled over to initial state
-  sel_eq_0 <= (NOT ctr_sel(2)) AND (NOT ctr_sel(1)) AND (NOT ctr_sel(0));
-
+  sel_eq_0 <= bool2sl(ctr_sel = "000");
+  -- this signal detects that select ctr has moved to next half tray
+  sel_eq_3 <= bool2sl(ctr_sel = "011");
+  
   mode_1_reset <= NOT control_select;   -- "control_select" = mcu_config[0]
   
   Control_one : COMPONENT CTL_ONE PORT MAP (
-    clk        => clk,
-    reset      => mode_1_reset,
-    cmd_l0     => CMD_L0,
-    fifo_empty => input_fifo_empty,
-
+    clk           => clk,
+    reset         => mode_1_reset,
+    cmd_l0        => CMD_L0,
+    fifo_empty    => input_fifo_empty,
     sel_eq_0      => sel_eq_0,
+    sel_eq_3	  => sel_eq_3,
     separator     => separator,
     timeout       => timeout_valid,
     clr_sel       => clr_sel,
@@ -682,9 +673,10 @@ BEGIN
   -- decoder for trigger commands and separator word
   command_decode : PROCESS (inmux_dout) IS
   BEGIN
-    IF inmux_dout(31 DOWNTO 28) = separator_id THEN
+    IF (inmux_dout(31 DOWNTO 28) = separator_id) THEN
       separator <= '1';
-    ELSE separator <= '0';
+    ELSE
+      separator <= '0';
     END IF;
 
     CMD_L0     <= '0';
@@ -797,7 +789,7 @@ BEGIN
   -- input is selected as input to DDL FIFO.
   
   end_of_record_counter : count127 PORT MAP (  -- used with ctl0 to select "end of record" value
-                                        -- after set number of noise values
+                                               -- after set number of noise values
     clock  => clk,
     cnt_en => incr_end_of_record_cnt,
     aclr   => reset,
@@ -805,29 +797,32 @@ BEGIN
     cout   => end_record_tc); 
 
   ddl_stuff_ctl : mux_2to1_1bit PORT MAP (  -- selects which state machine controls the mux
-                                            -- tostuff non data values into DDL
+                                            -- to stuff non data values into DDL
     data1  => ctl_one_stuff,
     data0  => end_record_tc,
     sel    => control_select,
     result => ddl_in_sel );  
 
-  ddl_stuff_mux1 : mux_3_by_32 PORT MAP (  -- selects between data path value and stuff value
-                                           -- according to select input from ddl_stuff_ctl mux
+  -- Geographical data depends on the grey cable currently selected:
+  geo_data <= X"C00000BA" OR (X"0000000" & "000" & sel_eq_3);
+  
+  ddl_stuff_mux1 : mux_4x32 PORT MAP (  -- selects between data path value and stuff value
+                                        -- according to select input from ddl_stuff_ctl mux
+    data3x => geo_data,                 -- geographical data, tray 93, half tray 0 or 1
     data2x => X"EA000000",
     data1x => X"DEADFACE",
-    data0x => X"A0000000",
+    data0x => X"B0000000",
     sel    => stuff,
     result => stuff_value );
 
   ddl_stuff_mux2 : mux_2x32 PORT MAP (  -- mux to select between static stuff value "EA000000" from control zero
-                                        -- or dynamic stuff value from control one                                              
+                                        -- or dynamic stuff value from control one
     data1x => stuff_value,
     data0x => X"EA000000",
     sel    => control_select,
     result => stuff_sel_dout );	
     
-  ddl_input_mux : mux_2x32 PORT MAP (  -- selects between stuff values and main data mux values
-
+  ddl_input_mux : mux_2x32 PORT MAP (   -- selects between stuff values and main data mux values
     data1x => stuff_sel_dout,           -- from stuff data mux       
     data0x => inmux_dout,               -- from main 5 way data path mux
     sel    => ddl_in_sel,
