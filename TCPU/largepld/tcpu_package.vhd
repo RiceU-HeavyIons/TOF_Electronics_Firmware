@@ -76,6 +76,11 @@ package tcpu_package is
 				
 	-- controllers and state machines *****************************
 	
+  	component CTL_ONE IS PORT (
+  	  CLK,CMD_L0,FIFO_EMPTY,RESET,SEL_EQ_0,SEPARATOR,TIMEOUT: IN std_logic;
+  		CLR_SEL,CLR_TIMEOUT,INCR_SEL,RD_FIFO,TRIG_TO_TDC,WR_FIFO,CTL_ONE_STUFF : OUT std_logic);
+    END component;
+  	
 		component ALWREAD IS PORT (
 			CLK,empty,RESET: IN std_logic;
 			incr_cnt,rd_fifo,wr_fifo : OUT std_logic);
@@ -582,7 +587,17 @@ package tcpu_package is
 				empty		: OUT STD_LOGIC );
 		end component;
 		
-
+    component output_fifo_1024x32
+    	PORT
+    	( data		: IN STD_LOGIC_VECTOR (31 DOWNTO 0);
+    		wrreq		: IN STD_LOGIC ;
+    		rdreq		: IN STD_LOGIC ;
+    		clock		: IN STD_LOGIC ;
+    		aclr		: IN STD_LOGIC ;
+    		q		: OUT STD_LOGIC_VECTOR (31 DOWNTO 0);
+    		full		: OUT STD_LOGIC ;
+    		empty		: OUT STD_LOGIC );
+    end component;
 				
 
 end package tcpu_package;	
