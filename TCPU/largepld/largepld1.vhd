@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.8 2005-01-19 22:09:40 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.9 2005-01-21 16:54:47 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -224,6 +224,9 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   SIGNAL read_input_fifo, infifo_full, infifo_empty : std_logic_vector(4 DOWNTO 0);
 
+  -- JS: selectively disable infifo's for reading:
+  SIGNAL infifo_emptyFlt : std_logic_vector (4 DOWNTO 1);
+
   SIGNAL inmux_dout : std_logic_vector (31 DOWNTO 0);
   SIGNAL inmux_sel  : std_logic_vector (2 DOWNTO 0);
 
@@ -425,8 +428,9 @@ BEGIN
   global_clk_buffer : global PORT MAP (a_in => pldclk0, a_out => global40mhz);
   clk <= global40mhz;
 
-  global_reset_buffer : global PORT MAP (a_in => '0', a_out => reset);  -- input for this will be changed to
-                                        -- reset function
+  -- global_reset_buffer : global PORT MAP (a_in => '0', a_out => reset);
+  global_reset_buffer : global PORT MAP (a_in   => mcu_reset_to_pld,   
+                                         a_out  => reset);  
 
   -- reset_function <= '0'; -- global reset source set to inactive reset
   -- for simulation purposes this signal is given above in the entity declaration
@@ -503,7 +507,8 @@ BEGIN
   -- currently selected control state machine.   
 
   tdig_input_1 : COMPONENT ser_4bit_to_par PORT MAP (
-    clk           => global40mhz, reset => reset,
+    clk           => global40mhz,
+    reset         => reset,
     din           => c1_m7d(3 DOWNTO 0),
     dclk          => c1_dclk,
     dstrobe       => c1_m7d(4),         -- data strobe is active for 8 dclks 
@@ -521,7 +526,8 @@ BEGIN
     empty => infifo_empty(1) );
 
   tdig_input_2 : COMPONENT ser_4bit_to_par PORT MAP (
-    clk           => global40mhz, reset => reset,
+    clk           => global40mhz,
+    reset         => reset,
     din           => c2_m7d(3 DOWNTO 0),
     dclk          => c2_dclk,
     dstrobe       => c2_m7d(4),         -- data strobe is active for 8 dclks 
@@ -539,7 +545,8 @@ BEGIN
     empty => infifo_empty(2) ); 
 
   tdig_input_3 : COMPONENT ser_4bit_to_par PORT MAP (
-    clk           => global40mhz, reset => reset,
+    clk           => global40mhz,
+    reset         => reset,
     din           => c3_m7d(3 DOWNTO 0),
     dclk          => c3_dclk,
     dstrobe       => c3_m7d(4),         -- data strobe is active for 8 dclks 
@@ -557,7 +564,8 @@ BEGIN
     empty => infifo_empty(3) );
 
   tdig_input_4 : COMPONENT ser_4bit_to_par PORT MAP (
-    clk           => global40mhz, reset => reset,
+    clk           => global40mhz,
+    reset         => reset,
     din           => c4_m7d(3 DOWNTO 0),
     dclk          => c4_dclk,
     dstrobe       => c4_m7d(4),         -- data strobe is active for 8 dclks 
@@ -717,12 +725,20 @@ BEGIN
     result => main_data_sel );
 
   -- SELECT FIFO EMPTY SIGNAL FROM CURRENT INPUT FIFO
-  
+  -- JS: first, selectively set each fifo_empty to '1'
+  G1: FOR i IN 0 TO 3 GENERATE
+    WITH mcu_config_data(4+i) SELECT
+      infifo_emptyFlt(1+i) <=
+      infifo_empty(1+i) WHEN '0',
+      '1'               WHEN OTHERS;
+    
+  END GENERATE G1;
+
   empty_signal_mux : COMPONENT mux_5_to_1 PORT MAP (
-    data4  => infifo_empty(4),
-    data3  => '1',                  -- infifo_empty(3),
-    data2  => infifo_empty(2),
-    data1  => infifo_empty(1),
+    data4  => infifo_emptyFlt(4),
+    data3  => infifo_emptyFlt(3),
+    data2  => infifo_emptyFlt(2),
+    data1  => infifo_emptyFlt(1),
     data0  => infifo_empty(0),
     sel    => main_data_sel,
     result => input_fifo_empty );
