@@ -69,6 +69,25 @@ status_to_PC
 
 handle_debug
 	lfsr	FSR0, CAN_msg_data0
+test_for_MCU_mode
+	movlw	0xAA
+	subwf	CAN_msg_data0,0				; WREG = 0 if data1 = AA
+	bnz		test_for_MCU_reset
+; Once here, we have a real MCU mode switch command.  Check what mode it wants
+test_for_mode_silent
+	tstfsz	CAN_msg_data1
+	bra		test_for_mode_PLD
+	call	return_debug_message
+	goto	SILENT_LOOP
+test_for_mode_PLD
+	movlw	0x01
+	subwf	CAN_msg_data1,0				; WREG = 0 if MCU mode = 1
+	bnz		bad_mode_byte
+	call	return_debug_message
+	goto	PLD_LOOP
+bad_mode_byte
+	call	CAN_error
+	return
 test_for_MCU_reset
 	movlw	0x45
 	subwf	CAN_msg_data0,0		; WREG = 0 if this is a reset command

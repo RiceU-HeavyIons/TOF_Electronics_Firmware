@@ -1,4 +1,4 @@
-; $Id: TCPU-JK.asm,v 1.3 2004-12-16 17:21:24 tofp Exp $
+; $Id: TCPU-JK.asm,v 1.4 2005-03-24 21:19:16 tofp Exp $
 ;
 #DEFINE		CODE_BASE 0x0000
 
@@ -174,6 +174,17 @@ check_top_CANbus
 	call	handle_CAN_msg
 ;	handle_system_msg
 	bra		check_top_CANbus
+
+
+SILENT_LOOP
+	bsf		PORTB, 4
+	bcf		PORTB, 4
+	call	get_msg
+	tstfsz	WREG
+	bra		SILENT_LOOP
+	call	handle_CAN_msg
+;	handle_system_msg
+	bra		SILENT_LOOP
 
 ;------------------------------------------------------------------------------
 
