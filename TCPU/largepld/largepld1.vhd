@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.6 2005-01-07 23:20:11 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.7 2005-01-19 22:06:10 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -287,8 +287,10 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- new signals
 
-  SIGNAL mode_0_reset, mode_1_reset : std_logic;  -- state machine reset signals decoded from mode bit(s)
-
+  SIGNAL mode_0_reset, mode_1_reset : std_logic;            -- state machine reset signals decoded from mode bit(s)
+  
+  SIGNAL stuff_value    : std_logic_vector (31 DOWNTO 0);   -- stuff value selected by control_one state machine
+  SIGNAL stuff          : std_logic_vector ( 1 DOWNTO 0);   -- control signal from control_one which selects stuff value
 
   CONSTANT separator_id : std_logic_vector (3 DOWNTO 0) := "1110";
 
@@ -648,7 +650,9 @@ BEGIN
     rd_fifo       => ctl_one_read_fe_fifo,
     trig_to_tdc   => ctl_one_trigger_to_tdc,
     wr_fifo       => ctl_one_wr_mcu_fifo,
-    ctl_one_stuff => ctl_one_stuff );
+    ctl_one_stuff => ctl_one_stuff,
+    stuff0        => stuff(0),
+    stuff1        => stuff(1) );
 
   -- controllers increment this counter to cycle through the input fifos
   -- counter counts from 0 to 4
@@ -791,16 +795,22 @@ BEGIN
     sel    => control_select,
     result => ddl_in_sel );  
 
-  ddl_stuff_sel : mux_2x32 PORT MAP (  -- selects between data path value and stuff value
-                                       -- according to select input from ddl_stuff_ctl mux       
-    data1x => X"EA000000",
+  ddl_stuff_mux1 : mux_3_by_32 PORT MAP (  -- selects between data path value and stuff value
+                                           -- according to select input from ddl_stuff_ctl mux
+    data2x => X"EA000000",
+    data1x => X"DEADFACE",
+    data0x => X"A0000000",
+    sel    => stuff,
+    result => stuff_value );
+
+  ddl_stuff_mux2 : mux_2x32 PORT MAP (  -- mux to select between static stuff value "EA000000" from control zero
+                                        -- or dynamic stuff value from control one                                              
+    data1x => stuff_value,
     data0x => X"EA000000",
     sel    => control_select,
-    result => stuff_sel_dout );
-
-  ddl_input_select : mux_2x32 PORT MAP (  -- selects between stuff values according to which 
-                                          -- controller is active: ctl0 gives simple EA stuff value
-                                          -- other controllers can provide different values
+    result => stuff_sel_dout );	
+    
+  ddl_input_mux : mux_2x32 PORT MAP (  -- selects between stuff values and main data mux values
 
     data1x => stuff_sel_dout,           -- from stuff data mux       
     data0x => inmux_dout,               -- from main 5 way data path mux
