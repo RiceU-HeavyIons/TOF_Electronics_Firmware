@@ -1,4 +1,4 @@
--- $Id: pattern_generator.vhd,v 1.2 2004-12-03 20:01:25 tofp Exp $
+-- $Id: pattern_generator.vhd,v 1.3 2004-12-08 22:52:28 tofp Exp $
 --*************************************************************************
 --*  PATTERN_GENERATOR.VHD : Pattern generator module.
 --*
@@ -15,44 +15,44 @@
 --*************************************************************************
 
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-entity pattern_generator is
-  port (
-    clock       : in  std_logic;
-    arstn       : in  std_logic;
-    ps_reg      : in  std_logic_vector ( 7 downto 0);
-    bl_reg      : in  std_logic_vector ( 7 downto 0);
-    xx_reg      : in  std_logic_vector ( 7 downto 0);
-    tid         : in  std_logic_vector ( 3 downto 0);
-    enable      : in  std_logic;
-    suspend     : in  std_logic;
-    reset_evid  : in  std_logic;
-	fifo_q		: IN  std_logic_vector (31 DOWNTO 0);
-	fifo_empty  : IN  std_logic;
-	fifo_rdreq	: OUT std_logic;
-    datao       : out std_logic_vector (32 downto 0);
-    datao_valid : out std_logic);
-end pattern_generator;
+ENTITY pattern_generator IS
+  PORT (
+    clock       : IN  std_logic;
+    arstn       : IN  std_logic;
+    ps_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
+    bl_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
+    xx_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
+    tid         : IN  std_logic_vector ( 3 DOWNTO 0);
+    enable      : IN  std_logic;
+    suspend     : IN  std_logic;
+    reset_evid  : IN  std_logic;
+    fifo_q      : IN  std_logic_vector (31 DOWNTO 0);
+    fifo_empty  : IN  std_logic;
+    fifo_rdreq  : OUT std_logic;
+    datao       : OUT std_logic_vector (32 DOWNTO 0);
+    datao_valid : OUT std_logic);
+END pattern_generator;
 
-library ieee;
-use ieee.std_logic_1164.all;
-use work.my_conversions.all;
-use work.my_utilities.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
 
-architecture SYN of pattern_generator is
+ARCHITECTURE SYN OF pattern_generator IS
 
-  constant FIFO_OUT	 : std_logic_vector := "001";
-  constant ALTER_0F  : std_logic_vector := "010";
-  constant FLYING_0  : std_logic_vector := "011";
-  constant FLYING_1  : std_logic_vector := "100";
-  constant INCREMENT : std_logic_vector := "101";
-  constant DECREMENT : std_logic_vector := "110";
+  CONSTANT FIFO_OUT  : std_logic_vector := "001";
+  CONSTANT ALTER_0F  : std_logic_vector := "010";
+  CONSTANT FLYING_0  : std_logic_vector := "011";
+  CONSTANT FLYING_1  : std_logic_vector := "100";
+  CONSTANT INCREMENT : std_logic_vector := "101";
+  CONSTANT DECREMENT : std_logic_vector := "110";
 
-  constant FESTWEOB  : std_logic_vector := "01100100";
+  CONSTANT FESTWEOB : std_logic_vector := "01100100";
 
-  type pg_state is (
+  TYPE pg_state IS (
     IDLE,
     INITPG1,
     TXEVID,
@@ -60,97 +60,97 @@ architecture SYN of pattern_generator is
     TXIDLE,
     TXDTSW,
     WAITGAP
-  );
+    );
 
-	SIGNAL s_suspend : std_logic;
+  SIGNAL s_suspend : std_logic;
 
-begin
+BEGIN
 
-  s_suspend <= (suspend OR fifo_empty) WHEN (ps_reg(2 downto 0) = FIFO_OUT) ELSE suspend;
+  s_suspend <= (suspend OR fifo_empty) WHEN (ps_reg(2 DOWNTO 0) = FIFO_OUT) ELSE suspend;
 
-  main : process (clock, arstn)
-    variable pg_present     : pg_state;
-    variable pg_next        : pg_state;
+  main : PROCESS (clock, arstn)
+    VARIABLE pg_present : pg_state;
+    VARIABLE pg_next    : pg_state;
 
-    variable pgdata         : std_logic_vector (31 downto 0);
-    variable dtstw          : std_logic_vector (31 downto 0);
-    variable shift_reg      : std_logic_vector (31 downto 0);
-    variable shiftrg_init   : boolean;
-    variable shiftrg_enable : boolean;
-    variable counter_reg    : std_logic_vector (31 downto 0);
-    variable counter_init   : boolean;
-    variable counter_enable : boolean;
-    variable alternate_reg  : std_logic_vector (31 downto 0);
-    variable alterrg_init   : boolean;
-    variable alterrg_enable : boolean;
-    variable actual_length  : std_logic_vector (18 downto 0);
-    variable fixed_length   : std_logic_vector (18 downto 0);
-    variable rand_length    : std_logic_vector (18 downto 0);
-    variable rand_mask      : std_logic_vector (18 downto 0);
-    variable rand_msb       : std_logic;
-    variable random_data    : std_logic_vector (31 downto 0);
-    variable event_id       : std_logic_vector (31 downto 0);
-    variable word_counter   : std_logic_vector (19 downto 0);
-    variable block_counter  : std_logic_vector (18 downto 0);
-    variable block_end      : std_logic;
+    VARIABLE pgdata         : std_logic_vector (31 DOWNTO 0);
+    VARIABLE dtstw          : std_logic_vector (31 DOWNTO 0);
+    VARIABLE shift_reg      : std_logic_vector (31 DOWNTO 0);
+    VARIABLE shiftrg_init   : boolean;
+    VARIABLE shiftrg_enable : boolean;
+    VARIABLE counter_reg    : std_logic_vector (31 DOWNTO 0);
+    VARIABLE counter_init   : boolean;
+    VARIABLE counter_enable : boolean;
+    VARIABLE alternate_reg  : std_logic_vector (31 DOWNTO 0);
+    VARIABLE alterrg_init   : boolean;
+    VARIABLE alterrg_enable : boolean;
+    VARIABLE actual_length  : std_logic_vector (18 DOWNTO 0);
+    VARIABLE fixed_length   : std_logic_vector (18 DOWNTO 0);
+    VARIABLE rand_length    : std_logic_vector (18 DOWNTO 0);
+    VARIABLE rand_mask      : std_logic_vector (18 DOWNTO 0);
+    VARIABLE rand_msb       : std_logic;
+    VARIABLE random_data    : std_logic_vector (31 DOWNTO 0);
+    VARIABLE event_id       : std_logic_vector (31 DOWNTO 0);
+    VARIABLE word_counter   : std_logic_vector (19 DOWNTO 0);
+    VARIABLE block_counter  : std_logic_vector (18 DOWNTO 0);
+    VARIABLE block_end      : std_logic;
 
-  begin
+  BEGIN
 
-    if (arstn = '0') then
+    IF (arstn = '0') THEN
 
-      datao       	<= (others => '0');
-      datao_valid 	<= '0';
-	  fifo_rdreq 	<= '0';
-	
+      datao       <= (OTHERS => '0');
+      datao_valid <= '0';
+      fifo_rdreq  <= '0';
+
       pg_present     := IDLE;
       pg_next        := IDLE;
-      pgdata         := (others => '0');
-      shift_reg      := (others => '0');
+      pgdata         := (OTHERS => '0');
+      shift_reg      := (OTHERS => '0');
       shiftrg_init   := false;
       shiftrg_enable := false;
-      counter_reg    := (others => '0');
+      counter_reg    := (OTHERS => '0');
       counter_init   := false;
       counter_enable := false;
-      alternate_reg  := (others => '0');
+      alternate_reg  := (OTHERS => '0');
       alterrg_init   := false;
       alterrg_enable := false;
-      actual_length  := (6 => '1', others => '0');
-      fixed_length   := (6 => '1', others => '0');
-      rand_length    := (others => '1');
+      actual_length  := (6      => '1', OTHERS => '0');
+      fixed_length   := (6      => '1', OTHERS => '0');
+      rand_length    := (OTHERS => '1');
       rand_mask      := int2slv(63, 19);
       rand_msb       := '1';
-      random_data    := (others => '0');
-      event_id       := (0 => '1', others => '0');
-      word_counter   := (others => '0');
-      block_counter  := (0 => '1', others => '0');
+      random_data    := (OTHERS => '0');
+      event_id       := (0      => '1', OTHERS => '0');
+      word_counter   := (OTHERS => '0');
+      block_counter  := (0      => '1', OTHERS => '0');
       block_end      := '0';
 
-    elsif (clock'event and clock = '1') then
+    ELSIF (clock'event AND clock = '1') THEN
 
 
-      IF  (ps_reg(2 downto 0) = FIFO_OUT) THEN
-		block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
-	  ELSE
-     	block_end := word_counter(19);
-	  END IF;
-	
-      if (pg_present = IDLE or pg_present = TXDTSW) then
+      IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+        block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
+      ELSE
+        block_end := word_counter(19);
+      END IF;
+
+      IF (pg_present = IDLE OR pg_present = TXDTSW) THEN
         word_counter := ('0' & actual_length);
-      elsif (pg_present = TXIDLE) then
+      ELSIF (pg_present = TXIDLE) THEN
         word_counter := word_counter;
-      else
+      ELSE
         word_counter := dec(word_counter);
-      end if;
+      END IF;
 
-      if (bl_reg(4) = '0') then
+      IF (bl_reg(4) = '0') THEN
         actual_length := fixed_length;
-      else
-        actual_length := rand_length and rand_mask;
-      end if;
+      ELSE
+        actual_length := rand_length AND rand_mask;
+      END IF;
 
-      if (reset_evid = '1') then
+      IF (reset_evid = '1') THEN
         rand_length := "10000000000" & xx_reg;
-      elsif (pg_present = INITPG1) then
+      ELSIF (pg_present = INITPG1) THEN
         rand_msb        := rand_length(18);
         rand_length(18) := rand_length(17);
         rand_length(17) := rand_length(16);
@@ -165,205 +165,205 @@ begin
         rand_length(8)  := rand_length(7);
         rand_length(7)  := rand_length(6);
         rand_length(6)  := rand_length(5);
-        rand_length(5)  := rand_length(4) xor rand_msb;
+        rand_length(5)  := rand_length(4) XOR rand_msb;
         rand_length(4)  := rand_length(3);
         rand_length(3)  := rand_length(2);
-        rand_length(2)  := rand_length(1) xor rand_msb;
-        rand_length(1)  := rand_length(0) xor rand_msb;
+        rand_length(2)  := rand_length(1) XOR rand_msb;
+        rand_length(1)  := rand_length(0) XOR rand_msb;
         rand_length(0)  := rand_msb;
-      end if;
+      END IF;
 
-      case bl_reg(3 downto 0) is 
-        when "0001" =>
+      CASE bl_reg(3 DOWNTO 0) IS
+        WHEN "0001" =>
           fixed_length := int2slv(15, 19);
           rand_mask    := int2slv(15, 19);
-        when "0010" =>
+        WHEN "0010" =>
           fixed_length := int2slv(31, 19);
           rand_mask    := int2slv(31, 19);
-        when "0011" =>
+        WHEN "0011" =>
           fixed_length := int2slv(63, 19);
           rand_mask    := int2slv(63, 19);
-        when "0100" =>
+        WHEN "0100" =>
           fixed_length := int2slv(127, 19);
           rand_mask    := int2slv(127, 19);
-        when "0101" =>
+        WHEN "0101" =>
           fixed_length := int2slv(255, 19);
           rand_mask    := int2slv(255, 19);
-        when "0110" =>
+        WHEN "0110" =>
           fixed_length := int2slv(511, 19);
           rand_mask    := int2slv(511, 19);
-        when "0111" =>
+        WHEN "0111" =>
           fixed_length := int2slv(1023, 19);
           rand_mask    := int2slv(1023, 19);
-        when "1000" =>
+        WHEN "1000" =>
           fixed_length := int2slv(2047, 19);
           rand_mask    := int2slv(2047, 19);
-        when "1001" =>
+        WHEN "1001" =>
           fixed_length := int2slv(4095, 19);
           rand_mask    := int2slv(4095, 19);
-        when "1010" =>
+        WHEN "1010" =>
           fixed_length := int2slv(8191, 19);
           rand_mask    := int2slv(8191, 19);
-        when "1011" =>
+        WHEN "1011" =>
           fixed_length := int2slv(16383, 19);
           rand_mask    := int2slv(16383, 19);
-        when "1100" =>
+        WHEN "1100" =>
           fixed_length := int2slv(32767, 19);
           rand_mask    := int2slv(32767, 19);
-        when "1101" =>
+        WHEN "1101" =>
           fixed_length := int2slv(65535, 19);
           rand_mask    := int2slv(65535, 19);
-        when "1110" =>
+        WHEN "1110" =>
           fixed_length := int2slv(131071, 19);
           rand_mask    := int2slv(131071, 19);
-        when "1111" =>
+        WHEN "1111" =>
           fixed_length := int2slv(262143, 19);
           rand_mask    := int2slv(262143, 19);
-        when others =>
+        WHEN OTHERS =>
           fixed_length := int2slv(15, 19);
           rand_mask    := int2slv(15, 19);
-      end case;
+      END CASE;
 
-      case ps_reg(2 downto 0) is
- 		WHEN FIFO_OUT =>
-		  pgdata := fifo_q;
-       	when ALTER_0F =>
+      CASE ps_reg(2 DOWNTO 0) IS
+        WHEN FIFO_OUT =>
+          pgdata := fifo_q;
+        WHEN ALTER_0F =>
           pgdata := alternate_reg;
-        when FLYING_0  =>
+        WHEN FLYING_0 =>
           pgdata := shift_reg;
-        when FLYING_1  =>
+        WHEN FLYING_1 =>
           pgdata := shift_reg;
-        when INCREMENT =>
+        WHEN INCREMENT =>
           pgdata := counter_reg;
-        when DECREMENT =>
+        WHEN DECREMENT =>
           pgdata := counter_reg;
-        when others =>
+        WHEN OTHERS =>
           pgdata := counter_reg;
-      end case;
+      END CASE;
 
-      if (counter_init) then
-        counter_reg := (others => '0');
-      elsif (counter_enable) then
-        if (ps_reg(2 downto 0) = DECREMENT) then
+      IF (counter_init) THEN
+        counter_reg := (OTHERS => '0');
+      ELSIF (counter_enable) THEN
+        IF (ps_reg(2 DOWNTO 0) = DECREMENT) THEN
           counter_reg := dec(counter_reg);
-        else
+        ELSE
           counter_reg := inc(counter_reg);
-        end if;
-      end if;
+        END IF;
+      END IF;
 
-      if (shiftrg_init) then
-        if (ps_reg(2 downto 0) = FLYING_1) then
-          shift_reg := ( 0 => '1', others => '0' );
-        else
-          shift_reg := ( 0 => '0', others => '1' );
-        end if;
-      elsif (shiftrg_enable) then
-        shift_reg := (shift_reg(30 downto 0) & shift_reg(31));
-      end if;
+      IF (shiftrg_init) THEN
+        IF (ps_reg(2 DOWNTO 0) = FLYING_1) THEN
+          shift_reg := ( 0 => '1', OTHERS => '0' );
+        ELSE
+          shift_reg := ( 0 => '0', OTHERS => '1' );
+        END IF;
+      ELSIF (shiftrg_enable) THEN
+        shift_reg := (shift_reg(30 DOWNTO 0) & shift_reg(31));
+      END IF;
 
-      if (alterrg_init) then
-        alternate_reg := (others => '0');
-      elsif (alterrg_enable) then
-        alternate_reg := not alternate_reg;
-      end if;
+      IF (alterrg_init) THEN
+        alternate_reg := (OTHERS => '0');
+      ELSIF (alterrg_enable) THEN
+        alternate_reg := NOT alternate_reg;
+      END IF;
 
-      case pg_present is
-        when IDLE   =>
+      CASE pg_present IS
+        WHEN IDLE =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
-        when INITPG1 =>
+        WHEN INITPG1 =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
-        when TXEVID =>
+        WHEN TXEVID =>
           datao       <= ('0' & event_id);
           datao_valid <= '1';
-        when TXDATA =>
-          datao       <= ('0' & pgdata);
-	      IF  (ps_reg(2 downto 0) = FIFO_OUT) THEN
-          	datao_valid <= NOT fifo_empty;
-		  ELSE
-           	datao_valid <= '1';
-		  END IF;
-       when TXIDLE =>
+        WHEN TXDATA =>
+          datao <= ('0' & pgdata);
+          IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+            datao_valid <= NOT fifo_empty;
+          ELSE
+            datao_valid <= '1';
+          END IF;
+        WHEN TXIDLE =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
-        when TXDTSW =>
+        WHEN TXDTSW =>
           datao       <= ('1' & dtstw);
           datao_valid <= '1';
-        when WAITGAP =>
+        WHEN WAITGAP =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
-      end case;
+      END CASE;
       dtstw := ('0' & block_counter & tid & FESTWEOB);
 
-      if (counter_init) then
-        block_counter := (0 => '1', others => '0');
-      elsif (counter_enable) then
+      IF (counter_init) THEN
+        block_counter := (0 => '1', OTHERS => '0');
+      ELSIF (counter_enable) THEN
         block_counter := inc(block_counter);
-      end if;
+      END IF;
 
-      if (reset_evid = '1') then
-        event_id := (0 => '1', others => '0');
-      elsif (pg_present = TXEVID) then
+      IF (reset_evid = '1') THEN
+        event_id := (0 => '1', OTHERS => '0');
+      ELSIF (pg_present = TXEVID) THEN
         event_id := inc(event_id);
-      end if;
+      END IF;
 
-      case pg_present is
-        when IDLE =>
-          if (enable = '1' and s_suspend = '0') then
+      CASE pg_present IS
+        WHEN IDLE =>
+          IF (enable = '1' AND s_suspend = '0') THEN
             pg_next := INITPG1;
-          else
+          ELSE
             pg_next := IDLE;
-          end if;
-        when INITPG1 =>
-     		IF  (ps_reg(2 downto 0) = FIFO_OUT) THEN
-				pg_next := TXDATA;
-			ELSE
-          		pg_next := TXEVID;
-			END IF;
-        when TXEVID =>               -- 24.04.2002
-          if (block_end = '1') then
+          END IF;
+        WHEN INITPG1 =>
+          IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+            pg_next := TXDATA;
+          ELSE
+            pg_next := TXEVID;
+          END IF;
+        WHEN TXEVID =>                  -- 24.04.2002
+          IF (block_end = '1') THEN
             pg_next := TXDTSW;
-          else
+          ELSE
             pg_next := TXDATA;
-          end if;
-        when TXDATA =>
-          if (block_end = '1') then
+          END IF;
+        WHEN TXDATA =>
+          IF (block_end = '1') THEN
             pg_next := TXDTSW;
-          elsif (s_suspend = '1') then
+          ELSIF (s_suspend = '1') THEN
             pg_next := TXIDLE;
-          else
+          ELSE
             pg_next := TXDATA;
-          end if;
-        when TXIDLE =>
-          if (s_suspend = '0') then
+          END IF;
+        WHEN TXIDLE =>
+          IF (s_suspend = '0') THEN
             pg_next := TXDATA;
-          elsif (enable = '0') then  -- 22.03.2002
-            pg_next := IDLE;         -- 22.03.2002
-          else
+          ELSIF (enable = '0') THEN     -- 22.03.2002
+            pg_next := IDLE;            -- 22.03.2002
+          ELSE
             pg_next := TXIDLE;
-          end if;
-        when TXDTSW =>
+          END IF;
+        WHEN TXDTSW =>
           pg_next := WAITGAP;
-        when WAITGAP =>
-          if (enable = '0') then
+        WHEN WAITGAP =>
+          IF (enable = '0') THEN
             pg_next := IDLE;
-          else
+          ELSE
             pg_next := WAITGAP;
-          end if;
-      end case;
+          END IF;
+      END CASE;
       pg_present := pg_next;
 
-	 fifo_rdreq  <= bool2sl(pg_next = TXDATA);
-	
-     counter_init   := (pg_next = INITPG1 or pg_next = TXDTSW);
-     counter_enable := (pg_next = TXDATA);
-     shiftrg_init   := (pg_next = INITPG1 or pg_next = TXDTSW);
-     shiftrg_enable := (pg_next = TXDATA);
-     alterrg_init   := (pg_next = INITPG1 or pg_next = TXDTSW);
-     alterrg_enable := (pg_next = TXDATA);
+      fifo_rdreq <= bool2sl(pg_next = TXDATA);
 
-    end if;
-  end process main;
+      counter_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
+      counter_enable := (pg_next = TXDATA);
+      shiftrg_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
+      shiftrg_enable := (pg_next = TXDATA);
+      alterrg_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
+      alterrg_enable := (pg_next = TXDATA);
 
-end SYN;
+    END IF;
+  END PROCESS main;
+
+END SYN;

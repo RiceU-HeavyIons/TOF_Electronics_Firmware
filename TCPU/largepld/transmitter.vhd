@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: transmitter.vhd,v 1.1.1.1 2004-12-03 19:29:46 tofp Exp $
+-- $Id: transmitter.vhd,v 1.2 2004-12-08 22:52:28 tofp Exp $
 --******************************************************************************
 --*  TRANSMITTER.VHD
 --*
@@ -11,93 +11,93 @@
 --*
 --******************************************************************************
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-entity transmitter is
-  port (
-    clock      : in  std_logic;
-    arstn      : in  std_logic;
-    trigger    : in  std_logic;
-    gap_active : out std_logic;
-    block_read : in  std_logic;
-    event_read : in  std_logic;
-    reg_read   : in  std_logic;
-    reg_addr   : in  std_logic_vector ( 5 downto 0);
-    tid        : in  std_logic_vector ( 3 downto 0);
-    ps_reg     : in  std_logic_vector ( 7 downto 0);
-    bl_reg     : in  std_logic_vector ( 7 downto 0);
-    dt_reg     : in  std_logic_vector ( 7 downto 0);
-    fc_reg     : in  std_logic_vector ( 7 downto 0);
-    te_reg     : in  std_logic_vector ( 7 downto 0);
-    xx_reg     : in  std_logic_vector ( 7 downto 0);
-    pg_dout    : in  std_logic_vector (32 downto 0);
-    pg_doutval : in  std_logic;
-    pg_enable  : out std_logic;
-    im_dout    : in  std_logic_vector (32 downto 0);
-    im_doutval : in  std_logic;
-    im_enable  : out std_logic;
-    foD        : out std_logic_vector (31 downto 0);
-    foTEN_N    : out std_logic;
-    foCTRL_N   : out std_logic;
-    fiDIR      : in  std_logic;
-    fiBEN_N    : in  std_logic;
-    fiLF_N     : in  std_logic
-  );
-end transmitter;
+ENTITY transmitter IS
+  PORT (
+    clock      : IN  std_logic;
+    arstn      : IN  std_logic;
+    trigger    : IN  std_logic;
+    gap_active : OUT std_logic;
+    block_read : IN  std_logic;
+    event_read : IN  std_logic;
+    reg_read   : IN  std_logic;
+    reg_addr   : IN  std_logic_vector ( 5 DOWNTO 0);
+    tid        : IN  std_logic_vector ( 3 DOWNTO 0);
+    ps_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    bl_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    dt_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    fc_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    te_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    xx_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+    pg_dout    : IN  std_logic_vector (32 DOWNTO 0);
+    pg_doutval : IN  std_logic;
+    pg_enable  : OUT std_logic;
+    im_dout    : IN  std_logic_vector (32 DOWNTO 0);
+    im_doutval : IN  std_logic;
+    im_enable  : OUT std_logic;
+    foD        : OUT std_logic_vector (31 DOWNTO 0);
+    foTEN_N    : OUT std_logic;
+    foCTRL_N   : OUT std_logic;
+    fiDIR      : IN  std_logic;
+    fiBEN_N    : IN  std_logic;
+    fiLF_N     : IN  std_logic
+    );
+END transmitter;
 
-library ieee;
-use ieee.std_logic_1164.all;
-use work.my_conversions.all;
-use work.my_utilities.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
 
-architecture SYN of transmitter is
+ARCHITECTURE SYN OF transmitter IS
 
-  constant FESTW : std_logic_vector := "01000100";
+  CONSTANT FESTW : std_logic_vector := "01000100";
 
-  type output_state is (
+  TYPE output_state IS (
     OS_IDLE,
     OS_WAITOUT,
     OS_TXSTATUS,
     OS_TXDATA,
     OS_TXINGAP,
     OS_WAITIN
-  );
+    );
 
-  type feebus_state is (
+  TYPE feebus_state IS (
     FB_INPUT,
     FB_FLOAT,
     FB_OUTPUT,
     FB_RESET
-  );
+    );
 
-begin
+BEGIN
 
-  main : process (clock, arstn)
+  main : PROCESS (clock, arstn)
 
-    variable datao          : std_logic_vector (32 downto 0);
-    variable datao_valid    : std_logic;
-    variable st_dout        : std_logic_vector (32 downto 0);
-    variable b_block_end    : boolean;
-    variable reg_read_req   : std_logic;
-    variable output_present : output_state;
-    variable output_next    : output_state;
-    variable feebus_present : feebus_state;
-    variable feebus_next    : feebus_state;
+    VARIABLE datao          : std_logic_vector (32 DOWNTO 0);
+    VARIABLE datao_valid    : std_logic;
+    VARIABLE st_dout        : std_logic_vector (32 DOWNTO 0);
+    VARIABLE b_block_end    : boolean;
+    VARIABLE reg_read_req   : std_logic;
+    VARIABLE output_present : output_state;
+    VARIABLE output_next    : output_state;
+    VARIABLE feebus_present : feebus_state;
+    VARIABLE feebus_next    : feebus_state;
 
-  begin
-    if (arstn = '0') then
+  BEGIN
+    IF (arstn = '0') THEN
 
       gap_active <= '0';
       pg_enable  <= '0';
       im_enable  <= '0';
-      foD        <= (others => '0');
+      foD        <= (OTHERS => '0');
       foTEN_N    <= '1';
       foCTRL_N   <= '1';
 
-      datao          := (others => '0');
+      datao          := (OTHERS => '0');
       datao_valid    := '0';
-      st_dout        := (others => '0');
+      st_dout        := (OTHERS => '0');
       b_block_end    := false;
       reg_read_req   := '0';
       output_present := OS_IDLE;
@@ -105,141 +105,141 @@ begin
       feebus_present := FB_INPUT;
       feebus_next    := FB_INPUT;
 
-    elsif (clock'event and clock = '1') then
+    ELSIF (clock'event AND clock = '1') THEN
 
-      if (output_present = OS_TXSTATUS) then
+      IF (output_present = OS_TXSTATUS) THEN
         datao       := st_dout;
         datao_valid := '1';
         b_block_end := false;
-      elsif (output_present = OS_TXDATA) then
-        if block_read = '1' then
+      ELSIF (output_present = OS_TXDATA) THEN
+        IF block_read = '1' THEN
           datao       := im_dout;
           datao_valid := im_doutval;
-          b_block_end := (im_dout(32) = '1' and im_doutval = '1');
-        else
+          b_block_end := (im_dout(32) = '1' AND im_doutval = '1');
+        ELSE
           datao       := pg_dout;
           datao_valid := pg_doutval;
-          b_block_end := (pg_dout(32) = '1' and pg_doutval = '1');
-        end if;
-      else
-        datao         := (others => '0');
-        datao_valid   := '0';
-      end if;
+          b_block_end := (pg_dout(32) = '1' AND pg_doutval = '1');
+        END IF;
+      ELSE
+        datao       := (OTHERS => '0');
+        datao_valid := '0';
+      END IF;
 
-      foD      <= datao(31 downto 0);
-      foCTRL_N <= not (datao_valid and datao(32));
-      foTEN_N  <= not (datao_valid);
+      foD      <= datao(31 DOWNTO 0);
+      foCTRL_N <= NOT (datao_valid AND datao(32));
+      foTEN_N  <= NOT (datao_valid);
 
-      case reg_addr(2 downto 0) is
-        when "000" =>
+      CASE reg_addr(2 DOWNTO 0) IS
+        WHEN "000" =>
           st_dout := "1000000000000" & ps_reg & tid & FESTW;
-        when "001" =>
+        WHEN "001" =>
           st_dout := "1000000000000" & bl_reg & tid & FESTW;
-        when "010" =>
+        WHEN "010" =>
           st_dout := "1000000000000" & dt_reg & tid & FESTW;
-        when "011" =>
+        WHEN "011" =>
           st_dout := "1000000000000" & fc_reg & tid & FESTW;
-        when "100" =>
+        WHEN "100" =>
           st_dout := "1000000000000" & te_reg & tid & FESTW;
-        when "101" =>
+        WHEN "101" =>
           st_dout := "1000000000000" & xx_reg & tid & FESTW;
-        when others =>
+        WHEN OTHERS =>
           st_dout := "1000000000000" & "00000000" & tid & FESTW;
-      end case;
+      END CASE;
 
-      if (reg_read = '1') and (reg_read_req = '0') then
+      IF (reg_read = '1') AND (reg_read_req = '0') THEN
         reg_read_req := '1';
-      elsif (output_present = OS_TXSTATUS) then
+      ELSIF (output_present = OS_TXSTATUS) THEN
         reg_read_req := '0';
-      end if;
+      END IF;
 
-      case output_present is
-        when OS_IDLE =>
-          if (feebus_present = FB_FLOAT) then
+      CASE output_present IS
+        WHEN OS_IDLE =>
+          IF (feebus_present = FB_FLOAT) THEN
             output_next := OS_WAITOUT;
-          else
+          ELSE
             output_next := OS_IDLE;
-          end if;
-        when OS_WAITOUT =>
-          if (feebus_present = FB_OUTPUT) then
-            if (reg_read_req = '1') then
+          END IF;
+        WHEN OS_WAITOUT =>
+          IF (feebus_present = FB_OUTPUT) THEN
+            IF (reg_read_req = '1') THEN
               output_next := OS_TXSTATUS;
-            elsif (block_read = '1') then
+            ELSIF (block_read = '1') THEN
               output_next := OS_TXDATA;
-            elsif (event_read = '1') then
+            ELSIF (event_read = '1') THEN
               output_next := OS_TXINGAP;
-            else
+            ELSE
               output_next := OS_WAITIN;
-            end if;
-          elsif (feebus_present = FB_INPUT) then
+            END IF;
+          ELSIF (feebus_present = FB_INPUT) THEN
             output_next := OS_IDLE;
-          else
+          ELSE
             output_next := OS_WAITOUT;
-          end if;
-        when OS_TXSTATUS =>
+          END IF;
+        WHEN OS_TXSTATUS =>
           output_next := OS_WAITIN;
-        when OS_TXDATA =>
-          if (feebus_present = FB_FLOAT or feebus_present = FB_RESET) then
+        WHEN OS_TXDATA =>
+          IF (feebus_present = FB_FLOAT OR feebus_present = FB_RESET) THEN
             output_next := OS_WAITIN;
-          elsif (block_read = '1') and (b_block_end) then
+          ELSIF (block_read = '1') AND (b_block_end) THEN
             output_next := OS_WAITIN;
-          elsif (event_read = '1') and (b_block_end) then
+          ELSIF (event_read = '1') AND (b_block_end) THEN
             output_next := OS_TXINGAP;
-          else
+          ELSE
             output_next := OS_TXDATA;
-          end if;
-        when OS_TXINGAP =>
-          if (feebus_present = FB_FLOAT or feebus_present = FB_RESET) then
+          END IF;
+        WHEN OS_TXINGAP =>
+          IF (feebus_present = FB_FLOAT OR feebus_present = FB_RESET) THEN
             output_next := OS_WAITIN;
-          elsif (trigger = '1') then
+          ELSIF (trigger = '1') THEN
             output_next := OS_TXDATA;
-          else
+          ELSE
             output_next := OS_TXINGAP;
-          end if;
-        when OS_WAITIN =>
-          if (feebus_present = FB_INPUT) then
+          END IF;
+        WHEN OS_WAITIN =>
+          IF (feebus_present = FB_INPUT) THEN
             output_next := OS_IDLE;
-          else
+          ELSE
             output_next := OS_WAITIN;
-          end if;
-      end case;
+          END IF;
+      END CASE;
       output_present := output_next;
-      pg_enable  <= bool2sl(output_next = OS_TXDATA) and event_read;
-      im_enable  <= bool2sl(output_next = OS_TXDATA) and block_read;
-      gap_active <= bool2sl(output_next = OS_TXINGAP);
+      pg_enable      <= bool2sl(output_next = OS_TXDATA) AND event_read;
+      im_enable      <= bool2sl(output_next = OS_TXDATA) AND block_read;
+      gap_active     <= bool2sl(output_next = OS_TXINGAP);
 
-      case feebus_present is
-        when FB_INPUT =>
-          if (fiBEN_N = '1') then
+      CASE feebus_present IS
+        WHEN FB_INPUT =>
+          IF (fiBEN_N = '1') THEN
             feebus_next := FB_FLOAT;
-          else
+          ELSE
             feebus_next := FB_INPUT;
-          end if;
-        when FB_FLOAT =>
-          if (fiBEN_N = '0') then
-            if (fiDIR = '0') then
+          END IF;
+        WHEN FB_FLOAT =>
+          IF (fiBEN_N = '0') THEN
+            IF (fiDIR = '0') THEN
               feebus_next := FB_INPUT;
-            else
+            ELSE
               feebus_next := FB_OUTPUT;
-            end if;
-          else
+            END IF;
+          ELSE
             feebus_next := FB_FLOAT;
-          end if;
-        when FB_OUTPUT =>
-          if (fiBEN_N = '1') then
+          END IF;
+        WHEN FB_OUTPUT =>
+          IF (fiBEN_N = '1') THEN
             feebus_next := FB_FLOAT;
-          elsif (fiDIR = '0') then    -- 22.03.2002
-            feebus_next := FB_RESET;  -- 22.03.2002
-          else
+          ELSIF (fiDIR = '0') THEN      -- 22.03.2002
+            feebus_next := FB_RESET;    -- 22.03.2002
+          ELSE
             feebus_next := FB_OUTPUT;
-          end if;
-        when FB_RESET =>              -- 22.03.2002
-          feebus_next := FB_INPUT;    -- 22.03.2002
-      end case;
+          END IF;
+        WHEN FB_RESET =>                -- 22.03.2002
+          feebus_next := FB_INPUT;      -- 22.03.2002
+      END CASE;
       feebus_present := feebus_next;
 
-    end if;
+    END IF;
 
-  end process;
+  END PROCESS;
 
-end SYN;
+END SYN;

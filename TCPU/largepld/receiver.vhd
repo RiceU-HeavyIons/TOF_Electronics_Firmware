@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: receiver.vhd,v 1.1.1.1 2004-12-03 19:29:46 tofp Exp $
+-- $Id: receiver.vhd,v 1.2 2004-12-08 22:52:28 tofp Exp $
 --******************************************************************************
 --*  RECEIVER.VHD
 --*
@@ -12,53 +12,53 @@
 --******************************************************************************
 
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-entity receiver is
-  port (
-    clock        : in  std_logic;
-    arstn        : in  std_logic;
-    fc_reg       : in  std_logic_vector ( 7 downto 0);
-    block_read   : out std_logic;
-    block_write  : out std_logic;
-    event_read   : out std_logic;
-    reset_evid   : out std_logic;
-    im_din       : out std_logic_vector (31 downto 0);
-    im_dinval    : out std_logic;
-    reg_data     : out std_logic_vector ( 7 downto 0);
-    reg_addr     : out std_logic_vector ( 5 downto 0);
-    reg_load     : out std_logic;
-    reg_read     : out std_logic;
-    reg_lock     : out std_logic;
-    tid          : out std_logic_vector ( 3 downto 0);
-    fiD          : in  std_logic_vector (31 downto 0);
-    fiTEN_N      : in  std_logic;
-    fiCTRL_N     : in  std_logic;
-    fiDIR        : in  std_logic;
-    fiBEN_N      : in  std_logic;
-    foBSY_N      : out std_logic
-  );
-end receiver;
+ENTITY receiver IS
+  PORT (
+    clock       : IN  std_logic;
+    arstn       : IN  std_logic;
+    fc_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
+    block_read  : OUT std_logic;
+    block_write : OUT std_logic;
+    event_read  : OUT std_logic;
+    reset_evid  : OUT std_logic;
+    im_din      : OUT std_logic_vector (31 DOWNTO 0);
+    im_dinval   : OUT std_logic;
+    reg_data    : OUT std_logic_vector ( 7 DOWNTO 0);
+    reg_addr    : OUT std_logic_vector ( 5 DOWNTO 0);
+    reg_load    : OUT std_logic;
+    reg_read    : OUT std_logic;
+    reg_lock    : OUT std_logic;
+    tid         : OUT std_logic_vector ( 3 DOWNTO 0);
+    fiD         : IN  std_logic_vector (31 DOWNTO 0);
+    fiTEN_N     : IN  std_logic;
+    fiCTRL_N    : IN  std_logic;
+    fiDIR       : IN  std_logic;
+    fiBEN_N     : IN  std_logic;
+    foBSY_N     : OUT std_logic
+    );
+END receiver;
 
-library ieee;
-use ieee.std_logic_1164.all;
-use work.my_conversions.all;
-use work.my_utilities.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
 
-architecture SYN of receiver is
+ARCHITECTURE SYN OF receiver IS
 
-  constant CMD_FECTRL : std_logic_vector := "11000100";
-  constant CMD_FESTRD : std_logic_vector := "01000100";
-  constant CMD_STBWR  : std_logic_vector := "11010100";
-  constant CMD_STBRD  : std_logic_vector := "01010100";
-  constant CMD_RDYRX  : std_logic_vector := "00010100";
+  CONSTANT CMD_FECTRL : std_logic_vector := "11000100";
+  CONSTANT CMD_FESTRD : std_logic_vector := "01000100";
+  CONSTANT CMD_STBWR  : std_logic_vector := "11010100";
+  CONSTANT CMD_STBRD  : std_logic_vector := "01010100";
+  CONSTANT CMD_RDYRX  : std_logic_vector := "00010100";
 
-  constant EACHWORD : std_logic_vector := "01";
-  constant EACH128W : std_logic_vector := "10";
-  constant EACH16KW : std_logic_vector := "11";
+  CONSTANT EACHWORD : std_logic_vector := "01";
+  CONSTANT EACH128W : std_logic_vector := "10";
+  CONSTANT EACH16KW : std_logic_vector := "11";
 
-  type input_state is (
+  TYPE input_state IS (
     IS_IDLE,
     IS_EVAL,
     IS_FECTRL,
@@ -67,263 +67,263 @@ architecture SYN of receiver is
     IS_STBRD,
     IS_EVDATA);
 
-  type flow_state is (
+  TYPE flow_state IS (
     FS_IDLE,
     FS_COUNT,
     FS_BUSY,
     FS_WAIT);
 
-  type feebus_state is (
+  TYPE feebus_state IS (
     FB_INPUT,
     FB_FLOAT,
     FB_OUTPUT,
     FB_RESET
-  );
+    );
 
-begin
+BEGIN
 
-  main : process (clock, arstn)
+  main : PROCESS (clock, arstn)
 
-    variable flow_present   : flow_state;
-    variable flow_next      : flow_state;
-    variable input_present  : input_state;
-    variable input_next     : input_state;
-    variable feebus_present : feebus_state;
-    variable feebus_next    : feebus_state;
-    variable f_count        : std_logic_vector (14 downto 0);
-    variable f_count_init   : std_logic_vector (14 downto 0);
-    variable f_count_of     : std_logic;
-    variable b_rxany        : boolean;
-    variable b_rxdat        : boolean;
-    variable b_rxcmd        : boolean;
-    variable command_code   : std_logic_vector (7 downto 0);
-    variable command_tid    : std_logic_vector (3 downto 0);
-    variable command_param  : std_logic_vector (18 downto 0);
-    variable download       : std_logic;
+    VARIABLE flow_present   : flow_state;
+    VARIABLE flow_next      : flow_state;
+    VARIABLE input_present  : input_state;
+    VARIABLE input_next     : input_state;
+    VARIABLE feebus_present : feebus_state;
+    VARIABLE feebus_next    : feebus_state;
+    VARIABLE f_count        : std_logic_vector (14 DOWNTO 0);
+    VARIABLE f_count_init   : std_logic_vector (14 DOWNTO 0);
+    VARIABLE f_count_of     : std_logic;
+    VARIABLE b_rxany        : boolean;
+    VARIABLE b_rxdat        : boolean;
+    VARIABLE b_rxcmd        : boolean;
+    VARIABLE command_code   : std_logic_vector (7 DOWNTO 0);
+    VARIABLE command_tid    : std_logic_vector (3 DOWNTO 0);
+    VARIABLE command_param  : std_logic_vector (18 DOWNTO 0);
+    VARIABLE download       : std_logic;
 
-  begin
+  BEGIN
 
-    if (arstn = '0') then
+    IF (arstn = '0') THEN
       foBSY_N        <= '1';
       block_read     <= '0';
       block_write    <= '0';
       event_read     <= '0';
       reset_evid     <= '0';
-      im_din         <= (others => '0');
+      im_din         <= (OTHERS => '0');
       im_dinval      <= '0';
-      reg_data       <= (others => '0');
-      reg_addr       <= (others => '0');
+      reg_data       <= (OTHERS => '0');
+      reg_addr       <= (OTHERS => '0');
       reg_load       <= '0';
       reg_read       <= '0';
       reg_lock       <= '0';
-      tid            <= (others => '0');
+      tid            <= (OTHERS => '0');
       flow_present   := FS_IDLE;
       flow_next      := FS_IDLE;
       input_present  := IS_IDLE;
       input_next     := IS_IDLE;
       feebus_present := FB_INPUT;
       feebus_next    := FB_INPUT;
-      f_count        := (others => '0');
-      f_count_init   := (others => '0');
+      f_count        := (OTHERS => '0');
+      f_count_init   := (OTHERS => '0');
       b_rxany        := false;
       b_rxdat        := false;
       b_rxcmd        := false;
-      command_code   := (others => '0');
-      command_tid    := (others => '0');
-      command_param  := (others => '0');
+      command_code   := (OTHERS => '0');
+      command_tid    := (OTHERS => '0');
+      command_param  := (OTHERS => '0');
       download       := '0';
-    elsif (clock'event and clock = '1') then
+    ELSIF (clock'event AND clock = '1') THEN
 
-      case fc_reg(1 downto 0) is
-        when EACHWORD =>
+      CASE fc_reg(1 DOWNTO 0) IS
+        WHEN EACHWORD =>
           f_count_init := "111111111111111";
-        when EACH128W =>
+        WHEN EACH128W =>
           f_count_init := "000000001111110";
-        when EACH16KW =>
+        WHEN EACH16KW =>
           f_count_init := "011111111111110";
-        when others   =>
+        WHEN OTHERS =>
           f_count_init := "011111111111110";
-      end case;
+      END CASE;
 
-      b_rxany := (fiDIR = '0') and (fiTEN_N = '0');
+      b_rxany    := (fiDIR = '0') AND (fiTEN_N = '0');
       f_count_of := f_count(14);
-      if (b_rxany) or (flow_present = FS_IDLE) then
+      IF (b_rxany) OR (flow_present = FS_IDLE) THEN
         f_count := f_count_init;
-      else
+      ELSE
         f_count := dec(f_count);
-      end if;
+      END IF;
 
-      case flow_present is
-        when FS_IDLE  =>
-          if (download = '1') then
+      CASE flow_present IS
+        WHEN FS_IDLE =>
+          IF (download = '1') THEN
             flow_next := FS_COUNT;
-          else
+          ELSE
             flow_next := FS_IDLE;
-          end if;
-        when FS_COUNT =>
-          if (f_count_of = '1') and (b_rxany) then
+          END IF;
+        WHEN FS_COUNT =>
+          IF (f_count_of = '1') AND (b_rxany) THEN
             flow_next := FS_BUSY;
-          else
+          ELSE
             flow_next := FS_COUNT;
-          end if;
-        when FS_BUSY  =>
+          END IF;
+        WHEN FS_BUSY =>
           flow_next := FS_WAIT;
-        when FS_WAIT  =>
-          if (download = '0') then
+        WHEN FS_WAIT =>
+          IF (download = '0') THEN
             flow_next := FS_IDLE;
-          elsif (not b_rxany) then
+          ELSIF (NOT b_rxany) THEN
             flow_next := FS_COUNT;
-          else
+          ELSE
             flow_next := FS_WAIT;
-          end if;
-      end case;
+          END IF;
+      END CASE;
       flow_present := flow_next;
-      if (flow_next = FS_BUSY) then
+      IF (flow_next = FS_BUSY) THEN
         foBSY_N <= '0';
-      else
+      ELSE
         foBSY_N <= '1';
-      end if;
+      END IF;
 
-      b_rxdat := b_rxany and (fiCTRL_N = '1');
-      if (input_present = IS_STBWR) then
+      b_rxdat := b_rxany AND (fiCTRL_N = '1');
+      IF (input_present = IS_STBWR) THEN
         im_dinval <= bool2sl(b_rxdat);
         im_din    <= fiD;
-      else
+      ELSE
         im_dinval <= '0';
-        im_din    <= (others => '0');
-      end if;
+        im_din    <= (OTHERS => '0');
+      END IF;
 
-      if (input_present = IS_FECTRL) then
+      IF (input_present = IS_FECTRL) THEN
         reg_load <= '1';
-      else
+      ELSE
         reg_load <= '0';
-      end if;
-      if (input_present = IS_FESTRD) then
+      END IF;
+      IF (input_present = IS_FESTRD) THEN
         reg_read <= '1';
-      else
+      ELSE
         reg_read <= '0';
-      end if;
-      reg_data <= command_param( 7 downto 0);
-      reg_addr <= command_param(13 downto 8);
-      reg_lock <= not bool2sl(input_present = IS_IDLE);
+      END IF;
+      reg_data <= command_param( 7 DOWNTO 0);
+      reg_addr <= command_param(13 DOWNTO 8);
+      reg_lock <= NOT bool2sl(input_present = IS_IDLE);
 
-      if (input_present = IS_STBRD) then
+      IF (input_present = IS_STBRD) THEN
         block_read <= '1';
-      else
+      ELSE
         block_read <= '0';
-      end if;
+      END IF;
 
-      if (input_present = IS_STBWR) then
+      IF (input_present = IS_STBWR) THEN
         block_write <= '1';
-      else
+      ELSE
         block_write <= '0';
-      end if;
+      END IF;
 
-      if (input_present = IS_EVDATA) then
+      IF (input_present = IS_EVDATA) THEN
         event_read <= '1';
-      else
+      ELSE
         event_read <= '0';
-      end if;
+      END IF;
 
-      if (input_present = IS_EVAL and command_code = CMD_RDYRX) then
+      IF (input_present = IS_EVAL AND command_code = CMD_RDYRX) THEN
         reset_evid <= '1';
-      else
+      ELSE
         reset_evid <= '0';
-      end if;
+      END IF;
 
-      case input_present is
-        when IS_IDLE   =>
-          download      := '0';
-          if (b_rxcmd) then
+      CASE input_present IS
+        WHEN IS_IDLE =>
+          download := '0';
+          IF (b_rxcmd) THEN
             input_next := IS_EVAL;
-          else
+          ELSE
             input_next := IS_IDLE;
-          end if;
-        when IS_EVAL   =>
-          download      := '0';
-          if    (command_code = CMD_FECTRL) then
+          END IF;
+        WHEN IS_EVAL =>
+          download := '0';
+          IF (command_code = CMD_FECTRL) THEN
             input_next := IS_FECTRL;
-          elsif (command_code = CMD_FESTRD) then
+          ELSIF (command_code = CMD_FESTRD) THEN
             input_next := IS_FESTRD;
-          elsif (command_code = CMD_STBWR) then
+          ELSIF (command_code = CMD_STBWR) THEN
             input_next := IS_STBWR;
-          elsif (command_code = CMD_STBRD) then
+          ELSIF (command_code = CMD_STBRD) THEN
             input_next := IS_STBRD;
-          elsif (command_code = CMD_RDYRX) then
+          ELSIF (command_code = CMD_RDYRX) THEN
             input_next := IS_EVDATA;
-          else
+          ELSE
             input_next := IS_IDLE;
-          end if;
-        when IS_FECTRL =>
-          download      := '0';
+          END IF;
+        WHEN IS_FECTRL =>
+          download   := '0';
           input_next := IS_IDLE;
-        when IS_FESTRD =>
-          download      := '0';
+        WHEN IS_FESTRD =>
+          download   := '0';
           input_next := IS_IDLE;
-        when IS_STBWR  =>
-          download      := '1';
-          if (b_rxcmd) then
+        WHEN IS_STBWR =>
+          download := '1';
+          IF (b_rxcmd) THEN
             input_next := IS_IDLE;
-          else
+          ELSE
             input_next := IS_STBWR;
-          end if;
-        when IS_STBRD  =>
-          download      := '0';
-          if (b_rxcmd or feebus_present = FB_RESET) then
+          END IF;
+        WHEN IS_STBRD =>
+          download := '0';
+          IF (b_rxcmd OR feebus_present = FB_RESET) THEN
             input_next := IS_IDLE;
-          else
+          ELSE
             input_next := IS_STBRD;
-          end if;
-        when IS_EVDATA =>
-          download      := '0';
-          if (b_rxcmd or feebus_present = FB_RESET) then
+          END IF;
+        WHEN IS_EVDATA =>
+          download := '0';
+          IF (b_rxcmd OR feebus_present = FB_RESET) THEN
             input_next := IS_IDLE;
-          else
+          ELSE
             input_next := IS_EVDATA;
-          end if;
-      end case;
+          END IF;
+      END CASE;
       input_present := input_next;
 
-      tid      <= command_tid;
+      tid <= command_tid;
 
-      b_rxcmd := b_rxany and (fiCTRL_N = '0');
-      if (b_rxcmd) then
-        command_code  := fiD( 7 downto  0);
-        command_tid   := fiD(11 downto  8);
-        command_param := fiD(30 downto 12);
-      end if;
+      b_rxcmd := b_rxany AND (fiCTRL_N = '0');
+      IF (b_rxcmd) THEN
+        command_code  := fiD( 7 DOWNTO 0);
+        command_tid   := fiD(11 DOWNTO 8);
+        command_param := fiD(30 DOWNTO 12);
+      END IF;
 
-      case feebus_present is
-        when FB_INPUT =>
-          if (fiBEN_N = '1') then
+      CASE feebus_present IS
+        WHEN FB_INPUT =>
+          IF (fiBEN_N = '1') THEN
             feebus_next := FB_FLOAT;
-          else
+          ELSE
             feebus_next := FB_INPUT;
-          end if;
-        when FB_FLOAT =>
-          if (fiBEN_N = '0') then
-            if (fiDIR = '0') then
+          END IF;
+        WHEN FB_FLOAT =>
+          IF (fiBEN_N = '0') THEN
+            IF (fiDIR = '0') THEN
               feebus_next := FB_INPUT;
-            else
+            ELSE
               feebus_next := FB_OUTPUT;
-            end if;
-          else
+            END IF;
+          ELSE
             feebus_next := FB_FLOAT;
-          end if;
-        when FB_OUTPUT =>
-          if (fiBEN_N = '1') then
+          END IF;
+        WHEN FB_OUTPUT =>
+          IF (fiBEN_N = '1') THEN
             feebus_next := FB_FLOAT;
-          elsif (fiDIR = '0') then    -- 22.03.2002
-            feebus_next := FB_RESET;  -- 22.03.2002
-          else
+          ELSIF (fiDIR = '0') THEN      -- 22.03.2002
+            feebus_next := FB_RESET;    -- 22.03.2002
+          ELSE
             feebus_next := FB_OUTPUT;
-          end if;
-        when FB_RESET =>              -- 22.03.2002
-          feebus_next := FB_INPUT;    -- 22.03.2002
-      end case;
+          END IF;
+        WHEN FB_RESET =>                -- 22.03.2002
+          feebus_next := FB_INPUT;      -- 22.03.2002
+      END CASE;
       feebus_present := feebus_next;
 
-    end if;
-  end process;
+    END IF;
+  END PROCESS;
 
-end SYN;
+END SYN;

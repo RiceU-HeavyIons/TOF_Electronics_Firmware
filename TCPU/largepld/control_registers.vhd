@@ -9,81 +9,81 @@
 --*
 --******************************************************************************
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-entity control_registers is
-  port (
-    clock       : in  std_logic;
-    arstn       : in  std_logic;
-    reg_data    : in  std_logic_vector ( 7 downto 0);
-    reg_addr    : in  std_logic_vector ( 5 downto 0);
-    reg_load    : in  std_logic;
-    reg_lock    : in  std_logic;
-    ps_switches : in  std_logic_vector ( 3 downto 0);
-    bl_switches : in  std_logic_vector ( 3 downto 0);
-    dt_switches : in  std_logic_vector ( 2 downto 0);
-    fc_switches : in  std_logic_vector ( 1 downto 0);
-    te_switches : in  std_logic_vector ( 1 downto 0);
-    xx_switches : in  std_logic_vector ( 4 downto 0);
-    ps_reg      : out std_logic_vector ( 7 downto 0);
-    bl_reg      : out std_logic_vector ( 7 downto 0);
-    dt_reg      : out std_logic_vector ( 7 downto 0);
-    fc_reg      : out std_logic_vector ( 7 downto 0);
-    te_reg      : out std_logic_vector ( 7 downto 0);
-    xx_reg      : out std_logic_vector ( 7 downto 0)
-  );
-end control_registers;
+ENTITY control_registers IS
+  PORT (
+    clock       : IN  std_logic;
+    arstn       : IN  std_logic;
+    reg_data    : IN  std_logic_vector ( 7 DOWNTO 0);
+    reg_addr    : IN  std_logic_vector ( 5 DOWNTO 0);
+    reg_load    : IN  std_logic;
+    reg_lock    : IN  std_logic;
+    ps_switches : IN  std_logic_vector ( 3 DOWNTO 0);
+    bl_switches : IN  std_logic_vector ( 3 DOWNTO 0);
+    dt_switches : IN  std_logic_vector ( 2 DOWNTO 0);
+    fc_switches : IN  std_logic_vector ( 1 DOWNTO 0);
+    te_switches : IN  std_logic_vector ( 1 DOWNTO 0);
+    xx_switches : IN  std_logic_vector ( 4 DOWNTO 0);
+    ps_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
+    bl_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
+    dt_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
+    fc_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
+    te_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
+    xx_reg      : OUT std_logic_vector ( 7 DOWNTO 0)
+    );
+END control_registers;
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
 -- use work.my_conversions.all;
 
-architecture SYN of control_registers is
+ARCHITECTURE SYN OF control_registers IS
 
-begin
+BEGIN
 
-  main : process (clock, arstn)
-    variable ps_switches_reg : std_logic_vector (3 downto 0);
-    variable bl_switches_reg : std_logic_vector (3 downto 0);
-    variable dt_switches_reg : std_logic_vector (2 downto 0);
-    variable fc_switches_reg : std_logic_vector (1 downto 0);
-    variable te_switches_reg : std_logic_vector (1 downto 0);
-    variable xx_switches_reg : std_logic_vector (4 downto 0);
-    variable ps_reg_int      : std_logic_vector (7 downto 0);
-    variable bl_reg_int      : std_logic_vector (7 downto 0);
-    variable dt_reg_int      : std_logic_vector (7 downto 0);
-    variable fc_reg_int      : std_logic_vector (7 downto 0);
-    variable te_reg_int      : std_logic_vector (7 downto 0);
-    variable xx_reg_int      : std_logic_vector (7 downto 0);
-    variable psreg_by_rorc   : boolean;
-    variable blreg_by_rorc   : boolean;
-    variable dtreg_by_rorc   : boolean;
-    variable fcreg_by_rorc   : boolean;
-    variable tereg_by_rorc   : boolean;
-    variable xxreg_by_rorc   : boolean;
-    variable psreg_enable    : boolean;
-    variable blreg_enable    : boolean;
-    variable dtreg_enable    : boolean;
-    variable fcreg_enable    : boolean;
-    variable tereg_enable    : boolean;
-    variable xxreg_enable    : boolean;
-  begin
+  main : PROCESS (clock, arstn)
+    VARIABLE ps_switches_reg : std_logic_vector (3 DOWNTO 0);
+    VARIABLE bl_switches_reg : std_logic_vector (3 DOWNTO 0);
+    VARIABLE dt_switches_reg : std_logic_vector (2 DOWNTO 0);
+    VARIABLE fc_switches_reg : std_logic_vector (1 DOWNTO 0);
+    VARIABLE te_switches_reg : std_logic_vector (1 DOWNTO 0);
+    VARIABLE xx_switches_reg : std_logic_vector (4 DOWNTO 0);
+    VARIABLE ps_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE bl_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE dt_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE fc_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE te_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE xx_reg_int      : std_logic_vector (7 DOWNTO 0);
+    VARIABLE psreg_by_rorc   : boolean;
+    VARIABLE blreg_by_rorc   : boolean;
+    VARIABLE dtreg_by_rorc   : boolean;
+    VARIABLE fcreg_by_rorc   : boolean;
+    VARIABLE tereg_by_rorc   : boolean;
+    VARIABLE xxreg_by_rorc   : boolean;
+    VARIABLE psreg_enable    : boolean;
+    VARIABLE blreg_enable    : boolean;
+    VARIABLE dtreg_enable    : boolean;
+    VARIABLE fcreg_enable    : boolean;
+    VARIABLE tereg_enable    : boolean;
+    VARIABLE xxreg_enable    : boolean;
+  BEGIN
 
-    if (arstn = '0') then
-      ps_switches_reg := (others => '0');
-      bl_switches_reg := (others => '0');
-      dt_switches_reg := (others => '0');
-      fc_switches_reg := (others => '0');
-      te_switches_reg := (others => '0');
-      xx_switches_reg := (others => '0');
-      ps_reg_int      := (others => '0');
-      bl_reg_int      := (others => '0');
-      dt_reg_int      := (others => '0');
-      fc_reg_int      := (others => '0');
-      te_reg_int      := (others => '0');
-      xx_reg_int      := (others => '0');
+    IF (arstn = '0') THEN
+      ps_switches_reg := (OTHERS => '0');
+      bl_switches_reg := (OTHERS => '0');
+      dt_switches_reg := (OTHERS => '0');
+      fc_switches_reg := (OTHERS => '0');
+      te_switches_reg := (OTHERS => '0');
+      xx_switches_reg := (OTHERS => '0');
+      ps_reg_int      := (OTHERS => '0');
+      bl_reg_int      := (OTHERS => '0');
+      dt_reg_int      := (OTHERS => '0');
+      fc_reg_int      := (OTHERS => '0');
+      te_reg_int      := (OTHERS => '0');
+      xx_reg_int      := (OTHERS => '0');
       psreg_by_rorc   := true;
       blreg_by_rorc   := true;
       dtreg_by_rorc   := true;
@@ -96,94 +96,94 @@ begin
       fcreg_enable    := false;
       tereg_enable    := false;
       xxreg_enable    := false;
-      ps_reg  <= (others => '0');
-      bl_reg  <= (others => '0');
-      dt_reg  <= (others => '0');
-      fc_reg  <= (others => '0');
-      te_reg  <= (others => '0');
-      xx_reg  <= (others => '0');
-    elsif (clock'event and clock = '1') then
+      ps_reg          <= (OTHERS => '0');
+      bl_reg          <= (OTHERS => '0');
+      dt_reg          <= (OTHERS => '0');
+      fc_reg          <= (OTHERS => '0');
+      te_reg          <= (OTHERS => '0');
+      xx_reg          <= (OTHERS => '0');
+    ELSIF (clock'event AND clock = '1') THEN
 
-      if psreg_by_rorc then
+      IF psreg_by_rorc THEN
         ps_reg_int := reg_data;
-      else
+      ELSE
         ps_reg_int := "0000" & ps_switches_reg;
-      end if;
-      if (    psreg_by_rorc and psreg_enable) or
-         (not psreg_by_rorc and (reg_lock = '0')) then
-        ps_reg  <=     ps_reg_int;
-      end if;
-      psreg_enable    := ((reg_load = '1') and (reg_addr = "000000"));
+      END IF;
+      IF ( psreg_by_rorc AND psreg_enable) OR
+        (NOT psreg_by_rorc AND (reg_lock = '0')) THEN
+        ps_reg <= ps_reg_int;
+      END IF;
+      psreg_enable    := ((reg_load = '1') AND (reg_addr = "000000"));
       psreg_by_rorc   := (ps_switches_reg = "0000");
       ps_switches_reg := ps_switches;
 
-      if blreg_by_rorc then
+      IF blreg_by_rorc THEN
         bl_reg_int := reg_data;
-      else
+      ELSE
         bl_reg_int := "0000" & bl_switches_reg;
-      end if;
-      if (    blreg_by_rorc and blreg_enable) or
-         (not blreg_by_rorc and (reg_lock = '0')) then
-        bl_reg  <=     bl_reg_int;
-      end if;
-      blreg_enable    := ((reg_load = '1') and (reg_addr = "000001"));
+      END IF;
+      IF ( blreg_by_rorc AND blreg_enable) OR
+        (NOT blreg_by_rorc AND (reg_lock = '0')) THEN
+        bl_reg <= bl_reg_int;
+      END IF;
+      blreg_enable    := ((reg_load = '1') AND (reg_addr = "000001"));
       blreg_by_rorc   := (bl_switches_reg = "0000");
       bl_switches_reg := bl_switches;
 
-      if dtreg_by_rorc then
+      IF dtreg_by_rorc THEN
         dt_reg_int := reg_data;
-      else
+      ELSE
         dt_reg_int := "00000" & dt_switches_reg;
-      end if;
-      if (    dtreg_by_rorc and dtreg_enable) or
-         (not dtreg_by_rorc and (reg_lock = '0')) then
-        dt_reg  <=     dt_reg_int;
-      end if;
-      dtreg_enable    := ((reg_load = '1') and (reg_addr = "000010"));
+      END IF;
+      IF ( dtreg_by_rorc AND dtreg_enable) OR
+        (NOT dtreg_by_rorc AND (reg_lock = '0')) THEN
+        dt_reg <= dt_reg_int;
+      END IF;
+      dtreg_enable    := ((reg_load = '1') AND (reg_addr = "000010"));
       dtreg_by_rorc   := (dt_switches_reg = "000");
       dt_switches_reg := dt_switches;
 
-      if fcreg_by_rorc then
+      IF fcreg_by_rorc THEN
         fc_reg_int := reg_data;
-      else
+      ELSE
         fc_reg_int := "000000" & fc_switches_reg;
-      end if;
-      if (    fcreg_by_rorc and fcreg_enable) or
-         (not fcreg_by_rorc and (reg_lock = '0')) then
-        fc_reg  <=     fc_reg_int;
-      end if;
-      fcreg_enable    := ((reg_load = '1') and (reg_addr = "000011"));
+      END IF;
+      IF ( fcreg_by_rorc AND fcreg_enable) OR
+        (NOT fcreg_by_rorc AND (reg_lock = '0')) THEN
+        fc_reg <= fc_reg_int;
+      END IF;
+      fcreg_enable    := ((reg_load = '1') AND (reg_addr = "000011"));
       fcreg_by_rorc   := (fc_switches_reg = "00");
       fc_switches_reg := fc_switches;
 
-      if tereg_by_rorc then
+      IF tereg_by_rorc THEN
         te_reg_int := reg_data;
-      else
+      ELSE
         te_reg_int := "000000" & te_switches_reg;
-      end if;
-      if (    tereg_by_rorc and tereg_enable) or
-         (not tereg_by_rorc and (reg_lock = '0')) then
-        te_reg  <=     te_reg_int;
-      end if;
-      tereg_enable    := ((reg_load = '1') and (reg_addr = "000100"));
+      END IF;
+      IF ( tereg_by_rorc AND tereg_enable) OR
+        (NOT tereg_by_rorc AND (reg_lock = '0')) THEN
+        te_reg <= te_reg_int;
+      END IF;
+      tereg_enable    := ((reg_load = '1') AND (reg_addr = "000100"));
       tereg_by_rorc   := (te_switches_reg = "00");
       te_switches_reg := te_switches;
 
-      if xxreg_by_rorc then
+      IF xxreg_by_rorc THEN
         xx_reg_int := reg_data;
-      else
+      ELSE
         xx_reg_int := "000" & xx_switches_reg;
-      end if;
-      if (    xxreg_by_rorc and xxreg_enable) or
-         (not xxreg_by_rorc and (reg_lock = '0')) then
-        xx_reg  <=     xx_reg_int;
-      end if;
-      xxreg_enable    := ((reg_load = '1') and (reg_addr = "000101"));
+      END IF;
+      IF ( xxreg_by_rorc AND xxreg_enable) OR
+        (NOT xxreg_by_rorc AND (reg_lock = '0')) THEN
+        xx_reg <= xx_reg_int;
+      END IF;
+      xxreg_enable    := ((reg_load = '1') AND (reg_addr = "000101"));
       xxreg_by_rorc   := (xx_switches_reg = "00000");
       xx_switches_reg := xx_switches;
 
-    end if;
+    END IF;
 
-  end process;
+  END PROCESS;
 
-end SYN;
+END SYN;
