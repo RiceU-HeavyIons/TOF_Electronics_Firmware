@@ -1,4 +1,18 @@
--- $Id: ddl.vhd,v 1.2 2004-12-08 22:52:28 tofp Exp $
+-- $Id: ddl.vhd,v 1.3 2004-12-09 22:31:44 tofp Exp $
+-------------------------------------------------------------------------------
+-- Title      : DDL
+-- Project    : TOF
+-------------------------------------------------------------------------------
+-- File       : ddl.vhd
+-- Author     : J. Schambach
+-- Company    : 
+-- Created    : 2004-12-09
+-- Last update: 2004-12-09
+-- Platform   : 
+-------------------------------------------------------------------------------
+-- Description: Top Level Component for the DDL interface
+-------------------------------------------------------------------------------
+
 LIBRARY altera;
 USE altera.maxplus2.ALL;
 
@@ -43,12 +57,6 @@ ARCHITECTURE a OF ddl IS
       reg_addr    : IN  std_logic_vector ( 5 DOWNTO 0);
       reg_load    : IN  std_logic;
       reg_lock    : IN  std_logic;
-      ps_switches : IN  std_logic_vector ( 3 DOWNTO 0);
-      bl_switches : IN  std_logic_vector ( 3 DOWNTO 0);
-      dt_switches : IN  std_logic_vector ( 2 DOWNTO 0);
-      fc_switches : IN  std_logic_vector ( 1 DOWNTO 0);
-      te_switches : IN  std_logic_vector ( 1 DOWNTO 0);
-      xx_switches : IN  std_logic_vector ( 4 DOWNTO 0);
       ps_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
       bl_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
       dt_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
@@ -228,14 +236,6 @@ BEGIN
     reg_addr    => s_reg_addr,
     reg_load    => s_reg_load,
     reg_lock    => s_reg_lock,
-    --ps_switches => "0101",            -- pattern: 19 bit incrementing counter
-    ps_switches => "0001",              -- pattern: FIFO read
-    bl_switches => "0111",              -- block length: 1k words
-    --dt_switches => "010",             -- data trigger: Ext Trigger
-    dt_switches => "001",               -- data trigger: FIFO not empty
-    fc_switches => "00",                -- flow control (foBSY)
-    te_switches => "00",                -- transfer enable mode
-    xx_switches => "00000",             -- ??
     ps_reg      => s_ps_reg,
     bl_reg      => s_bl_reg,
     dt_reg      => s_dt_reg,
