@@ -26,3 +26,4 @@
 # spread out over the entire source repository.
 #
 TCPU_largepld	TCPU/largepld
+TCPU_smallpld	TCPU/smallpld
