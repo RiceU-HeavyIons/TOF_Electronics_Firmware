@@ -85,6 +85,7 @@ set_global_assignment -name VHDL_FILE shorten.vhd
 set_global_assignment -name VHDL_FILE transmitter.vhd
 set_global_assignment -name VHDL_FILE trigger_generator.vhd
 set_global_assignment -name VHDL_FILE two_by_3bit_mux.vhd
+set_global_assignment -name VHDL_FILE trigger_counter_15bit.vhd
 
 # Pin & Location Assignments
 # ==========================
@@ -287,6 +288,15 @@ set_global_assignment -name DEVICE EP1S10F484C7
 # ==============================
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim-Altera (VHDL output from Quartus II)"
 
+# Assembler Assignments
+# =====================
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+set_global_assignment -name CONFIGURATION_CLOCK_DIVISOR 1.0
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPC4
+set_global_assignment -name EPROM_USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name AUTO_INCREMENT_CONFIG_DEVICE_JTAG_USER_CODE OFF
+
 # Simulator Assignments
 # =====================
 set_global_assignment -name ADD_DEFAULT_PINS_TO_SIMULATION_OUTPUT_WAVEFORMS OFF
@@ -298,6 +308,47 @@ set_global_assignment -name VECTOR_INPUT_SOURCE trigger_interface_sim1.vwf
 # ============================
 set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT off
 
+# -------------------
+# start CLOCK(C_DCLK)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "80.0 MHz" -section_id C_DCLK
+
+# end CLOCK(C_DCLK)
+# -----------------
+
+# --------------------
+# start CLOCK(PLDCLK0)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "50.0 MHz" -section_id PLDCLK0
+
+# end CLOCK(PLDCLK0)
+# ------------------
+
+# ----------------------
+# start CLOCK(TCD_10MHZ)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name DUTY_CYCLE 20 -section_id TCD_10MHZ
+	set_global_assignment -name FMAX_REQUIREMENT "10.0 MHz" -section_id TCD_10MHZ
+
+# end CLOCK(TCD_10MHZ)
+# --------------------
+
+# ----------------------
+# start CLOCK(TCD_50MHZ)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "50.0 MHz" -section_id TCD_50MHZ
+
+# end CLOCK(TCD_50MHZ)
+# --------------------
+
 # ---------------------------------------
 # start EDA_TOOL_SETTINGS(eda_simulation)
 
@@ -308,3 +359,19 @@ set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT off
 
 # end EDA_TOOL_SETTINGS(eda_simulation)
 # -------------------------------------
+
+# -----------------------
+# start ENTITY(largepld1)
+
+	# Timing Assignments
+	# ==================
+	set_instance_assignment -name CLOCK_SETTINGS PLDCLK0 -to pldclk0
+	set_instance_assignment -name CLOCK_SETTINGS TCD_50MHZ -to tcd_50mhz
+	set_instance_assignment -name CLOCK_SETTINGS TCD_10MHZ -to tcd_10_mhz
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c1_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c2_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c3_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c4_dclk
+
+# end ENTITY(largepld1)
+# ---------------------
