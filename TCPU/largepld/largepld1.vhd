@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.5 2005-01-03 23:35:28 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.6 2005-01-07 23:20:11 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -285,8 +285,13 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL s_fiCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (IN)
   SIGNAL s_foCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (OUT)
 
+  -- new signals
+
+  SIGNAL mode_0_reset, mode_1_reset : std_logic;  -- state machine reset signals decoded from mode bit(s)
+
 
   CONSTANT separator_id : std_logic_vector (3 DOWNTO 0) := "1110";
+
 
 -- ****************************************************************
 -- ARCHITECTURE BEGINS HERE
@@ -607,10 +612,12 @@ BEGIN
   -- Then multiplexers select signals to/from the active controller to go to/from data path     
 
   -- CTL0: This controller always reads a single front-end fifo that is selected by the mcu.
+
+  mode_0_reset <= control_select;       -- "control_select" = mcu_config[0]
   
   CTL0 : COMPONENT alwread PORT MAP (
     CLK      => clk,
-    RESET    => reset,
+    RESET    => mode_0_reset,
     empty    => input_fifo_empty,
     rd_fifo  => ctl0_read_fe_fifo,
     wr_fifo  => ctl0_wr_mcu_fifo,
@@ -623,10 +630,12 @@ BEGIN
 
   -- this signal detects that select ctr has rolled over to initial state
   sel_eq_0 <= (NOT ctr_sel(2)) AND (NOT ctr_sel(1)) AND (NOT ctr_sel(0));
+
+  mode_1_reset <= NOT control_select;   -- "control_select" = mcu_config[0]
   
   Control_one : COMPONENT CTL_ONE PORT MAP (
     clk        => clk,
-    reset      => reset,
+    reset      => mode_1_reset,
     cmd_l0     => CMD_L0,
     fifo_empty => input_fifo_empty,
 
