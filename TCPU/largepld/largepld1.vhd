@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.10 2005-01-25 17:29:52 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.11 2005-01-31 21:29:31 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -505,7 +505,8 @@ BEGIN
     dout          => tdig1_data,
     output_strobe => tdig_strobe(1) );
 
-  tdc1_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  -- tdc1_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  tdc1_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => tdig1_data,
@@ -524,7 +525,8 @@ BEGIN
     dout          => tdig2_data,
     output_strobe => tdig_strobe(2) );
 
-  tdc2_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  -- tdc2_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  tdc2_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => tdig2_data,
@@ -543,7 +545,8 @@ BEGIN
     dout          => tdig3_data,
     output_strobe => tdig_strobe(3) );
 
-  tdc3_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  -- tdc3_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  tdc3_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => tdig3_data,
@@ -562,7 +565,8 @@ BEGIN
     dout          => tdig4_data,
     output_strobe => tdig_strobe(4) );
 
-  tdc4_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  -- tdc4_fifo : COMPONENT input_fifo_64x32 PORT MAP (
+  tdc4_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => tdig4_data,
@@ -772,7 +776,8 @@ BEGIN
 
   -- MCU FIFO:
   
-  mcu_outfifo : COMPONENT output_fifo_1024x32 PORT MAP (
+  -- mcu_outfifo : COMPONENT output_fifo_1024x32 PORT MAP (
+  mcu_outfifo : COMPONENT output_fifo_2048x32 PORT MAP (
     data  => inmux_dout,
     wrreq => write_mcu_fifo,
     rdreq => rd_mcu_fifo,
@@ -830,7 +835,8 @@ BEGIN
 
   -- final DDL fifo 
   
-  final_ddl_fifo : COMPONENT output_fifo_1024x32 PORT MAP (
+  -- final_ddl_fifo : COMPONENT output_fifo_1024x32 PORT MAP (
+  final_ddl_fifo : COMPONENT output_fifo_2048x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => ddl_fifo_indata,

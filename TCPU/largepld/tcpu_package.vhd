@@ -565,6 +565,17 @@ PACKAGE tcpu_package IS
           empty : OUT std_logic );
   END COMPONENT;
 
+  COMPONENT input_fifo_256x32
+    PORT (data  : IN  std_logic_vector (31 DOWNTO 0);
+          wrreq : IN  std_logic;
+          rdreq : IN  std_logic;
+          clock : IN  std_logic;
+          aclr  : IN  std_logic;
+          q     : OUT std_logic_vector (31 DOWNTO 0);
+          full  : OUT std_logic;
+          empty : OUT std_logic );
+  END COMPONENT;
+
   COMPONENT input_fifo64dx20w
     PORT ( data  : IN  std_logic_vector (19 DOWNTO 0);
            wrreq : IN  std_logic;
@@ -599,6 +610,18 @@ PACKAGE tcpu_package IS
   END COMPONENT;
 
   COMPONENT output_fifo_1024x32
+    PORT
+      ( data  : IN  std_logic_vector (31 DOWNTO 0);
+        wrreq : IN  std_logic;
+        rdreq : IN  std_logic;
+        clock : IN  std_logic;
+        aclr  : IN  std_logic;
+        q     : OUT std_logic_vector (31 DOWNTO 0);
+        full  : OUT std_logic;
+        empty : OUT std_logic );
+  END COMPONENT;
+  
+  COMPONENT output_fifo_2048x32
     PORT
       ( data  : IN  std_logic_vector (31 DOWNTO 0);
         wrreq : IN  std_logic;
