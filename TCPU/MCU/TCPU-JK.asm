@@ -1,3 +1,5 @@
+; $Id: TCPU-JK.asm,v 1.3 2004-12-16 17:21:24 tofp Exp $
+;
 #DEFINE		CODE_BASE 0x0000
 
 ; file: TDIG-B.asm
@@ -34,7 +36,7 @@
 ; The PIC18FXX20 Data Sheet explains the functions of the configuration bits.
 
 	__CONFIG	_CONFIG1H, _OSCS_OFF_1H & _EC_OSC_1H		
-	__CONFIG	_CONFIG2L, _BOR_OFF_2L & _BORV_20_2L & _PWRT_OFF_2L
+	__CONFIG	_CONFIG2L, _BOR_OFF_2L & _BORV_20_2L & _PWRT_ON_2L
 	__CONFIG	_CONFIG2H, _WDT_OFF_2H & _WDTPS_128_2H
 	__CONFIG	_CONFIG3L, _XMC_MODE_3L
 	__CONFIG	_CONFIG3H, _CCP2MX_ON_3H
