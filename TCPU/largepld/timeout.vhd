@@ -21,7 +21,7 @@
     
     		timer : timeout_ctr PORT MAP (
 			clock	 => clk,
-			cnt_en	 => count_enable,
+			cnt_en	 => '1',        --count_enable,
 			sclr	 => counter_reset,
 			q	 => cnt_val,
 			cout	 => term_cnt);
@@ -37,13 +37,13 @@
 		timeout_valid <= term_cnt_flag;
  
  		-- this ff enables counter after 'clr_timeout' input
-    		enable_ff : DFF_sclr_sset PORT MAP (
-			clock	 => clk,
-			sclr	 => stop_count,
-			sset	 => clr_timeout,
-			data	 => count_enable,
-			q	 => count_enable);
- 
+--              enable_ff : DFF_sclr_sset PORT MAP (
+--			clock	 => clk,
+--			sclr	 => stop_count,
+--			sset	 => clr_timeout,
+--			data	 => count_enable,
+--                	q	 => count_enable);
+
     end lwb1;
     
     
