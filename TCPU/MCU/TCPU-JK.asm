@@ -24,7 +24,7 @@
 	#include "SPI_macros.inc"
 	#include "TCPU_macros.inc"
 	#include "SPIMPol.inc"
-	#include "CAN_macros.inc"
+;	#include "CAN_macros.inc"
 	#include "PLD_defs.inc"
 
 ;******************************************************************************
@@ -80,10 +80,10 @@
 	CAN_msg_data5
 	CAN_msg_data6
 	CAN_msg_data7
-	CAN_net					; 0x02D : 0x01 -> pointer to system CANbus
+;	CAN_net					; 0x02D : 0x01 -> pointer to system CANbus
 							;		  0x02 -> pointer to tray CANbus
-	PLD_word:		0x04	; 0x02E - 0x031
-	new_prog_data:	0x40	; 0x032 - 0x071 - 64 bytes of new program data
+	PLD_word:		0x04	; 0x02D - 0x030
+	new_prog_data:	0x40	; 0x031 - 0x070 - 64 bytes of new program data
 							; (temporary cache before writing to FLASH)
 	endc
 
@@ -107,21 +107,22 @@
 START
 
 	call	VisualInitialization	; set up MCU Pin I/O, other configuration
+	LED_OFF
+
+	setf	ctr2
+	call	longstall
+	setf	ctr2
+	call	longstall
+	setf	ctr2
+	call	longstall
+	setf	ctr2
+	call	longstall
+	setf	ctr2
+	call	longstall
+	setf	ctr2
+	call	longstall
+
 	call	SPI_init				; initialize the SPI bus
-
-	setf	ctr2
-	call	longstall
-	setf	ctr2
-	call	longstall
-	setf	ctr2
-	call	longstall
-	setf	ctr2
-	call	longstall
-	setf	ctr2
-	call	longstall
-	setf	ctr2
-	call	longstall
-
 	call	CAN_init				; Initialize CAN controller, return ready for I/O	
 
 ; Once CANbus is initialized, you should send a message saying "I've been reset!"
@@ -168,7 +169,8 @@ check_top_CANbus
 	call	get_msg
 	tstfsz	WREG
 	bra		PLD_LOOP
-	handle_system_msg
+	call	handle_CAN_msg
+;	handle_system_msg
 	bra		check_top_CANbus
 
 ;------------------------------------------------------------------------------
