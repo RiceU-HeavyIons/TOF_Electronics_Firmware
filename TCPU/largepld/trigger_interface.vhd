@@ -4,6 +4,12 @@
 	--
 	-- Date : 9/15/04
 	-- Author : L. Bridges / Blue Sky Electronics, LLC
+	
+	-- Changes History:
+	
+	-- 11/22/04: Changes "non_zero" signal so that data is written to fifo 
+	-- when "TCD command" field (4 msbits) is non-zero. Previously, data was
+	-- written to the fifo when ANY of the 20 TCD bits was non-zero.
 	--
 	-- This module receives tcd trigger commands and tokens as 4bit words, 
 	-- and demultiplexes them to a full 20bit word. 
@@ -150,10 +156,12 @@
 			data	 => reg7_out,
 			q	 => reg8_out );
 		
-	non_zero <= reg8_out(19) or reg8_out(18) or reg8_out(17) or reg8_out(16) or reg8_out(15) 
-		or reg8_out(14) or reg8_out(13) or reg8_out(12) or reg8_out(11) or reg8_out(10) 
-		or reg8_out( 9) or reg8_out( 8) or reg8_out( 7) or reg8_out( 6) or reg8_out( 5) 
-		or reg8_out( 4) or reg8_out( 3) or reg8_out( 2) or reg8_out( 1) or reg8_out( 0);
+	non_zero <= reg8_out(19) or reg8_out(18) or reg8_out(17) or reg8_out(16);
+	
+		-- or reg8_out(15) 
+		--or reg8_out(14) or reg8_out(13) or reg8_out(12) or reg8_out(11) or reg8_out(10) 
+		--or reg8_out( 9) or reg8_out( 8) or reg8_out( 7) or reg8_out( 6) or reg8_out( 5) 
+		--or reg8_out( 4) or reg8_out( 3) or reg8_out( 2) or reg8_out( 1) or reg8_out( 0);
 			
 	reg9 : reg20_en PORT MAP (
 			clock	 => clk,
