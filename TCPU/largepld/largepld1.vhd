@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.13 2005-02-15 22:25:15 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.14 2005-03-02 16:21:22 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -786,7 +786,7 @@ BEGIN
   
   -- mcu_outfifo : COMPONENT output_fifo_1024x32 PORT MAP (
   mcu_outfifo : COMPONENT output_fifo_2048x32 PORT MAP (
-    data  => inmux_dout,
+    data  => ddl_fifo_indata,
     wrreq => write_mcu_fifo,
     rdreq => rd_mcu_fifo,
     clock => clk,
