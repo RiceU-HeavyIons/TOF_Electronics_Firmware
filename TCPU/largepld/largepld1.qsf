@@ -47,6 +47,7 @@ set_global_assignment -name VHDL_FILE input_fifo_64x32.vhd
 set_global_assignment -name VHDL_FILE mux_2x32_registered.vhd
 set_global_assignment -name VHDL_FILE mux_5x32_registered.vhd
 set_global_assignment -name VHDL_FILE mux_32_to_4.vhd
+set_global_assignment -name VHDL_FILE mux_3_by_32.vhd
 set_global_assignment -name VHDL_FILE output_fifo_256x32.vhd
 set_global_assignment -name VHDL_FILE reg4_en.vhd
 set_global_assignment -name VHDL_FILE reg20_en.vhd
