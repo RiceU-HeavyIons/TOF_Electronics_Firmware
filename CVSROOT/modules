@@ -27,3 +27,4 @@
 #
 TCPU_largepld	TCPU/largepld
 TCPU_smallpld	TCPU/smallpld
+TCPU_MCU	TCPU/MCU
