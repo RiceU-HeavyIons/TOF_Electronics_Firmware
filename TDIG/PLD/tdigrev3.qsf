@@ -54,6 +54,19 @@ set_global_assignment -name VHDL_FILE tff_sclr.vhd
 set_global_assignment -name VHDL_FILE dff_sclr_sset.vhd
 set_global_assignment -name SOURCE_FILE SHIFTREG.cmp
 set_global_assignment -name VECTOR_WAVEFORM_FILE deser_sim.vwf
+set_global_assignment -name VHDL_FILE dff_generic.vhd
+set_global_assignment -name VHDL_FILE ctl32to4.vhd
+set_global_assignment -name VHDL_FILE decode_1_to_4.vhd
+set_global_assignment -name VHDL_FILE decoder_3_to_8.vhd
+set_global_assignment -name VHDL_FILE bus_tri_8.vhd
+set_global_assignment -name VHDL_FILE mux_2_to_1_2bit.vhd
+set_global_assignment -name VHDL_FILE mux_2_to_1_3bit.vhd
+set_global_assignment -name VHDL_FILE mux_2x32_registered.vhd
+set_global_assignment -name VHDL_FILE mux_4_to_1_1bit.vhd
+set_global_assignment -name VHDL_FILE mux_8_by_8bit.vhd
+set_global_assignment -name VHDL_FILE output_fifo_256x32.vhd
+set_global_assignment -name VHDL_FILE pushbutton_pulse.vhd
+set_global_assignment -name VHDL_FILE reg8_en.vhd
 
 # Pin & Location Assignments
 # ==========================
