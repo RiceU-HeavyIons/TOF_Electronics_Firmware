@@ -1,4 +1,4 @@
--- $Id: pattern_generator.vhd,v 1.1.1.1 2004-12-03 19:29:46 tofp Exp $
+-- $Id: pattern_generator.vhd,v 1.2 2004-12-03 20:01:25 tofp Exp $
 --*************************************************************************
 --*  PATTERN_GENERATOR.VHD : Pattern generator module.
 --*
@@ -66,7 +66,7 @@ architecture SYN of pattern_generator is
 
 begin
 
-	s_suspend <= suspend OR fifo_empty;
+  s_suspend <= (suspend OR fifo_empty) WHEN (ps_reg(2 downto 0) = FIFO_OUT) ELSE suspend;
 
   main : process (clock, arstn)
     variable pg_present     : pg_state;
@@ -129,7 +129,7 @@ begin
 
 
       IF  (ps_reg(2 downto 0) = FIFO_OUT) THEN
-		block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA"); --"11100111" );
+		block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
 	  ELSE
      	block_end := word_counter(19);
 	  END IF;
@@ -279,8 +279,12 @@ begin
           datao_valid <= '1';
         when TXDATA =>
           datao       <= ('0' & pgdata);
-          datao_valid <= '1';
-        when TXIDLE =>
+	      IF  (ps_reg(2 downto 0) = FIFO_OUT) THEN
+          	datao_valid <= NOT fifo_empty;
+		  ELSE
+           	datao_valid <= '1';
+		  END IF;
+       when TXIDLE =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
         when TXDTSW =>
