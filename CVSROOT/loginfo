@@ -26,4 +26,4 @@
 # or
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #
-TCPU/largepld	$CVSROOT/CVSROOT/log	-m jschamba@physics.utexas.edu -f $CVSROOT/CVSROOT/commitlog %s
+TCPU	$CVSROOT/CVSROOT/log	-m jschamba@physics.utexas.edu -f $CVSROOT/CVSROOT/commitlog %s
