@@ -78,7 +78,7 @@ package tcpu_package is
 	
   	component CTL_ONE IS PORT (
   	  CLK,CMD_L0,FIFO_EMPTY,RESET,SEL_EQ_0,SEPARATOR,TIMEOUT: IN std_logic;
-  		CLR_SEL,CLR_TIMEOUT,INCR_SEL,RD_FIFO,TRIG_TO_TDC,WR_FIFO,CTL_ONE_STUFF : OUT std_logic);
+  		CLR_SEL,CLR_TIMEOUT,INCR_SEL,RD_FIFO,TRIG_TO_TDC,WR_FIFO,CTL_ONE_STUFF, stuff0, stuff1 : OUT std_logic);
     END component;
   	
 		component ALWREAD IS PORT (
