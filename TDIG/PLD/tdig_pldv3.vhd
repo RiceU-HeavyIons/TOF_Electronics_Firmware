@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.3 2005-01-27 22:27:39 tofp Exp $
+-- $Id: tdig_pldv3.vhd,v 1.4 2005-04-05 22:42:40 tofp Exp $
 
 -- change log
 --
@@ -93,7 +93,7 @@ ENTITY TDIG_pldv3 IS
 
       -- upstream connector
       DATA_VALID_US : OUT std_logic;
-      US_DATA       : OUT std_logic_vector (3 DOWNTO 0);
+      --US_DATA       : OUT std_logic_vector (3 DOWNTO 0);
       US_D_CLK      : OUT std_logic;
       US_M24        : OUT std_logic;
       US_MUL7       : OUT std_logic_vector (5 DOWNTO 0);
@@ -126,7 +126,7 @@ ENTITY TDIG_pldv3 IS
       nRX1BF  : IN std_logic;  -- Interrupt from CAN controller Rx1 buffer
 
       -- Hit inputs for multiplicity calculation.
-      -- hit_hi                 : IN    STD_LOGIC_VECTOR (23 downto 15);
+      hit_hi                 : IN    STD_LOGIC_VECTOR (23 downto 15);
       -- hit_mid                : IN    STD_LOGIC_VECTOR (12 downto 7);
       -- hit_lo                 : IN    STD_LOGIC_VECTOR (1 downto 0);
 
