@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.3 2004-12-08 22:52:28 tofp Exp $
+-- $Id: largepld1.vhd,v 1.4 2005-01-03 17:03:21 tofp Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -81,8 +81,8 @@ ENTITY largepld1 IS
       -- microcontroller interface signals
       mcuctl     : IN    std_logic_vector(3 DOWNTO 0);  -- ctl3 = !read / write ; 2 downto 0 = adr
       mcud       : INOUT std_logic_vector(7 DOWNTO 0);  -- bidirectional data
-      pld_int    : IN    std_logic;     -- data strobe
-      fifo_empty : OUT   std_logic;     -- mcu fifo empty
+      pld_int    : IN    std_logic;                     -- data strobe
+      fifo_empty : OUT   std_logic;                     -- mcu fifo empty
 
       -- user interface signals
       led1 : OUT std_logic;             -- led 1 is io118 (D2)
@@ -263,12 +263,12 @@ ARCHITECTURE ver_four OF largepld1 IS
   -- ********************************************************************************
   -- DDL bidir signals separated into IN and OUT (JS)
   -- ********************************************************************************
-  SIGNAL s_fiD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (IN)
-  SIGNAL s_foD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (OUT)
-  SIGNAL s_fiTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (IN)
-  SIGNAL s_foTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (OUT)
-  SIGNAL s_fiCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (IN)
-  SIGNAL s_foCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (OUT)
+  SIGNAL s_fiD      : std_logic_vector (31 DOWNTO 0);   -- corresponds to ddl_fbd (IN)
+  SIGNAL s_foD      : std_logic_vector (31 DOWNTO 0);   -- corresponds to ddl_fbd (OUT)
+  SIGNAL s_fiTEN_N  : std_logic;                        -- corresponds to ddl_fbten_N (IN)
+  SIGNAL s_foTEN_N  : std_logic;                        -- corresponds to ddl_fbten_N (OUT)
+  SIGNAL s_fiCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (IN)
+  SIGNAL s_foCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (OUT)
 
 -- ****************************************************************
 -- ARCHITECTURE BEGINS HERE
@@ -349,8 +349,8 @@ BEGIN
   choose_trigger_source : mux_2to1_1bit PORT MAP (
     data1  => cout,
     data0  => '0',                      -- THIS WILL BE A PULSE OUTPUT FROM
-                            -- THE TCD CONTROLLER STATE MACHINE
-                                -- so change this from '0' once that exists.
+                                        -- THE TCD CONTROLLER STATE MACHINE
+                                        -- so change this from '0' once that exists.
     sel    => mcu_config_data(0),
     result => trig_presync );           
 
@@ -456,8 +456,8 @@ BEGIN
     foTEN_N    => s_foTEN_N,
     ext_trg    => button_debounced,     -- external trigger
     reset      => reset,
-    fifo_q     => ddl_data,  -- lwb: 11/17/04 I'm attaching the ddl fifo output to here
-    fifo_empty => ddlfifo_empty,  -- lwb: 11/17/04 I'm attaching the ddl fifo empty to here
+    fifo_q     => ddl_data,             -- lwb: 11/17/04 I'm attaching the ddl fifo output to here
+    fifo_empty => ddlfifo_empty,        -- lwb: 11/17/04 I'm attaching the ddl fifo empty to here
     fifo_rdreq => rd_ddl_fifo
     );
 
@@ -604,7 +604,7 @@ BEGIN
   -- CHOOSE INPUT DATA SOURCE
   
   mcu_sel         <= mcu_config_data(3 DOWNTO 1);
-  ctlv1_sel_input <= "000";  -- stub for control from large state machine
+  ctlv1_sel_input <= "000";             -- stub for control from large state machine
   
   choose_source_for_input_selection : two_by_3bit_mux PORT MAP (
     data1x => mcu_sel,
@@ -630,7 +630,7 @@ BEGIN
   choose_source_for_input_read : mux_2to1_1bit PORT MAP (
     data1  => alwon_read_fe_fifo,
     data0  => ctlv1_read_fe_fifo,       -- stub
-    sel    => '1',  -- hardcoded for control by "alwonctl"                                                      
+    sel    => '1',                      -- hardcoded for control by "alwonctl"                                                      
     result => read_fifo_enable );                       
 
   fifo_read_decoder : decode_3to5_en PORT MAP (
@@ -649,7 +649,7 @@ BEGIN
   choose_source_for_write_to_mcu_fifo : mux_2to1_1bit PORT MAP (
     data1  => alwon_wr_mcu_fifo,
     data0  => ctlv1_wr_mcu_fifo,        -- stub
-    sel    => '1',  -- hardcoded for control by "alwonctl"                                                      
+    sel    => '1',                      -- hardcoded for control by "alwonctl"                                                      
     result => write_mcu_fifo );                 
 
   -- shorten read fifo pulse from MCU
@@ -723,10 +723,10 @@ BEGIN
   mcu_read_from_pld <= data_strobe AND (NOT readbar_write);
   
   mcu_bus : bus_tri_8 PORT MAP (
-    data     => pld_to_mcu_before_buffer,  -- output data from pld logic to tristate bus
-    enabledt => mcu_read_from_pld,      -- sets bidirectional pins to OUT
-    enabletr => mcu_write_to_pld,       -- sets bidirectional pins to IN
-    tridata  => mcu_data,               -- bidirectional to/from pins
+    data     => pld_to_mcu_before_buffer,   -- output data from pld logic to tristate bus
+    enabledt => mcu_read_from_pld,          -- sets bidirectional pins to OUT
+    enabletr => mcu_write_to_pld,           -- sets bidirectional pins to IN
+    tridata  => mcu_data,                   -- bidirectional to/from pins
     result   => mcu_to_pld_after_buffer );  -- input data from tristate bus to pld logic
 
   mcu_write_decoder : decoder_3_to_8 PORT MAP (
@@ -801,13 +801,13 @@ BEGIN
   
   mcu_read_mux : mux_8_by_8bit PORT MAP (
     data7x => X"00",
-    data6x => X"00",  -- generate mcu fifo read pulse see 'mcu_strobes_fifo' signal
-    data5x => mcu_fifo_out(7 DOWNTO 0),  -- read low byte                        
+    data6x => X"00",                       -- generate mcu fifo read pulse see 'mcu_strobes_fifo' signal
+    data5x => mcu_fifo_out(7 DOWNTO 0),    -- read low byte                        
     data4x => mcu_fifo_out(15 DOWNTO 8),   -- read 2nd  byte
     data3x => mcu_fifo_out(23 DOWNTO 16),  -- read 3rd  byte
     data2x => mcu_fifo_out(31 DOWNTO 24),  -- read high fifo byte
-    data1x => mcu_config_data,          -- readback config register
-    data0x => mcu_mode_data,            -- readback mode register
+    data1x => mcu_config_data,             -- readback config register
+    data0x => mcu_mode_data,               -- readback mode register
     sel    => mcu_adr,
     result => pld_to_mcu_before_buffer );
 
