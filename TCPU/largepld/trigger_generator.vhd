@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: trigger_generator.vhd,v 1.2 2004-12-08 22:52:28 tofp Exp $
+-- $Id: trigger_generator.vhd,v 1.3 2004-12-09 22:35:10 tofp Exp $
 --******************************************************************************
 --*  TRIGGER_GENERATOR
 --*
@@ -11,6 +11,9 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
+
 
 ENTITY trigger_generator IS
   PORT (
@@ -22,11 +25,6 @@ ENTITY trigger_generator IS
     fifo_empty : IN  std_logic;         -- my trigger
     trigger    : OUT std_logic);
 END trigger_generator;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-USE work.my_conversions.ALL;
-USE work.my_utilities.ALL;
 
 ARCHITECTURE SYN OF trigger_generator IS
 
@@ -114,7 +112,7 @@ BEGIN
         WHEN E100MS =>
           trigger <= tr_timer_to AND NOT trg_lock;
         WHEN OTHERS =>
-          trigger <= ext_tr_edge;
+          trigger <= (NOT fifo_empty) AND (NOT trg_lock);  -- default is fifo trigger
       END CASE;
       IF (gap_active = '0') THEN
         trg_lock := '1';
