@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.12 2005-02-14 20:37:17 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.13 2005-02-15 22:25:15 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -217,6 +217,8 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- JS: selectively disable infifo's for reading:
   SIGNAL infifo_emptyFlt : std_logic_vector (4 DOWNTO 1);
+  -- JS: input FIFO reset signal to empty the FIFOs:
+  SIGNAL infifo_reset : std_logic;
 
   SIGNAL inmux_dout : std_logic_vector (31 DOWNTO 0);
   SIGNAL inmux_sel  : std_logic_vector (2 DOWNTO 0);
@@ -500,6 +502,7 @@ BEGIN
   -- currently selected control state machine.   
 
   s_fifoRst <= reset OR s_runReset;
+  infifo_reset <= s_fifoRst OR ctl_one_trigger_to_tdc;
   
   tdig_input_1 : COMPONENT ser_4bit_to_par PORT MAP (
     clk           => global40mhz,
@@ -513,7 +516,7 @@ BEGIN
   -- tdc1_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc1_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => s_fifoRst, -- reset,
+    aclr  => infifo_reset, -- reset,
     data  => tdig1_data,
     wrreq => tdig_strobe(1),
     rdreq => read_input_fifo(1),
@@ -533,7 +536,7 @@ BEGIN
   -- tdc2_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc2_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => s_fifoRst, -- reset,
+    aclr  => infifo_reset, -- reset,
     data  => tdig2_data,
     wrreq => tdig_strobe(2),
     rdreq => read_input_fifo(2),
@@ -553,7 +556,7 @@ BEGIN
   -- tdc3_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc3_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => s_fifoRst, -- reset,
+    aclr  => infifo_reset, -- reset,
     data  => tdig3_data,
     wrreq => tdig_strobe(3),
     rdreq => read_input_fifo(3),
@@ -573,7 +576,7 @@ BEGIN
   -- tdc4_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc4_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => s_fifoRst, -- reset,
+    aclr  => infifo_reset, -- reset,
     data  => tdig4_data,
     wrreq => tdig_strobe(4),
     rdreq => read_input_fifo(4),
