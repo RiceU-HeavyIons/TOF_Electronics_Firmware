@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.4 2005-01-03 17:03:21 tofp Exp $
+-- $Id: largepld1.vhd,v 1.5 2005-01-03 23:35:28 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -7,6 +7,9 @@
 
 
 -- Revisions:
+
+-- 12/18/2004 Expanded control select muxes. Added state machine for 
+-- reading all 4 input cables on receipt of L0 trigger.
 
 -- 11/17 Added DDL interface code
 
@@ -37,8 +40,6 @@ USE work.my_utilities.ALL;
 -- TOP LEVEL ENTITY
 -- ********************************************************************
 
-
-
 ENTITY largepld1 IS
   PORT
     (
@@ -54,7 +55,7 @@ ENTITY largepld1 IS
       MS_HI      : OUT std_logic;  -- Pin used as HI in master/slave selection scheme
       MS_LO      : OUT std_logic;  -- Pin used as LO in master/slave selection scheme
       MS_sel     : IN  std_logic;  -- Pin used as master/slave input.  will be externally
-                                   -- shorted to MS_HI *or* MS_LO.         
+      -- shorted to MS_HI *or* MS_LO.         
       MS_sel_out : OUT std_logic;  -- Output to small PLD to determine clock source from M/S select
 
 
@@ -210,7 +211,7 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL mcu_fifo_empty, mcu_filter_reg_write, mcu_bunch_reset, mcu_reset_to_pld : std_logic;
   SIGNAL mcu_fifo_out                                                            : std_logic_vector(31 DOWNTO 0);
   SIGNAL dummy_counter_out                                                       : std_logic_vector(14 DOWNTO 0);
-  SIGNAL internal_trigger                                                        : std_logic;
+  SIGNAL trig_from_ctr                                                           : std_logic;
   SIGNAL mcu_strobes_fifo                                                        : std_logic;
   SIGNAL cout, delaya, delayb, stretch, trig_presync                             : std_logic;
 
@@ -223,9 +224,8 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   SIGNAL read_input_fifo, infifo_full, infifo_empty : std_logic_vector(4 DOWNTO 0);
 
-  SIGNAL inmux_dout  : std_logic_vector (31 DOWNTO 0);
-  SIGNAL inmux_clken : std_logic;
-  SIGNAL inmux_sel   : std_logic_vector (2 DOWNTO 0);
+  SIGNAL inmux_dout : std_logic_vector (31 DOWNTO 0);
+  SIGNAL inmux_sel  : std_logic_vector (2 DOWNTO 0);
 
   -- PING_PONG OUTPUT FIFOS
 
@@ -249,16 +249,31 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL ping_pong_data, ddl_data, ddl_fifo_indata                    : std_logic_vector(31 DOWNTO 0);
 
   -- signals to control which state machine controls the main data mux
-  SIGNAL data_mux_sel, mcu_sel, main_data_sel, ctlv1_sel_input : std_logic_vector(2 DOWNTO 0);
-  SIGNAL mcu_sel_empty                                         : std_logic;
+  SIGNAL data_mux_sel, mcu_sel, main_data_sel, ctl_one_sel_input : std_logic_vector(2 DOWNTO 0);
+  SIGNAL mcu_sel_empty                                           : std_logic;
 
-  SIGNAL dummy                                                   : std_logic;
-  SIGNAL error1                                                  : std_logic_vector(7 DOWNTO 0);
-  SIGNAL ctlv1_read_fe_fifo, input_fifo_empty, ctlv1_wr_mcu_fifo : std_logic;
-  SIGNAL alwon_read_fe_fifo, alwon_wr_mcu_fifo, write_mcu_fifo   : std_logic;
-  SIGNAL clk, read_fifo_enable, ctlv1_write_mcu_fifo             : std_logic;
-  SIGNAL end_record_tc, incr_end_of_record_cnt                   : std_logic;
-  SIGNAL dummy7b                                                 : std_logic_vector(6 DOWNTO 0);
+  SIGNAL dummy                                                       : std_logic;
+  SIGNAL error1                                                      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL ctl_one_read_fe_fifo, input_fifo_empty, ctl_one_wr_mcu_fifo : std_logic;
+  SIGNAL ctl0_read_fe_fifo, ctl0_wr_mcu_fifo, write_mcu_fifo         : std_logic;
+  SIGNAL clk, read_fifo_enable, ctl_one_write_mcu_fifo               : std_logic;
+  SIGNAL end_record_tc, incr_end_of_record_cnt                       : std_logic;
+  SIGNAL dummy7b                                                     : std_logic_vector(6 DOWNTO 0);
+
+  -- signal which selects which state machine is in control (set by MCU config bit)
+  SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : std_logic;
+  SIGNAL clr_timeout, timeout_valid                  : std_logic;
+  SIGNAL ctr_sel                                     : std_logic_vector(2 DOWNTO 0);
+
+  SIGNAL ctl_one_trigger_to_tdc : std_logic;
+
+  -- signals decoded from trigger command bits
+  SIGNAL CMD_L0, CMD_L2, CMD_ABORT, CMD_RESET, CMD_IGNORE : std_logic;
+  SIGNAL separator                                        : std_logic;
+
+  -- signals to control input to DDL fifo 
+  SIGNAL stuff_sel_dout            : std_logic_vector(31 DOWNTO 0);
+  SIGNAL ddl_in_sel, ctl_one_stuff : std_logic;
 
   -- ********************************************************************************
   -- DDL bidir signals separated into IN and OUT (JS)
@@ -269,6 +284,9 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL s_foTEN_N  : std_logic;                        -- corresponds to ddl_fbten_N (OUT)
   SIGNAL s_fiCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (IN)
   SIGNAL s_foCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (OUT)
+
+
+  CONSTANT separator_id : std_logic_vector (3 DOWNTO 0) := "1110";
 
 -- ****************************************************************
 -- ARCHITECTURE BEGINS HERE
@@ -334,7 +352,7 @@ BEGIN
 
   -- INTERNAL TRIGGER COUNTER
   
-  internal_trigger_counter : trigger_counter_15bit PORT MAP (
+  trig_from_ctr_counter : trigger_counter_15bit PORT MAP (
     clock  => global40mhz,
     cnt_en => '1',
     aclr   => '0',
@@ -345,15 +363,21 @@ BEGIN
 
   -- use ext trigger if config bit not set
   -- or internal trigger if config bit set
-
-  choose_trigger_source : mux_2to1_1bit PORT MAP (
+  
+  turn_off_trigger : mux_2to1_1bit PORT MAP (
+    data0  => '0',
     data1  => cout,
-    data0  => '0',                      -- THIS WILL BE A PULSE OUTPUT FROM
-                                        -- THE TCD CONTROLLER STATE MACHINE
-                                        -- so change this from '0' once that exists.
     sel    => mcu_config_data(0),
-    result => trig_presync );           
+    result => trig_from_ctr ); 
 
+  trigger_mux : mux_2to1_1bit PORT MAP (
+    data0  => trig_from_ctr,
+    data1  => ctl_one_trigger_to_tdc,
+    sel    => control_select,
+    result => trig_presync );  
+
+  -- stretch final trigger pulse and send to TDCs over ribbon cable          
+  
   DFF_a : DFF_sclr PORT MAP (
     clock => global40mhz,
     sclr  => '0',
@@ -372,9 +396,11 @@ BEGIN
 
   tdctrig <= stretch;                   -- after stretching to 50ns width
 
+  -- TO TEST USING AN EXTERNAL PULSE GENERATOR, USE THE FOLLOWING LINE:
+
   -- tdctrig <= systrigin;   -- external pulse generator at J39 (remember PECL input levels)
 
-  -- Turning on TDIG clocks:
+  -- Turn on TDIG clocks:
 
   enable_trayclks <= '1';
 
@@ -461,7 +487,13 @@ BEGIN
     fifo_rdreq => rd_ddl_fifo
     );
 
-  -- INPUT SECTION *******************************************************************************      
+  -- INPUT SECTION ******************************************************************************* 
+  --
+  -- TCPU receives input data from 5 sources: 4 TDIG tray cables and 1 TCD cable
+  -- This section demultiplexes each of these data streams and writes the data to
+  -- a fifo. A 5 input mux selects which of the sources will feed the data path to
+  -- the DDL and MCU fifos. The mux control and the fifo controls come from the 
+  -- currently selected control state machine.   
 
   tdig_input_1 : COMPONENT ser_4bit_to_par PORT MAP (
     clk           => global40mhz, reset => reset,
@@ -565,51 +597,110 @@ BEGIN
     result               => inmux_dout );                        
 
   -- CONTROL SECTION *******************************************************************************            
+
+
+  control_select <= mcu_mode_data(0);  -- selects between CTL0 and ctl_one as main controller
+
+  -- Currently 2 possible controllers:
+
+  -- Active controller is selected by mcu_mode_data(0).
+  -- Then multiplexers select signals to/from the active controller to go to/from data path     
+
+  -- CTL0: This controller always reads a single front-end fifo that is selected by the mcu.
   
-  inmux_clken <= '1';
-
-  -- 2 possible controllers
-  -- Active controller is selected by MCU configuration bits.
-  -- Then multiplexers select signals to/from the active controller to go to/from data path
-
-  -- data_path_ctl : component data_path_control PORT MAP (
-  --        clk                         => clk, 
-  --        reset               => reset, 
-  --            op_mode                 => op_mode,
-  --            current_data    => inmux_dout,                                                            
-  --            in_fifo_empty  => infifo_empty,         
-  --            select_input    => inmux_sel,                           
-  --            read_input_fifo => read_input_fifo,                             
-  --            write_ddl_fifo => write_ddl_fifo, 
-  --            ddl_fifo_sel    => outmux_sel,  
-  --            error1                  => error1,
-  --            trigger_pulse   => tdc_strobe,          -- goes to all TDCs on all TDIG cards   
-  --            wr_final_fifo  => wr_final_fifo,
-  --            mcu_mode                => mcu_mode,
-  --            mcu_config      => mcu_config,
-  --            mcu_filter_sel => mcu_filter_sel,
-  --            wr_mcu_fifo    => wr_mcu_fifo,
-  --            rd_mcu_fifo     => rd_mcu_fifo   );     
-
-  -- this controller always reads front end fifo and writes mcu fifo if fe fifo is not empty
-  simple_control : COMPONENT alwread PORT MAP (
+  CTL0 : COMPONENT alwread PORT MAP (
     CLK      => clk,
     RESET    => reset,
     empty    => input_fifo_empty,
-    rd_fifo  => alwon_read_fe_fifo,
-    wr_fifo  => alwon_wr_mcu_fifo,
+    rd_fifo  => ctl0_read_fe_fifo,
+    wr_fifo  => ctl0_wr_mcu_fifo,
     incr_cnt => incr_end_of_record_cnt);  -- increment end of record counter
-                                          -- ovf from counter selects "E700 0000" word            
+                                          -- ovf from counter selects "E700 0000" word 
+
+  -- control_one: This controller looks for L0 commands and then builds an event record from all
+  -- 4 TDIG data streams.
+
+
+  -- this signal detects that select ctr has rolled over to initial state
+  sel_eq_0 <= (NOT ctr_sel(2)) AND (NOT ctr_sel(1)) AND (NOT ctr_sel(0));
+  
+  Control_one : COMPONENT CTL_ONE PORT MAP (
+    clk        => clk,
+    reset      => reset,
+    cmd_l0     => CMD_L0,
+    fifo_empty => input_fifo_empty,
+
+    sel_eq_0      => sel_eq_0,
+    separator     => separator,
+    timeout       => timeout_valid,
+    clr_sel       => clr_sel,
+    clr_timeout   => clr_timeout,
+    incr_sel      => incr_sel,
+    rd_fifo       => ctl_one_read_fe_fifo,
+    trig_to_tdc   => ctl_one_trigger_to_tdc,
+    wr_fifo       => ctl_one_wr_mcu_fifo,
+    ctl_one_stuff => ctl_one_stuff );
+
+  -- controllers increment this counter to cycle through the input fifos
+  -- counter counts from 0 to 4
+  main_mux_select_counter : COMPONENT data_sel_ctr PORT MAP (
+    clock  => clk,
+    cnt_en => incr_sel,
+    sclr   => clr_sel,
+    aclr   => reset,
+    q      => ctr_sel );                -- 3 bits
+
+  -- controllers use this timeout counter to switch between input fifos if 
+  -- there is no separator from a TDIG link within the timeout period
+  timeout_counter : COMPONENT timeout PORT MAP (
+    clk           => clk,
+    reset         => reset,
+    clr_timeout   => clr_timeout,
+    timeout_valid => timeout_valid );
+
+  -- decoder for trigger commands and separator word
+  command_decode : PROCESS (inmux_dout) IS
+  BEGIN
+    IF inmux_dout(31 DOWNTO 28) = separator_id THEN
+      separator <= '1';
+    ELSE separator <= '0';
+    END IF;
+
+    CMD_L0     <= '0';
+    CMD_L2     <= '0';
+    CMD_ABORT  <= '0';
+    CMD_RESET  <= '0';
+    CMD_IGNORE <= '0';
+
+    CASE inmux_dout(19 DOWNTO 16) IS    -- trigger_command
+      WHEN "0000" => CMD_IGNORE <= '1';
+      WHEN "0001" => CMD_IGNORE <= '1';
+      WHEN "0010" => CMD_RESET  <= '1';
+      WHEN "0011" => CMD_IGNORE <= '1';
+      WHEN "0100" => CMD_L0     <= '1';
+      WHEN "0101" => CMD_L0     <= '1';
+      WHEN "0110" => CMD_L0     <= '1';
+      WHEN "0111" => CMD_L0     <= '1';
+      WHEN "1000" => CMD_L0     <= '1';
+      WHEN "1001" => CMD_L0     <= '1';
+      WHEN "1010" => CMD_L0     <= '1'; 
+      WHEN "1011" => CMD_L0     <= '1'; 
+      WHEN "1100" => CMD_L0     <= '1'; 
+      WHEN "1101" => CMD_ABORT  <= '1';
+      WHEN "1110" => CMD_IGNORE <= '1';
+      WHEN "1111" => CMD_L2     <= '1';
+    END CASE;
+  END PROCESS command_decode;
 
   -- CHOOSE INPUT DATA SOURCE
+
+  mcu_sel           <= mcu_config_data(3 DOWNTO 1);
+  ctl_one_sel_input <= "000";  -- stub for control from large state machine
   
-  mcu_sel         <= mcu_config_data(3 DOWNTO 1);
-  ctlv1_sel_input <= "000";             -- stub for control from large state machine
-  
-  choose_source_for_input_selection : two_by_3bit_mux PORT MAP (
-    data1x => mcu_sel,
-    data0x => ctlv1_sel_input,          -- stub
-    sel    => '1',                      -- hardcoded for mcu control
+  choose_source_for_input_mux_select_bits : two_by_3bit_mux PORT MAP (
+    data0x => mcu_sel,  -- mcu config register selects data at mux
+    data1x => ctr_sel,  -- mux select counter selects data at mux (controller clocks counter)
+    sel    => control_select,
     result => main_data_sel );
 
   -- SELECT FIFO EMPTY SIGNAL FROM CURRENT INPUT FIFO
@@ -624,13 +715,11 @@ BEGIN
     result => input_fifo_empty );
 
   -- ROUTE INPUT FIFO READ SIGNAL TO CURRENT INPUT FIFO
-
-  ctlv1_read_fe_fifo <= '0';  -- stub for control from large controller
   
   choose_source_for_input_read : mux_2to1_1bit PORT MAP (
-    data1  => alwon_read_fe_fifo,
-    data0  => ctlv1_read_fe_fifo,       -- stub
-    sel    => '1',                      -- hardcoded for control by "alwonctl"                                                      
+    data0  => ctl0_read_fe_fifo,
+    data1  => ctl_one_read_fe_fifo,
+    sel    => control_select,
     result => read_fifo_enable );                       
 
   fifo_read_decoder : decode_3to5_en PORT MAP (
@@ -643,13 +732,11 @@ BEGIN
     eq4    => read_input_fifo(4) );             
 
   -- SELECT SOURCE FOR WRITING TO MCU FIFO
-
-  ctlv1_write_mcu_fifo <= '0';  -- stub for control from large controller
   
   choose_source_for_write_to_mcu_fifo : mux_2to1_1bit PORT MAP (
-    data1  => alwon_wr_mcu_fifo,
-    data0  => ctlv1_wr_mcu_fifo,        -- stub
-    sel    => '1',                      -- hardcoded for control by "alwonctl"                                                      
+    data0  => ctl0_wr_mcu_fifo,
+    data1  => ctl_one_wr_mcu_fifo,
+    sel    => control_select,
     result => write_mcu_fifo );                 
 
   -- shorten read fifo pulse from MCU
@@ -664,7 +751,7 @@ BEGIN
 
   -- MCU FIFO:
   
-  mcu_outfifo : COMPONENT output_fifo_256x32 PORT MAP (
+  mcu_outfifo : COMPONENT output_fifo_1024x32 PORT MAP (
     data  => inmux_dout,
     wrreq => write_mcu_fifo,
     rdreq => rd_mcu_fifo,
@@ -676,26 +763,44 @@ BEGIN
 
   -- OUTPUT TO DDL FIFOS *******************************************************************************        
 
-  -- State machine "alwread" reads input fifo and writes to both mcu and ddl fifos. Each write 
+  -- State machine CTL0 reads input fifo and writes to both mcu and ddl fifos. Each write 
   -- increments end_of_record_counter. When this counter reaches terminal count, then "end of record"
   -- input is selected as input to DDL FIFO.
   
-  end_of_record_counter : count127 PORT MAP (
+  end_of_record_counter : count127 PORT MAP (  -- used with ctl0 to select "end of record" value
+                                        -- after set number of noise values
     clock  => clk,
     cnt_en => incr_end_of_record_cnt,
     aclr   => reset,
-    q      => dummy7b,
-    cout   => end_record_tc);   
+    q      => dummy7b,                  -- q output not used
+    cout   => end_record_tc); 
 
-  ddl_input_mux : mux_2x32 PORT MAP (
+  ddl_stuff_ctl : mux_2to1_1bit PORT MAP (  -- selects which state machine controls the mux
+                                            -- tostuff non data values into DDL
+    data1  => ctl_one_stuff,
+    data0  => end_record_tc,
+    sel    => control_select,
+    result => ddl_in_sel );  
+
+  ddl_stuff_sel : mux_2x32 PORT MAP (  -- selects between data path value and stuff value
+                                       -- according to select input from ddl_stuff_ctl mux       
     data1x => X"EA000000",
-    data0x => inmux_dout,
-    sel    => end_record_tc,
+    data0x => X"EA000000",
+    sel    => control_select,
+    result => stuff_sel_dout );
+
+  ddl_input_select : mux_2x32 PORT MAP (  -- selects between stuff values according to which 
+                                          -- controller is active: ctl0 gives simple EA stuff value
+                                          -- other controllers can provide different values
+
+    data1x => stuff_sel_dout,           -- from stuff data mux       
+    data0x => inmux_dout,               -- from main 5 way data path mux
+    sel    => ddl_in_sel,
     result => ddl_fifo_indata );
 
   -- final DDL fifo 
   
-  final_ddl_fifo : COMPONENT output_fifo_256x32 PORT MAP (
+  final_ddl_fifo : COMPONENT output_fifo_1024x32 PORT MAP (
     clock => clk,
     aclr  => reset,
     data  => ddl_fifo_indata,
