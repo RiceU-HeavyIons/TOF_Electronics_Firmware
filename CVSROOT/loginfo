@@ -27,3 +27,4 @@
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #
 TCPU	$CVSROOT/CVSROOT/log	-m jschamba@physics.utexas.edu -f $CVSROOT/CVSROOT/commitlog %s
+TDIG	$CVSROOT/CVSROOT/log	-m jschamba@physics.utexas.edu -f $CVSROOT/CVSROOT/commitlog %s
