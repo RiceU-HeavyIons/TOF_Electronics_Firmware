@@ -86,6 +86,9 @@ set_global_assignment -name VHDL_FILE transmitter.vhd
 set_global_assignment -name VHDL_FILE trigger_generator.vhd
 set_global_assignment -name VHDL_FILE two_by_3bit_mux.vhd
 set_global_assignment -name VHDL_FILE trigger_counter_15bit.vhd
+set_global_assignment -name VHDL_FILE ctl_one.vhd
+set_global_assignment -name VHDL_FILE timeout_ctr.vhd
+set_global_assignment -name VHDL_FILE output_fifo_1024x32.vhd
 
 # Pin & Location Assignments
 # ==========================
