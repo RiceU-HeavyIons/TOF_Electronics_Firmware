@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.7 2005-01-19 22:06:10 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.8 2005-01-19 22:09:40 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -720,7 +720,7 @@ BEGIN
   
   empty_signal_mux : COMPONENT mux_5_to_1 PORT MAP (
     data4  => infifo_empty(4),
-    data3  => infifo_empty(3),
+    data3  => '1',                  -- infifo_empty(3),
     data2  => infifo_empty(2),
     data1  => infifo_empty(1),
     data0  => infifo_empty(0),
