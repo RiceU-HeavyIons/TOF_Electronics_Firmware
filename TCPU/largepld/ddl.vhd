@@ -1,4 +1,4 @@
--- $Id: ddl.vhd,v 1.3 2004-12-09 22:31:44 tofp Exp $
+-- $Id: ddl.vhd,v 1.4 2005-02-14 20:37:17 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : DDL
 -- Project    : TOF
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2004-12-09
--- Last update: 2004-12-09
+-- Last update: 2005-02-14
 -- Platform   : 
 -------------------------------------------------------------------------------
 -- Description: Top Level Component for the DDL interface
@@ -38,6 +38,7 @@ ENTITY ddl IS
       fifo_q     : IN  std_logic_vector(31 DOWNTO 0);  -- interface fifo data output port
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
+      run_reset  : OUT std_logic;       -- reset external logic at Run Start
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
       foCTRL_N   : OUT std_logic;
@@ -207,6 +208,8 @@ BEGIN
   s_clock      <= fiCLK;
   s_fifo_empty <= fifo_empty;
 
+  run_reset <= s_reset_evid;            -- do ext. logic reset at start of run
+  
   PROCESS (s_clock)
     VARIABLE fidir_d1 : std_logic := '0';
     VARIABLE fidir_d2 : std_logic := '0';

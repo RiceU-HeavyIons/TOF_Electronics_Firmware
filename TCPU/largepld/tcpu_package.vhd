@@ -43,16 +43,17 @@ PACKAGE tcpu_package IS
         fiLF_N     : IN  std_logic;
         fiCTRL_N   : IN  std_logic;
         fiD        : IN  std_logic_vector(31 DOWNTO 0);
-        fifo_q     : IN  std_logic_vector(31 DOWNTO 0);  -- interface fifo data output port
-        fifo_empty : IN  std_logic;     -- interface fifo "emtpy" signal
-        ext_trg    : IN  std_logic;  -- external trigger (for testing purposes only)
+        fifo_q     : IN  std_logic_vector(31 DOWNTO 0); -- interface fifo data output port
+        fifo_empty : IN  std_logic;     		-- interface fifo "emtpy" signal
+        ext_trg    : IN  std_logic;     		-- external trigger
+        run_reset  : OUT std_logic;      	   	-- external logic reset at Run Start
         foD        : OUT std_logic_vector(31 DOWNTO 0);
         foBSY_N    : OUT std_logic;
         foCTRL_N   : OUT std_logic;
         foTEN_N    : OUT std_logic;
         fifo_rdreq : OUT std_logic      -- interface fifo read request
-                                     -- (fifo should be clocked by same clock that 
-                                     --  drives fiCLK)
+                                     	-- (fifo should be clocked by same clock that 
+                                     	--  drives fiCLK)
         );
   END COMPONENT;
 

@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.11 2005-01-31 21:29:31 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.12 2005-02-14 20:37:17 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -279,7 +279,9 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL s_foTEN_N  : std_logic;                        -- corresponds to ddl_fbten_N (OUT)
   SIGNAL s_fiCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (IN)
   SIGNAL s_foCTRL_N : std_logic;                        -- corresponds to ddl_fbctrl_N (OUT)
-
+  SIGNAL s_runReset : std_logic;        		-- Reset external logic at Run Start
+  SIGNAL s_fifoRst : std_logic;         		-- signal to empty the FIFOs
+  
   -- new signals
 
   SIGNAL mode_0_reset, mode_1_reset : std_logic;            -- state machine reset signals decoded from mode bit(s)
@@ -481,10 +483,11 @@ BEGIN
     foCTRL_N   => s_foCTRL_N,
     fiTEN_N    => s_fiTEN_N,
     foTEN_N    => s_foTEN_N,
-    ext_trg    => button_debounced,     -- external trigger
+    ext_trg    => button_debounced,	-- external trigger (for testing)
+    run_reset  => s_runReset, 		-- external logic reset at run start
     reset      => reset,
-    fifo_q     => ddl_data,             -- lwb: 11/17/04 I'm attaching the ddl fifo output to here
-    fifo_empty => ddlfifo_empty,        -- lwb: 11/17/04 I'm attaching the ddl fifo empty to here
+    fifo_q     => ddl_data,
+    fifo_empty => ddlfifo_empty,
     fifo_rdreq => rd_ddl_fifo
     );
 
@@ -496,6 +499,8 @@ BEGIN
   -- the DDL and MCU fifos. The mux control and the fifo controls come from the 
   -- currently selected control state machine.   
 
+  s_fifoRst <= reset OR s_runReset;
+  
   tdig_input_1 : COMPONENT ser_4bit_to_par PORT MAP (
     clk           => global40mhz,
     reset         => reset,
@@ -508,7 +513,7 @@ BEGIN
   -- tdc1_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc1_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => tdig1_data,
     wrreq => tdig_strobe(1),
     rdreq => read_input_fifo(1),
@@ -528,7 +533,7 @@ BEGIN
   -- tdc2_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc2_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => tdig2_data,
     wrreq => tdig_strobe(2),
     rdreq => read_input_fifo(2),
@@ -548,7 +553,7 @@ BEGIN
   -- tdc3_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc3_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => tdig3_data,
     wrreq => tdig_strobe(3),
     rdreq => read_input_fifo(3),
@@ -568,7 +573,7 @@ BEGIN
   -- tdc4_fifo : COMPONENT input_fifo_64x32 PORT MAP (
   tdc4_fifo : COMPONENT input_fifo_256x32 PORT MAP (
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => tdig4_data,
     wrreq => tdig_strobe(4),
     rdreq => read_input_fifo(4),
@@ -587,7 +592,7 @@ BEGIN
 
   tcd_input_fifo : COMPONENT input_fifo64dx20w PORT MAP (  -- tcd data
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => tcd_data,
     wrreq => tcd_strobe,
     rdreq => read_input_fifo(0),
@@ -838,7 +843,7 @@ BEGIN
   -- final_ddl_fifo : COMPONENT output_fifo_1024x32 PORT MAP (
   final_ddl_fifo : COMPONENT output_fifo_2048x32 PORT MAP (
     clock => clk,
-    aclr  => reset,
+    aclr  => s_fifoRst, -- reset,
     data  => ddl_fifo_indata,
     wrreq => write_mcu_fifo,
     rdreq => rd_ddl_fifo,
