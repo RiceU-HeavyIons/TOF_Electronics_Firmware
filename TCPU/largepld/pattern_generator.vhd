@@ -1,4 +1,4 @@
--- $Id: pattern_generator.vhd,v 1.3 2004-12-08 22:52:28 tofp Exp $
+-- $Id: pattern_generator.vhd,v 1.4 2004-12-09 22:32:59 tofp Exp $
 --*************************************************************************
 --*  PATTERN_GENERATOR.VHD : Pattern generator module.
 --*
@@ -17,6 +17,9 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
+
 
 ENTITY pattern_generator IS
   PORT (
@@ -35,11 +38,6 @@ ENTITY pattern_generator IS
     datao       : OUT std_logic_vector (32 DOWNTO 0);
     datao_valid : OUT std_logic);
 END pattern_generator;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-USE work.my_conversions.ALL;
-USE work.my_utilities.ALL;
 
 ARCHITECTURE SYN OF pattern_generator IS
 
@@ -62,11 +60,14 @@ ARCHITECTURE SYN OF pattern_generator IS
     WAITGAP
     );
 
-  SIGNAL s_suspend : std_logic;
+  SIGNAL s_suspend   : std_logic;
+  SIGNAL is_fifo_out : boolean;
 
 BEGIN
 
-  s_suspend <= (suspend OR fifo_empty) WHEN (ps_reg(2 DOWNTO 0) = FIFO_OUT) ELSE suspend;
+  s_suspend   <= (suspend OR fifo_empty) WHEN (ps_reg(2 DOWNTO 0) = FIFO_OUT) ELSE suspend;
+  -- this following variable allows FIFO_OUT for both (ps_reg = 0) and (ps_reg = 1)
+  is_fifo_out <= (ps_reg(2 DOWNTO 0) = FIFO_OUT) OR (ps_reg(2 DOWNTO 0) = "000");
 
   main : PROCESS (clock, arstn)
     VARIABLE pg_present : pg_state;
@@ -127,8 +128,7 @@ BEGIN
 
     ELSIF (clock'event AND clock = '1') THEN
 
-
-      IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+      IF (is_fifo_out) THEN
         block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
       ELSE
         block_end := word_counter(19);
@@ -238,7 +238,7 @@ BEGIN
         WHEN DECREMENT =>
           pgdata := counter_reg;
         WHEN OTHERS =>
-          pgdata := counter_reg;
+          pgdata := fifo_q;             -- default is FIFO_OUT
       END CASE;
 
       IF (counter_init) THEN
@@ -279,7 +279,7 @@ BEGIN
           datao_valid <= '1';
         WHEN TXDATA =>
           datao <= ('0' & pgdata);
-          IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+          IF (is_fifo_out) THEN
             datao_valid <= NOT fifo_empty;
           ELSE
             datao_valid <= '1';
@@ -316,7 +316,7 @@ BEGIN
             pg_next := IDLE;
           END IF;
         WHEN INITPG1 =>
-          IF (ps_reg(2 DOWNTO 0) = FIFO_OUT) THEN
+          IF (is_fifo_out) THEN
             pg_next := TXDATA;
           ELSE
             pg_next := TXEVID;
