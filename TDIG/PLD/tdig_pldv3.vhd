@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.1.1.1 2004-12-03 23:23:05 tofp Exp $
+-- $Id: tdig_pldv3.vhd,v 1.2 2004-12-03 23:33:14 tofp Exp $
 
 -- change log
 --
@@ -13,11 +13,14 @@
 --		bits from all 4 TDCs.
 -- 
 
-LIBRARY ieee; USE ieee.std_logic_1164.all;
+LIBRARY ieee; 
+USE ieee.std_logic_1164.all;
 
-LIBRARY lpm; USE lpm.lpm_components.all;
+LIBRARY lpm; 
+USE lpm.lpm_components.all;
 
-LIBRARY altera_mf; USE altera_mf.altera_mf_components.all; -- gets global clk primitive
+LIBRARY altera_mf; 
+USE altera_mf.altera_mf_components.all; -- gets global clk primitive
 
 USE work.tdig_package.all;
 
@@ -26,7 +29,7 @@ USE work.tdig_package.all;
 ENTITY TDIG_pldv3 IS
 	PORT
 	(
-		SW 				: IN 	STD_LOGIC_VECTOR (2 DOWNTO 0);	-- rotary switch
+		SW 					: IN 	STD_LOGIC_VECTOR (2 DOWNTO 0);	-- rotary switch
 
 		-- JTAG multiplex signals ---------------------------------		
 		TDO_TDC 			: IN 	STD_LOGIC_VECTOR (4 DOWNTO 1);
@@ -45,7 +48,7 @@ ENTITY TDIG_pldv3 IS
 		
 		-- PUSHBUTTON INPUT -------------------------------------------
 		
-		PUSHBUT_IN 		: IN 	STD_LOGIC;					-- DEVICE PIN N1
+		PUSHBUT_IN 			: IN 	STD_LOGIC;					-- DEVICE PIN N1
 															-- connected to pushbutton input
 															
 		-----------------------------------------------------------
@@ -54,29 +57,29 @@ ENTITY TDIG_pldv3 IS
 		CLK_40M 			: IN 	STD_LOGIC; --*WHATEVER* 40MHz clock in use!  May be CXO *OR* TCPU generated
 		--CLK_10M 			: IN 	STD_LOGIC; --Secondary clock from TCPU.  Originally 10MHz RHIC strobe
 		CLK_FROM_MCU 		: IN 	STD_LOGIC; --Secondary clock from 20MHz CXO.  Unused.
-		CLK_TO_MCU 		: OUT 	STD_LOGIC;						-- MCU clock source
+		CLK_TO_MCU 			: OUT 	STD_LOGIC;						-- MCU clock source
 
-		TEST 			: OUT 	STD_LOGIC_VECTOR (39 DOWNTO 0);	-- test header
+		TEST 				: OUT 	STD_LOGIC_VECTOR (39 DOWNTO 0);	-- test header
 
-		SMB_in 			: IN 	STD_LOGIC_VECTOR (3  DOWNTO 1);	-- SMB input connectors
+		SMB_in 				: IN 	STD_LOGIC_VECTOR (3  DOWNTO 1);	-- SMB input connectors
 		SMB_out 			: OUT 	STD_LOGIC;						-- SMB output connector
 		
 		PLD_HIT 			: OUT 	STD_LOGIC_VECTOR (1  DOWNTO 0);	-- to TDC Hit[25] & Hit[31]
-		PLD_HIT_EN 		: OUT 	STD_LOGIC;						-- level converter enable
+		PLD_HIT_EN 			: OUT 	STD_LOGIC;						-- level converter enable
 
 		-- TDC signals
 		TDC_B_RESET 		: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- bunch reset
 		TDC_E_RESET 		: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- event reset
-		TDC_RESET 		: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- TDC reset
-		TDC_SER_IN 		: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- serial_in
+		TDC_RESET 			: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- TDC reset
+		TDC_SER_IN 			: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- serial_in
 		TDC_TOKEN_IN 		: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- token_in
 		TDC_TRIG 			: OUT 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- trigger
---		PARA_DATA 		: IN 	STD_LOGIC_VECTOR (7  DOWNTO 0);	-- parallel data "byte" out
+--		PARA_DATA 			: IN 	STD_LOGIC_VECTOR (7  DOWNTO 0);	-- parallel data "byte" out
 --		BYTE_ID 			: IN 	STD_LOGIC_VECTOR (1  DOWNTO 0);
 --		BYTE_PARITY 		: IN 	STD_LOGIC;
---		DATA_READY 		: IN 	STD_LOGIC;						-- parallel data "data_ready"
+--		DATA_READY 			: IN 	STD_LOGIC;						-- parallel data "data_ready"
 		GET_PARA_DATA 		: OUT 	STD_LOGIC;						-- parallel data "get_data"
-		TDC_ERROR 		: IN 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- error pins
+		TDC_ERROR 			: IN 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- error pins
 		TDC_SER_OUT 		: IN 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- serial data out
 		TDC_STRB_OUT 		: IN 	STD_LOGIC_VECTOR (4  DOWNTO 1);	-- serial strobe out
 		TDC_TEST 			: IN 	STD_LOGIC_VECTOR (4  DOWNTO 1);
@@ -100,31 +103,31 @@ ENTITY TDIG_pldv3 IS
 		DATA_VALID_DS 		: IN 	STD_LOGIC;
 		DS_DATA 			: IN 	STD_LOGIC_VECTOR (3  DOWNTO 0);
 		DS_D_CLK 			: IN 	STD_LOGIC;
-		DS_M24 			: IN 	STD_LOGIC;
+		DS_M24 				: IN 	STD_LOGIC;
 		DS_MUL7 			: IN 	STD_LOGIC_VECTOR (5  DOWNTO 0);
-		DS_BUFF_EN 		: OUT 	STD_LOGIC;
+		DS_BUFF_EN 			: OUT 	STD_LOGIC;
 
 		-- 7-segment LED
-		LED_A 			: OUT 	STD_LOGIC;
-		LED_B 			: OUT 	STD_LOGIC;
-		LED_C 			: OUT 	STD_LOGIC;
-		LED_D 			: OUT 	STD_LOGIC;
-		LED_E 			: OUT 	STD_LOGIC;
-		LED_F 			: OUT 	STD_LOGIC;
-		LED_G 			: OUT 	STD_LOGIC;
-		LED_DP 			: OUT 	STD_LOGIC;
+		LED_A 				: OUT 	STD_LOGIC;
+		LED_B 				: OUT 	STD_LOGIC;
+		LED_C 				: OUT 	STD_LOGIC;
+		LED_D 				: OUT 	STD_LOGIC;
+		LED_E 				: OUT 	STD_LOGIC;
+		LED_F 				: OUT 	STD_LOGIC;
+		LED_G 				: OUT 	STD_LOGIC;
+		LED_DP 				: OUT 	STD_LOGIC;
 
 
-		TAMP_PULSE 		: OUT 	STD_LOGIC; 						-- Output to pulse generator on TAMP
+		TAMP_PULSE 			: OUT 	STD_LOGIC; 						-- Output to pulse generator on TAMP
 		
 		-- CAN controller interface
 		CAN_INT 			: IN 	STD_LOGIC; 						-- interrupt from CAN controller.
-		nRX0BF 			: IN 	STD_LOGIC; 						-- Interrupt from CAN controller Rx0 buffer
-		nRX1BF 			: IN 	STD_LOGIC; 						-- Interrupt from CAN controller Rx1 buffer
+		nRX0BF 				: IN 	STD_LOGIC; 						-- Interrupt from CAN controller Rx0 buffer
+		nRX1BF 				: IN 	STD_LOGIC; 						-- Interrupt from CAN controller Rx1 buffer
 
 		-- Hit inputs for multiplicity calculation.
 		-- hit_hi			: IN	STD_LOGIC_VECTOR (23 downto 15);
-		-- hit_mid		: IN	STD_LOGIC_VECTOR (12 downto 7);
+		-- hit_mid			: IN	STD_LOGIC_VECTOR (12 downto 7);
 		-- hit_lo			: IN	STD_LOGIC_VECTOR (1 downto 0);
 		
 		
@@ -132,21 +135,21 @@ ENTITY TDIG_pldv3 IS
  	-- 23 downto 15, 12 downto 7, 1 downto 0
 		
 		-- PLD-MCU interface
-		MCU_DATA 			: INOUT 	STD_LOGIC_VECTOR (0 TO 7);
-		MCU_CTRL4 		: IN 	STD_LOGIC;   -- mcu_adr 2
-		MCU_CTRL3 		: IN 	STD_LOGIC;   -- mcu_adr 1
-		MCU_CTRL2 		: IN	     STD_LOGIC;   -- mcu_adr 0
-		MCU_CTRL1 		: IN 	STD_LOGIC;					-- used as !read / write signal from MCU
+		MCU_DATA 			: INOUT STD_LOGIC_VECTOR (0 TO 7);
+		MCU_CTRL4 			: IN 	STD_LOGIC;   -- mcu_adr 2
+		MCU_CTRL3 			: IN 	STD_LOGIC;   -- mcu_adr 1
+		MCU_CTRL2 			: IN	STD_LOGIC;   -- mcu_adr 0
+		MCU_CTRL1 			: IN 	STD_LOGIC;					-- used as !read / write signal from MCU
 															--  low means pld drives 'mcu_data' pins
 															--  hi means pld does not drive 'mcu_data' pins
 															
-		MCU_CTRL0 		: IN 	STD_LOGIC;  					-- used as reset signal
+		MCU_CTRL0 			: IN 	STD_LOGIC;  					-- used as reset signal
 		MCU_INT1			: OUT 	STD_LOGIC;     -- fifo empty
-		MCU_INT0			: IN		STD_LOGIC;     -- DATA STROBE ACTIVE HIGH
+		MCU_INT0			: IN	STD_LOGIC;     -- DATA STROBE ACTIVE HIGH
 		
-		MUL24_TRIG 		: IN 	STD_LOGIC;					-- M24 (Level-2) data trigger
+		MUL24_TRIG 			: IN 	STD_LOGIC;					-- M24 (Level-2) data trigger
 	
-		Si_ID 			: IN 	STD_LOGIC						-- INPUT NOW FOR SAFETY
+		Si_ID 				: IN 	STD_LOGIC						-- INPUT NOW FOR SAFETY
 	);
 	
 END TDIG_pldv3;
@@ -159,8 +162,8 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
 	SIGNAL global_clk_40M 	: STD_LOGIC;	
 	SIGNAL global_reset 	: std_logic;
 
-	SIGNAL LED_MCU 		: STD_LOGIC_VECTOR (6 DOWNTO 0);
-	SIGNAL LED_EXT 		: STD_LOGIC_VECTOR (6 DOWNTO 0);
+	SIGNAL LED_MCU 			: STD_LOGIC_VECTOR (6 DOWNTO 0);
+	SIGNAL LED_EXT 			: STD_LOGIC_VECTOR (6 DOWNTO 0);
 
 	SIGNAL trig_ff_out 		: STD_LOGIC_VECTOR (4 DOWNTO 0);
 	SIGNAL bReset_ff_out	: STD_LOGIC_VECTOR (4 DOWNTO 0);
@@ -168,7 +171,7 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
 
 	SIGNAL TDC_token 		: STD_LOGIC;
 	SIGNAL state_test 		: STD_LOGIC;
-	SIGNAL del_trig		: STD_LOGIC;
+	SIGNAL del_trig			: STD_LOGIC;
 	
 	signal gate1, gate2		: std_logic;
 	
@@ -271,36 +274,37 @@ BEGIN
 	AUX_CLK 		<= "0000";
 	GET_PARA_DATA 	<= '0';
 	PLD_HIT 		<= "00";
-	PLD_HIT_EN 	<= '0';
+	PLD_HIT_EN 		<= '0';
 	TDC_E_RESET 	<= "0000";
 			
 	-- error bits from TDC 1-4 are OR'd together and routed to STATUS buffer (MCU read address = 0
 	
-	status_data(0) <= TDC_ERROR(4) or TDC_ERROR(3) or TDC_ERROR(2) or TDC_ERROR(1);
+	status_data(0) 			<= TDC_ERROR(4) or TDC_ERROR(3) or TDC_ERROR(2) or TDC_ERROR(1);
+	status_data(7 DOWNTO 1) <= (OTHERS => '0');
 	
 	-- bidirectional buffer to/from MCU and registers and buffers  -------------------------------
 	
 	reset_from_mcu 	<= MCU_CTRL0;
-	readbar_write 		<= MCU_CTRL1;
+	readbar_write 	<= MCU_CTRL1;
 	mcu_adr(0)		<= MCU_CTRL2;
 	mcu_adr(1) 		<= MCU_CTRL3;
 	mcu_adr(2) 		<= MCU_CTRL4;
 	
-	data_strobe 		<= MCU_INT0;
-	MCU_INT1 			<= mcu_fifo_empty; 
+	data_strobe 	<= MCU_INT0;
+	MCU_INT1 		<= mcu_fifo_empty; 
 	
-	mcu_write_to_pld <= data_strobe and readbar_write; 
-	mcu_read_from_pld <= data_strobe and (not mcu_write_to_pld);
+	mcu_write_to_pld 	<= data_strobe and readbar_write; 
+	mcu_read_from_pld 	<= data_strobe and (not mcu_write_to_pld);
 	
 	mcu_bus : bus_tri_8 PORT MAP (
-		data	 	 => data_to_mcu,
-		enabledt	 => mcu_read_from_pld,
-		enabletr	 => mcu_write_to_pld,
-		tridata	 => MCU_DATA(0 TO 7),
-		result	 => data_from_mcu );
+		data	 	=> data_to_mcu,
+		enabledt	=> mcu_read_from_pld,
+		enabletr	=> mcu_write_to_pld,
+		tridata	 	=> MCU_DATA(0 TO 7),
+		result	 	=> data_from_mcu );
 		
 	mcu_write_decoder : decoder_3_to_8 PORT MAP (
-			data	 => mcu_adr,
+			data => mcu_adr,
 			eq0	 => mcu_decode(0),
 			eq1	 => mcu_decode(1),
 			eq2	 => mcu_decode(2),
@@ -323,53 +327,52 @@ BEGIN
 	test_register : reg8_en PORT MAP (
 		clock	=> global_clk_40M,
 		enable	=> test_reg_write,
-		sclr	 	=> reset_from_mcu,
-		data	 	=> data_from_mcu,
+		sclr	=> reset_from_mcu,
+		data	=> data_from_mcu,
 		q	 	=> test_data );
 		
 	mode_register : reg8_en PORT MAP (
 		clock	=> global_clk_40M,
 		enable	=> mode_reg_write,
-		sclr	 	=> reset_from_mcu,
-		data	 	=> data_from_mcu,
+		sclr	=> reset_from_mcu,
+		data	=> data_from_mcu,
 		q	 	=> mode_data );
 
 	config_register : reg8_en PORT MAP (
 		clock	=> global_clk_40M,
 		enable	=> config_reg_write,
-		sclr	 	=> reset_from_mcu,
-		data	 	=> data_from_mcu,
+		sclr	=> reset_from_mcu,
+		data	=> data_from_mcu,
 		q	 	=> config_data );
 		
 	jtag_register : reg8_en PORT MAP (
 		clock	=> global_clk_40M,
 		enable	=> jtag_reg_write,
-		sclr	 	=> reset_from_mcu,
-		data	 	=> data_from_mcu,
+		sclr	=> reset_from_mcu,
+		data	=> data_from_mcu,
 		q	 	=> jtag_data );
 		
 	reset_register : reg8_en PORT MAP (
 		clock	=> global_clk_40M,
 		enable	=> reset_reg_write,
-		sclr	 	=> reset_from_mcu,
-		data	 	=> data_from_mcu,
+		sclr	=> reset_from_mcu,
+		data	=> data_from_mcu,
 		q	 	=> reset_data );
 
 	-- data mux that is read by MCU  -------------------------------
 
 	mcu_read_mux : mux_8_by_8bit PORT MAP (
-			data7x	 => X"07",
-			data6x	 => X"06",
-			data5x(7 downto 5)	 => sw, -- left justified are 3 bits from position switch
-			data5x(4 downto 0)	 => "00000",
-			
-			data4x	 => tdc_mirror_fifo_data,  -- tdc_data
-			data3x	 => status_data,
-			data2x	 => config_data,
-			data1x	 => mode_data,
-			data0x	 => test_data,
-			sel	 	 => mcu_adr,
-			result	 => data_to_mcu );
+			data7x	 			=> X"07",
+			data6x	 			=> X"06",
+			data5x(7 downto 5)	=> sw, -- left justified are 3 bits from position switch
+			data5x(4 downto 0)	=> "00000",
+			data4x	 			=> tdc_mirror_fifo_data,  -- tdc_data
+			data3x	 			=> status_data,
+			data2x	 			=> config_data,
+			data1x	 			=> mode_data,
+			data0x	 			=> test_data,
+			sel	 	 			=> mcu_adr,
+			result	 			=> data_to_mcu );
 	
 	mcu_read_tdc_data_strobe	<= mcu_decode(4) and mcu_read_from_pld; -- strobe to Jo's mirror fifo					
 				
@@ -386,9 +389,9 @@ BEGIN
 		-- generate 20MHz clock for MCU from 40Mhz global clock 
 		
 		mcu_clk_gen: component tff_sclr PORT MAP (
-				clock => global_clk_40M,	
-				sclr	 => '0',	
-				q	 => CLK_TO_MCU	);
+				clock	=> global_clk_40M,	
+				sclr	=> '0',	
+				q	 	=> CLK_TO_MCU	);
 				
 	----------------------------------------------------------------------------------------------
 	
@@ -399,10 +402,10 @@ BEGIN
 	
 				
 		reset_button: component pushbutton_pulse port map ( 
-			clk => global_clk_40M,
-			reset => MCU_CTRL0,
-			pushbutton => PUSHBUT_IN,
-			pulseout => pushbutton_debounced_input );		
+			clk 		=> global_clk_40M,
+			reset 		=> MCU_CTRL0,
+			pushbutton	=> PUSHBUT_IN,
+			pulseout 	=> pushbutton_debounced_input );		
 		
 		-- data_path_reset <= global_reset or MCU_CTRL0 or pushbutton_debounced_input; 
 	----------------------------------------------------------------------------------------------	
@@ -448,44 +451,45 @@ BEGIN
 			no_separator <= config_data(0);
 			no_trigger <= config_data(1);
 									
+			-- JS: change the timeout signal in this component:
 			tdig_main_control : component tdigctl2 port map (
 				clk 			=> global_clk_40m, -- 
-				reset 		=> data_path_reset, --
+				reset 			=> data_path_reset, --
 				data_enable 	=> data_enable, -- 
-				pos_dnstrm 	=> pos_dnstrm, -- 			
+				pos_dnstrm 		=> pos_dnstrm, -- 			
 				trigger_pulse 	=> tdc_trig_in,  -- trigger pulse from upstream connector				
 				sel_ds_fifo 	=> sel_ds_fifo, --			
 				fifo_ds_empty	=> fifo_ds_empty,--			
-				rd_ds_fifo 	=> rd_ds_fifo, --				
-				separator 	=> separator, --
-				tdc_fifo_empty => tdc_fifo_empty, --				
-				en_tdc_rdo 	=> en_tdc_rdo, -- goes to "trigger" input of tdc_rdo state machine
+				rd_ds_fifo 		=> rd_ds_fifo, --				
+				separator 		=> separator, --
+				tdc_fifo_empty	=> tdc_fifo_empty, --				
+				en_tdc_rdo 		=> en_tdc_rdo, -- goes to "trigger" input of tdc_rdo state machine
 				rd_tdc_fifo 	=> rd_tdc_fifo, --				
 				output_busy 	=> output_busy, -- 
-				wr_output 	=> serializer_input_strobe,
-				timeout		=> '0',
-				clr_timeout    => clr_timeout  );	--
+				wr_output 		=> serializer_input_strobe,
+				timeout			=> timeout,	--'0',
+				clr_timeout    	=> clr_timeout  );	--
 				
 		
 			timeout_ctr_8bit_inst : timeout_ctr_8bit PORT MAP (
-					clock	 => global_clk_40m,
+					clock	=> global_clk_40m,
 					cnt_en	=> hold,
-					sclr	 => clr_timeout,
-					q	 => dummy8,
-					cout	 => timeout );
+					sclr	=> clr_timeout,
+					q	 	=> dummy8,
+					cout	=> timeout );
 					
 			hold <= not timeout;
 			
 	
 			-- initial test setup:
 			
-			data_enable <= '1'; -- always turn on data path to respond to trigger inputs
+			data_enable	<= '1'; 		-- always turn on data path to respond to trigger inputs
 			
-			pos_dnstrm <= not sw(0); --switch_lsb; -- even tray position is "downstream" and reads only local fifo
-								-- odd tray position is "upstream" and reads local fifo, then
-			   					-- downstream fifo
+			pos_dnstrm 	<= not sw(0); 	-- switch_lsb; -- even tray position is "downstream" and reads only local fifo
+										-- odd tray position is "upstream" and reads local fifo, then
+			   							-- downstream fifo
 								
-			DS_BUFF_EN <= sw(0); --switch_lsb; -- upstream board will enable it's downstream input buffers
+			DS_BUFF_EN <= sw(0); 		--switch_lsb; -- upstream board will enable it's downstream input buffers
 												
 			output_busy <= not serializer_ready;
 			
@@ -497,22 +501,22 @@ BEGIN
 		-- DOWNSTREAM INPUT  --------------------------------------------------------------------------
 		
 		   	demux_for_downstream_data_inputs : component ser_4bit_to_par port map ( 
-		   			clk => global_clk_40M,
-					reset => data_path_reset,
-					din => DS_MUL7(3 downto 0),
-					dclk => DS_D_CLK, 
-					dstrobe => DS_MUL7(4),
-					dout => downstream_32b_data,
-					output_strobe => downstream_ready );
+		   			clk 			=> global_clk_40M,
+					reset 			=> data_path_reset,
+					din 			=> DS_MUL7(3 downto 0),
+					dclk 			=> DS_D_CLK, 
+					dstrobe 		=> DS_MUL7(4),
+					dout 			=> downstream_32b_data,
+					output_strobe	=> downstream_ready );
 					
 			downstream_fifo : output_fifo_256x32 PORT MAP (
 					clock	=> global_clk_40M,
-					aclr	 	=> data_path_reset,
-					data	 	=> downstream_32b_data,
+					aclr	=> data_path_reset,
+					data	=> downstream_32b_data,
 					wrreq	=> downstream_ready,
 					rdreq	=> RD_DS_FIFO,
 					q	 	=> downstream_fifo_out,
-					full	 	=> fifo_ds_full,
+					full	=> fifo_ds_full,
 					empty	=> FIFO_DS_EMPTY );	
 	
 		----------------------------------------------------------------------------------------------	
@@ -527,28 +531,28 @@ BEGIN
 					
 					ser_out 		=> TDC_SER_OUT(1),
 					strb_out 		=> TDC_STRB_OUT(1),
-					token_out 	=> TDC_TOKEN_OUT(1),  -- final token input from TDC chain
+					token_out 		=> TDC_TOKEN_OUT(1),  -- final token input from TDC chain
 					
 					-- using trigger matching? assign trig_ff_out(4)
 					-- if not using trigger matching, just assign '1'
 					-- REAL CONFIGURATION: use 'en_tdc_rdo' signal from main controller
 					-- 11/3 test-- trigger is suspect.  go back to trig_ff_out(4)
 					
-					trigger		=> trig_ff_out(4),		-- en_tdc_rdo
-					trg_reset 	=> data_path_reset,
+					trigger			=> trig_ff_out(4),		-- en_tdc_rdo
+					trg_reset 		=> data_path_reset,
 					token_in 		=> TDC_token,   	-- sends output token to first tdc in chain
 					
 					clk 			=> global_clk_40M,
-			  		reset 		=> data_path_reset,
+			  		reset 			=> data_path_reset,
 					mcu_pld_int 	=> mcu_read_tdc_data_strobe,				
 					pld_mcu_int 	=> dummy, -- not used - was a flag from pld to mcu
 					mcu_byte 		=> tdc_mirror_fifo_data,  -- 8 bit data from fifo within tdc_rdo; 
 													 -- this data goes to the local mcu i/f for tdig can xfer
 													 
-					fifo_empty 	=> mcu_fifo_empty ,  -- MCU_CTRL2
+					fifo_empty 		=> mcu_fifo_empty ,  -- MCU_CTRL2
 					rdo_32b_data 	=> rdo_32b_data,     -- goes to 256 x 32 fifo for xfer to upstream data path
-					rdo_data_valid => rdo_dout_strobe,
-					sw 			=> sw			-- position switch input for separator word
+					rdo_data_valid 	=> rdo_dout_strobe,
+					sw 				=> sw			-- position switch input for separator word
 					);		
 				
 				TDC_TOKEN_IN(4) <= TDC_token;  -- sends output token to first tdc in chain
@@ -571,12 +575,12 @@ BEGIN
 						
 				local_tdc_fifo : output_fifo_256x32 PORT MAP (
 					clock	=> global_clk_40M,
-					aclr	 	=> data_path_reset,
-					data	 	=> rdo_32b_data,
+					aclr	=> data_path_reset,
+					data	=> rdo_32b_data,
 					wrreq	=> rdo_dout_strobe,
 					rdreq	=> rd_tdc_fifo,
 					q	 	=> tdc_fifo_out,
-					full	 	=> tdc_fifo_full,
+					full	=> tdc_fifo_full,
 					empty	=> tdc_fifo_empty );		
 					
 		----------------------------------------------------------------------------------------------
@@ -584,29 +588,27 @@ BEGIN
 		-- MUX AND UPSTREAM SERIALIZER ---------------------------------------------------------------
 		
 			outmux : mux_2x32_registered PORT MAP (
-					clock	 => global_clk_40M,
-					aclr		 => data_path_reset,
-					clken	 => outmux_clken,
-					data1x	 => downstream_fifo_out,  -- data from downstream fifo 
-					data0x	 => tdc_fifo_out, -- data from local TDCs
-					sel	 	 => SEL_DS_FIFO,
-					result	 => serializer_input_data );
+					clock	=> global_clk_40M,
+					aclr	=> data_path_reset,
+					clken	=> outmux_clken,
+					data1x	=> downstream_fifo_out,  -- data from downstream fifo 
+					data0x	=> tdc_fifo_out, -- data from local TDCs
+					sel	 	=> SEL_DS_FIFO,
+					result	=> serializer_input_data );
 			
 			outmux_clken <= rd_ds_fifo or rd_tdc_fifo;
 			
 					
 			upstream_output_serializer : component par32_to_ser4 PORT MAP (
-					clk => global_clk_40M,
-					reset => data_path_reset,
-					din => serializer_input_data,
-					din_strobe => serializer_input_strobe,
-					
-					dclk => US_D_CLK,			-- upstream output data clock
-					dout => US_mul7(3 downto 0),  -- upstream output data (4 bits)
-					dout_strobe => US_mul7(4),  	-- upstream output data strobe
-					
-					ready => serializer_ready );	-- serializer ready for new input data
-											-- serializer takes 8+ clocks to serialize data
+					clk 		=> global_clk_40M,
+					reset 		=> data_path_reset,
+					din 		=> serializer_input_data,
+					din_strobe 	=> serializer_input_strobe,
+					dclk 		=> US_D_CLK,			-- upstream output data clock
+					dout 		=> US_mul7(3 downto 0), -- upstream output data (4 bits)
+					dout_strobe => US_mul7(4),  		-- upstream output data strobe
+					ready 		=> serializer_ready );	-- serializer ready for new input data
+														-- serializer takes 8+ clocks to serialize data
 												
 	----------------------------------------------------------------------------------------------	
 	----------------------------------------------------------------------------------------------
@@ -709,68 +711,52 @@ BEGIN
 		-- selected for the JTAG inputs.					
 
 		TDC4_jtag_input : mux_2_to_1_3bit PORT MAP (
-		
-				data1x(2)	 => tck_source,
-				data1x(1)	 => tms_source,
-				data1x(0)	 => tdi_source,
-				
-				data0x(2)	 => '0',
-				data0x(1)	 => '1',
-				data0x(0)	 => '0',
-				
-				result(2)	 => sig_tck_tdc(4),
-				result(1)	 => sig_tms_tdc(4),
-				result(0)  => sig_tdi_tdc(4),
-				
-				sel	 	 => TDC_active(4) );					
+				data1x(2)	=> tck_source,
+				data1x(1)	=> tms_source,
+				data1x(0)	=> tdi_source,
+				data0x(2)	=> '0',
+				data0x(1)	=> '1',
+				data0x(0)	=> '0',
+				result(2)	=> sig_tck_tdc(4),
+				result(1)	=> sig_tms_tdc(4),
+				result(0)	=> sig_tdi_tdc(4),
+				sel	 	 	=> TDC_active(4) );					
 
 		TDC3_jtag_input : mux_2_to_1_3bit PORT MAP (
-		
-				data1x(2)	 => tck_source,
-				data1x(1)	 => tms_source,
-				data1x(0)	 => tdi_source,
-				
-				data0x(2)	 => '0',
-				data0x(1)	 => '1',
-				data0x(0)	 => '0',
-				
-				result(2)	 => sig_tck_tdc(3),
-				result(1)	 => sig_tms_tdc(3),
-				result(0)  => sig_tdi_tdc(3),
-				
-				sel	 	 => TDC_active(3) );
+				data1x(2)	=> tck_source,
+				data1x(1)	=> tms_source,
+				data1x(0)	=> tdi_source,
+				data0x(2)	=> '0',
+				data0x(1)	=> '1',
+				data0x(0)	=> '0',
+				result(2)	=> sig_tck_tdc(3),
+				result(1)	=> sig_tms_tdc(3),
+				result(0)  	=> sig_tdi_tdc(3),
+				sel	 	 	=> TDC_active(3) );
 
 		TDC2_jtag_input : mux_2_to_1_3bit PORT MAP (
-		
-				data1x(2)	 => tck_source,
-				data1x(1)	 => tms_source,
-				data1x(0)	 => tdi_source,
-				
-				data0x(2)	 => '0',
-				data0x(1)	 => '1',
-				data0x(0)	 => '0',
-				
-				result(2)	 => sig_tck_tdc(2),
-				result(1)	 => sig_tms_tdc(2),
-				result(0)  => sig_tdi_tdc(2),
-				
-				sel	 	 => TDC_active(2) );
+				data1x(2)	=> tck_source,
+				data1x(1)	=> tms_source,
+				data1x(0)	=> tdi_source,
+				data0x(2)	=> '0',
+				data0x(1)	=> '1',
+				data0x(0)	=> '0',
+				result(2)	=> sig_tck_tdc(2),
+				result(1)	=> sig_tms_tdc(2),
+				result(0)  	=> sig_tdi_tdc(2),
+				sel	 	 	=> TDC_active(2) );
 
 		TDC1_jtag_input : mux_2_to_1_3bit PORT MAP (
-		
-				data1x(2)	 => tck_source,
-				data1x(1)	 => tms_source,
-				data1x(0)	 => tdi_source,
-				
-				data0x(2)	 => '0',
-				data0x(1)	 => '1',
-				data0x(0)	 => '0',
-				
-				result(2)	 => sig_tck_tdc(1),
-				result(1)	 => sig_tms_tdc(1),
-				result(0)  => sig_tdi_tdc(1),
-				
-				sel	 	 => TDC_active(1) );
+				data1x(2)	=> tck_source,
+				data1x(1)	=> tms_source,
+				data1x(0)	=> tdi_source,
+				data0x(2)	=> '0',
+				data0x(1)	=> '1',
+				data0x(0)	=> '0',
+				result(2)	=> sig_tck_tdc(1),
+				result(1)	=> sig_tms_tdc(1),
+				result(0)  	=> sig_tdi_tdc(1),
+				sel	 	 	=> TDC_active(1) );
 				
 		-- MAP OUTPUT JTAG SIGNALS TO PLD PINS
 		
@@ -799,7 +785,7 @@ BEGIN
 		
 		select_tdc : decode_1_to_4 PORT MAP (  
 
-			data	 => tdc_adr,
+			data => tdc_adr,
 			eq0	 => TDC_active(1),
 			eq1	 => TDC_active(2),
 			eq2	 => TDC_active(3),
@@ -879,7 +865,7 @@ BEGIN
 	-- sync SMB IN[1] to 40MHz and shorten to one clock
 	trig_ff0 : dff_sclr_sset 
 	  PORT MAP (
-		data 		=> TDC_TRIG_IN, --SMB_in(1), 
+		data 	=> TDC_TRIG_IN, --SMB_in(1), 
 		q 		=> trig_ff_out(0), 
 		clock 	=> global_clk_40M, 
 		sclr 	=> '0', 
@@ -888,7 +874,7 @@ BEGIN
 	G1: FOR i IN 1 TO 3 GENERATE
 		trig_ffs : dff_sclr_sset
 		  PORT MAP (
-			data		=> trig_ff_out(i-1), 
+			data	=> trig_ff_out(i-1), 
 			q 		=> trig_ff_out(i), 
 			clock 	=> global_clk_40M, 
 			sclr 	=> '0', 
@@ -897,7 +883,7 @@ BEGIN
 
 	trig_ff4 : dff_sclr_sset 
 	  PORT MAP (
-		data 		=> gate1, 
+		data 	=> gate1, 
 		q 		=> trig_ff_out(4), 
 		clock 	=> global_clk_40M, 
 		sclr 	=> '0', 
@@ -932,7 +918,7 @@ BEGIN
 	 --sync SMB IN[2] to 40MHz and shorten to one clock
 	bReset_ff0 : dff_sclr_sset 
 	  PORT MAP (
-		data 		=> SMB_in(2), 
+		data 	=> SMB_in(2), 
 		q 		=> bReset_ff_out(0), 
 		clock 	=> global_clk_40M, 
 		sclr 	=> '0', 
@@ -941,7 +927,7 @@ BEGIN
 	G2: FOR i IN 1 TO 3 GENERATE
 		bReset_ffs : dff_sclr_sset
 		  PORT MAP (
-			data 		=> bReset_ff_out(i-1), 
+			data 	=> bReset_ff_out(i-1), 
 			q 		=> bReset_ff_out(i), 
 			clock 	=> global_clk_40M, 
 			sclr 	=> '0', 
@@ -950,7 +936,7 @@ BEGIN
 
 	bReset_ff4 : dff_sclr_sset 
 	  PORT MAP (
-		data 		=> gate2, 
+		data 	=> gate2, 
 		q 		=> bReset_ff_out(4), 
 		clock 	=> global_clk_40M, 
 		sclr 	=> '0', 
