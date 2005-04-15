@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.14 2005-03-02 16:21:22 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.15 2005-04-15 22:26:36 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -775,7 +775,7 @@ BEGIN
   -- shorten read fifo pulse from MCU
   
   shorten_mcu_rdfifo : COMPONENT SHORTEN PORT MAP (
-    CLK         => clk,
+    CLK         => NOT clk,
     RESET       => reset,
     read_strobe => mcu_strobes_fifo,
     rd_fifo     => rd_mcu_fifo);
