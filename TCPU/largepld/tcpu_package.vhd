@@ -80,8 +80,10 @@ PACKAGE tcpu_package IS
   -- controllers and state machines *****************************
   
   COMPONENT CTL_ONE IS PORT (
-    CLK, CMD_L0, FIFO_EMPTY, RESET, SEL_EQ_0, SEL_EQ_3, SEPARATOR, TIMEOUT                       : IN  std_logic;
-    CLR_SEL, CLR_TIMEOUT, INCR_SEL, RD_FIFO, TRIG_TO_TDC, WR_FIFO, CTL_ONE_STUFF, stuff0, stuff1 : OUT std_logic);
+    CLK, CMD_ABORT, CMD_L0, CMD_L2, FIFO_EMPTY, RESET, SEL_EQ_0 : IN  STD_LOGIC;
+    SEPARATOR, TIMEOUT, SEL_EQ_3                                : IN  STD_LOGIC;
+    CLR_L2, CLR_SEL, CLR_TIMEOUT, CTL_ONE_STUFF, INCR_SEL       : OUT STD_LOGIC;
+    RD_FIFO, STUFF0, STUFF1, TRIG_TO_TDC, WR_FIFO, XFER_L2      : OUT STD_LOGIC);
   END COMPONENT;
   
   COMPONENT ALWREAD IS PORT (
