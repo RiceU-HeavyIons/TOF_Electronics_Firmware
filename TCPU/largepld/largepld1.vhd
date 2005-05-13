@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.16 2005-04-18 21:06:59 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.17 2005-05-13 15:13:49 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -657,7 +657,7 @@ BEGIN
   -- this signal detects that select ctr has moved to next half tray
   sel_eq_3 <= bool2sl(ctr_sel = "011");
 
-  mode_1_reset <= NOT control_select;   -- "control_select" = mcu_config[0]
+  mode_1_reset <= (NOT control_select) OR s_runReset;   -- "control_select" = mcu_config[0]
   
   Control_one : COMPONENT CTL_ONE PORT MAP (
     clk           => clk,
@@ -918,7 +918,7 @@ BEGIN
     VARIABLE stop_xfer  : BOOLEAN;
     
   BEGIN  -- PROCESS l2main
-    IF reset = '1' THEN                 -- asynchronous reset (active high)
+    IF ((reset = '1') OR (s_runReset = '1')) THEN                 -- asynchronous reset (active high)
       xs_present := XS_IDLE;
       xs_next    := XS_IDLE;
       stop_xfer  := false;
@@ -1033,6 +1033,7 @@ BEGIN
   -- this signal must be gated with a configuration bit to differentiate
   -- between a master tcpu, which sends this signal, and a slave which receives it
   mcu_bunch_reset <= mcu_decode(7) AND mcu_write_to_pld;
+  -- mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR s_runReset;
 
   -- This pulse is synchronized because it comes from the MCU.
   -- it is 200ns wide, which is believed to be ok.  
