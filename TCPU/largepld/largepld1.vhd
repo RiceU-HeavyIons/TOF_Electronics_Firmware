@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.17 2005-05-13 15:13:49 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.18 2005-05-13 16:07:40 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -912,13 +912,13 @@ BEGIN
 
   -- now the state machine for transfering data from the
   -- L2-FIFO to the final DDL FIFO:
-  l2main : PROCESS (clk, reset)
+  l2main : PROCESS (clk, s_fifoRst)
     VARIABLE xs_present : xfer_state;
     VARIABLE xs_next    : xfer_state;
     VARIABLE stop_xfer  : BOOLEAN;
     
   BEGIN  -- PROCESS l2main
-    IF ((reset = '1') OR (s_runReset = '1')) THEN                 -- asynchronous reset (active high)
+    IF (s_fifoRst = '1') THEN                 -- asynchronous reset (active high)
       xs_present := XS_IDLE;
       xs_next    := XS_IDLE;
       stop_xfer  := false;
@@ -1031,9 +1031,10 @@ BEGIN
   -- writing to adr = 7 sends bunch reset
   -- this signal is distributed to all TDCs from the master TCPU
   -- this signal must be gated with a configuration bit to differentiate
-  -- between a master tcpu, which sends this signal, and a slave which receives it
-  mcu_bunch_reset <= mcu_decode(7) AND mcu_write_to_pld;
-  -- mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR s_runReset;
+  -- between a master tcpu, which sends this signal, and a slave which receives it.
+  --
+  -- JS: also send bunch_reset for RDYRX. this will only send if TCPU is master.
+  mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR s_runReset;
 
   -- This pulse is synchronized because it comes from the MCU.
   -- it is 200ns wide, which is believed to be ok.  
