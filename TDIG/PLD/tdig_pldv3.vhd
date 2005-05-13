@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.4 2005-04-05 22:42:40 tofp Exp $
+-- $Id: tdig_pldv3.vhd,v 1.5 2005-05-13 17:26:50 jschamba Exp $
 
 -- change log
 --
@@ -29,104 +29,104 @@ USE work.tdig_package.ALL;
 ENTITY TDIG_pldv3 IS
   PORT
     (
-      SW : IN std_logic_vector (2 DOWNTO 0);  -- rotary switch
+      SW : IN STD_LOGIC_VECTOR (2 DOWNTO 0);  -- rotary switch
 
       -- JTAG multiplex signals ---------------------------------               
-      TDO_TDC          : IN  std_logic_vector (4 DOWNTO 1);
-      TDO_EXT, TDO_MCU : OUT std_logic;
+      TDO_TDC          : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);
+      TDO_EXT, TDO_MCU : OUT STD_LOGIC;
 
-      TCK_TDC          : OUT std_logic_vector (4 DOWNTO 1);
-      TCK_EXT, TCK_MCU : IN  std_logic;
+      TCK_TDC          : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);
+      TCK_EXT, TCK_MCU : IN  STD_LOGIC;
 
-      TMS_TDC          : OUT std_logic_vector (4 DOWNTO 1);
-      TMS_EXT, TMS_MCU : IN  std_logic;
+      TMS_TDC          : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);
+      TMS_EXT, TMS_MCU : IN  STD_LOGIC;
 
-      TDI_TDC          : OUT std_logic_vector (4 DOWNTO 1);
-      TDI_EXT, TDI_MCU : IN  std_logic;
+      TDI_TDC          : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);
+      TDI_EXT, TDI_MCU : IN  STD_LOGIC;
 
-      TRST_TDC : OUT std_logic_vector (4 DOWNTO 1);
+      TRST_TDC : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);
 
       -- PUSHBUTTON INPUT -------------------------------------------
 
-      PUSHBUT_IN : IN std_logic;        -- DEVICE PIN N1
+      PUSHBUT_IN : IN STD_LOGIC;        -- DEVICE PIN N1
                                         -- connected to pushbutton input
 
       -----------------------------------------------------------
 
       -- clocks
       --CLK_10M      : IN    STD_LOGIC; --Secondary clock from TCPU.  Originally 10MHz RHIC strobe
-      CLK_40M      : IN  std_logic;  --*WHATEVER* 40MHz clock in use!  May be CXO *OR* TCPU generated
-      CLK_FROM_MCU : IN  std_logic;  --Secondary clock from 20MHz CXO.  Unused.
-      CLK_TO_MCU   : OUT std_logic;     -- MCU clock source
+      CLK_40M      : IN  STD_LOGIC;  -- *WHATEVER* 40MHz clock in use!  May be CXO *OR* TCPU generated
+      CLK_FROM_MCU : IN  STD_LOGIC;  -- Secondary clock from 20MHz CXO.  Unused.
+      CLK_TO_MCU   : OUT STD_LOGIC;  -- MCU clock source
 
-      TEST : OUT std_logic_vector (39 DOWNTO 0);  -- test header
+      TEST : OUT STD_LOGIC_VECTOR (39 DOWNTO 0);    -- test header
 
-      SMB_in  : IN  std_logic_vector (3 DOWNTO 1);  -- SMB input connectors
-      SMB_out : OUT std_logic;                      -- SMB output connector
+      SMB_in  : IN  STD_LOGIC_VECTOR (3 DOWNTO 1);  -- SMB input connectors
+      SMB_out : OUT STD_LOGIC;                      -- SMB output connector
 
-      PLD_HIT    : OUT std_logic_vector (1 DOWNTO 0);  -- to TDC Hit[25] & Hit[31]
-      PLD_HIT_EN : OUT std_logic;       -- level converter enable
+      PLD_HIT    : OUT STD_LOGIC_VECTOR (1 DOWNTO 0);  -- to TDC Hit[25] & Hit[31]
+      PLD_HIT_EN : OUT STD_LOGIC;                      -- level converter enable
 
       -- TDC signals
-      TDC_B_RESET   : OUT std_logic_vector (4 DOWNTO 1);  -- bunch reset
-      TDC_E_RESET   : OUT std_logic_vector (4 DOWNTO 1);  -- event reset
-      TDC_RESET     : OUT std_logic_vector (4 DOWNTO 1);  -- TDC reset
-      TDC_SER_IN    : OUT std_logic_vector (4 DOWNTO 1);  -- serial_in
-      TDC_TOKEN_IN  : OUT std_logic_vector (4 DOWNTO 1);  -- token_in
-      TDC_TRIG      : OUT std_logic_vector (4 DOWNTO 1);  -- trigger
-      --              PARA_DATA   : IN    STD_LOGIC_VECTOR (7  DOWNTO 0); -- parallel data "byte" out
-      --              BYTE_ID     : IN    STD_LOGIC_VECTOR (1  DOWNTO 0);
-      --              BYTE_PARITY : IN    STD_LOGIC;
-      --              DATA_READY  : IN    STD_LOGIC; -- parallel data "data_ready"
-      GET_PARA_DATA : OUT std_logic;    -- parallel data "get_data"
-      TDC_ERROR     : IN  std_logic_vector (4 DOWNTO 1);  -- error pins
-      TDC_SER_OUT   : IN  std_logic_vector (4 DOWNTO 1);  -- serial data out
-      TDC_STRB_OUT  : IN  std_logic_vector (4 DOWNTO 1);  -- serial strobe out
-      TDC_TEST      : IN  std_logic_vector (4 DOWNTO 1);
-      TDC_TOKEN_OUT : IN  std_logic_vector (4 DOWNTO 1);  -- token_out
-      AUX_CLK       : OUT std_logic_vector (4 DOWNTO 1);
+      TDC_B_RESET   : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- bunch reset
+      TDC_E_RESET   : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- event reset
+      TDC_RESET     : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- TDC reset
+      TDC_SER_IN    : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- serial_in
+      TDC_TOKEN_IN  : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- token_in
+      TDC_TRIG      : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);  -- trigger
+      -- PARA_DATA   : IN    STD_LOGIC_VECTOR (7  DOWNTO 0); -- parallel data "byte" out
+      -- BYTE_ID     : IN    STD_LOGIC_VECTOR (1  DOWNTO 0);
+      -- BYTE_PARITY : IN    STD_LOGIC;
+      -- DATA_READY  : IN    STD_LOGIC; -- parallel data "data_ready"
+      GET_PARA_DATA : OUT STD_LOGIC;                      -- parallel data "get_data"
+      TDC_ERROR     : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);  -- error pins
+      TDC_SER_OUT   : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);  -- serial data out
+      TDC_STRB_OUT  : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);  -- serial strobe out
+      TDC_TEST      : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);
+      TDC_TOKEN_OUT : IN  STD_LOGIC_VECTOR (4 DOWNTO 1);  -- token_out
+      AUX_CLK       : OUT STD_LOGIC_VECTOR (4 DOWNTO 1);
 
       -- !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
       ----------------------------------------------------------------------------------------
-      TDC_TRIG_IN : IN std_logic;       -- trigger from TCPU
+      TDC_TRIG_IN : IN STD_LOGIC;       -- trigger from TCPU
       ----------------------------------------------------------------------------------------
 
       -- upstream connector
-      DATA_VALID_US : OUT std_logic;
+      DATA_VALID_US : OUT STD_LOGIC;
       --US_DATA       : OUT std_logic_vector (3 DOWNTO 0);
-      US_D_CLK      : OUT std_logic;
-      US_M24        : OUT std_logic;
-      US_MUL7       : OUT std_logic_vector (5 DOWNTO 0);
+      US_D_CLK      : OUT STD_LOGIC;
+      US_M24        : OUT STD_LOGIC;
+      US_MUL7       : OUT STD_LOGIC_VECTOR (5 DOWNTO 0);
 
 
       -- downstream connector
-      DATA_VALID_DS : IN  std_logic;
-      DS_DATA       : IN  std_logic_vector (3 DOWNTO 0);
-      DS_D_CLK      : IN  std_logic;
-      DS_M24        : IN  std_logic;
-      DS_MUL7       : IN  std_logic_vector (5 DOWNTO 0);
-      DS_BUFF_EN    : OUT std_logic;
+      DATA_VALID_DS : IN  STD_LOGIC;
+      DS_DATA       : IN  STD_LOGIC_VECTOR (3 DOWNTO 0);
+      DS_D_CLK      : IN  STD_LOGIC;
+      DS_M24        : IN  STD_LOGIC;
+      DS_MUL7       : IN  STD_LOGIC_VECTOR (5 DOWNTO 0);
+      DS_BUFF_EN    : OUT STD_LOGIC;
 
       -- 7-segment LED
-      LED_A  : OUT std_logic;
-      LED_B  : OUT std_logic;
-      LED_C  : OUT std_logic;
-      LED_D  : OUT std_logic;
-      LED_E  : OUT std_logic;
-      LED_F  : OUT std_logic;
-      LED_G  : OUT std_logic;
-      LED_DP : OUT std_logic;
+      LED_A  : OUT STD_LOGIC;
+      LED_B  : OUT STD_LOGIC;
+      LED_C  : OUT STD_LOGIC;
+      LED_D  : OUT STD_LOGIC;
+      LED_E  : OUT STD_LOGIC;
+      LED_F  : OUT STD_LOGIC;
+      LED_G  : OUT STD_LOGIC;
+      LED_DP : OUT STD_LOGIC;
 
 
-      TAMP_PULSE : OUT std_logic;       -- Output to pulse generator on TAMP
+      TAMP_PULSE : OUT STD_LOGIC;       -- Output to pulse generator on TAMP
 
       -- CAN controller interface
-      CAN_INT : IN std_logic;           -- interrupt from CAN controller.
-      nRX0BF  : IN std_logic;  -- Interrupt from CAN controller Rx0 buffer
-      nRX1BF  : IN std_logic;  -- Interrupt from CAN controller Rx1 buffer
+      CAN_INT : IN STD_LOGIC;  -- interrupt from CAN controller.
+      nRX0BF  : IN STD_LOGIC;  -- Interrupt from CAN controller Rx0 buffer
+      nRX1BF  : IN STD_LOGIC;  -- Interrupt from CAN controller Rx1 buffer
 
       -- Hit inputs for multiplicity calculation.
-      hit_hi                 : IN    STD_LOGIC_VECTOR (23 downto 15);
+      hit_hi : IN STD_LOGIC_VECTOR (23 DOWNTO 15);
       -- hit_mid                : IN    STD_LOGIC_VECTOR (12 downto 7);
       -- hit_lo                 : IN    STD_LOGIC_VECTOR (1 downto 0);
 
@@ -135,21 +135,21 @@ ENTITY TDIG_pldv3 IS
       -- 23 downto 15, 12 downto 7, 1 downto 0
 
       -- PLD-MCU interface
-      MCU_DATA  : INOUT std_logic_vector (0 TO 7);
-      MCU_CTRL4 : IN    std_logic;      -- mcu_adr 2
-      MCU_CTRL3 : IN    std_logic;      -- mcu_adr 1
-      MCU_CTRL2 : IN    std_logic;      -- mcu_adr 0
-      MCU_CTRL1 : IN    std_logic;  -- used as !read / write signal from MCU
-      --  low means pld drives 'mcu_data' pins
-      --  hi means pld does not drive 'mcu_data' pins
+      MCU_DATA  : INOUT STD_LOGIC_VECTOR (0 TO 7);
+      MCU_CTRL4 : IN    STD_LOGIC;      -- mcu_adr 2
+      MCU_CTRL3 : IN    STD_LOGIC;      -- mcu_adr 1
+      MCU_CTRL2 : IN    STD_LOGIC;      -- mcu_adr 0
+      MCU_CTRL1 : IN    STD_LOGIC;      -- used as !read / write signal from MCU
+                                        --  low means pld drives 'mcu_data' pins
+                                        --  hi means pld does not drive 'mcu_data' pins
 
-      MCU_CTRL0 : IN  std_logic;        -- used as reset signal
-      MCU_INT1  : OUT std_logic;        -- fifo empty
-      MCU_INT0  : IN  std_logic;        -- DATA STROBE ACTIVE HIGH
+      MCU_CTRL0 : IN  STD_LOGIC;        -- used as reset signal
+      MCU_INT1  : OUT STD_LOGIC;        -- fifo empty
+      MCU_INT0  : IN  STD_LOGIC;        -- DATA STROBE ACTIVE HIGH
 
-      MUL24_TRIG : IN std_logic;  -- M24 (Level-2) data trigger, right now used for bunch reset
+      MUL24_TRIG : IN STD_LOGIC;        -- M24 (Level-2) data trigger, right now used for bunch reset
 
-      Si_ID : IN std_logic              -- INPUT NOW FOR SAFETY
+      Si_ID : IN STD_LOGIC              -- INPUT NOW FOR SAFETY
       );
 
 END TDIG_pldv3;
@@ -159,73 +159,73 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
   -- component declarations are in "picotof_package.vhd"
 
   -- signals
-  SIGNAL global_clk_40M : std_logic;
-  SIGNAL global_reset   : std_logic;
+  SIGNAL global_clk_40M : STD_LOGIC;
+  SIGNAL global_reset   : STD_LOGIC;
 
-  SIGNAL LED_MCU : std_logic_vector (6 DOWNTO 0);
-  SIGNAL LED_EXT : std_logic_vector (6 DOWNTO 0);
+  SIGNAL LED_MCU : STD_LOGIC_VECTOR (6 DOWNTO 0);
+  SIGNAL LED_EXT : STD_LOGIC_VECTOR (6 DOWNTO 0);
 
-  SIGNAL trig_ff_out   : std_logic_vector (4 DOWNTO 0);
-  SIGNAL bReset_ff_out : std_logic_vector (4 DOWNTO 0);
-  SIGNAL hit_delay_out : std_logic;
+  SIGNAL trig_ff_out   : STD_LOGIC_VECTOR (4 DOWNTO 0);
+  SIGNAL bReset_ff_out : STD_LOGIC_VECTOR (4 DOWNTO 0);
+  SIGNAL hit_delay_out : STD_LOGIC;
 
-  SIGNAL TDC_token  : std_logic;
-  SIGNAL state_test : std_logic;
-  SIGNAL del_trig   : std_logic;
+  SIGNAL TDC_token  : STD_LOGIC;
+  SIGNAL state_test : STD_LOGIC;
+  SIGNAL del_trig   : STD_LOGIC;
 
-  SIGNAL gate1, gate2 : std_logic;
+  SIGNAL gate1, gate2 : STD_LOGIC;
 
   -- DATA PATH SIGNALS --------------------------------------------------------------------------       
 
   --**************************************************************************************
-  SIGNAL data_path_reset : std_logic;  -- should come from TCPU. Right now comes from global reset.
+  SIGNAL data_path_reset : STD_LOGIC;  -- should come from TCPU. Right now comes from global reset.
 
   --**************************************************************************************
 
-  SIGNAL serializer_input_strobe                                         : std_logic;
-  SIGNAL downstream_32b_data, downstream_fifo_out, serializer_input_data : std_logic_vector(31 DOWNTO 0);
-  SIGNAL rdo_32b_data, tdc_fifo_out                                      : std_logic_vector(31 DOWNTO 0);
+  SIGNAL serializer_input_strobe                                         : STD_LOGIC;
+  SIGNAL downstream_32b_data, downstream_fifo_out, serializer_input_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL rdo_32b_data, tdc_fifo_out                                      : STD_LOGIC_VECTOR(31 DOWNTO 0);
 
-  SIGNAL serializer_ready, outmux_sel, outmux_clken, downstream_ready : std_logic;
+  SIGNAL serializer_ready, outmux_sel, outmux_clken, downstream_ready : STD_LOGIC;
 
-  SIGNAL data_enable, fifo_ds_empty, output_busy, pos_dnstrm : std_logic;  -- main controller inputs
+  SIGNAL data_enable, fifo_ds_empty, output_busy, pos_dnstrm : STD_LOGIC;  -- main controller inputs
 
-  SIGNAL separator : std_logic;  -- valid when data word is a separator word (high nibble = "1110"
+  SIGNAL separator : STD_LOGIC;  -- valid when data word is a separator word (high nibble = "1110"
 
-  SIGNAL tdc_fifo_empty, tdc_fifo_full, trigger_pulse, en_tdc_rdo : std_logic;  -- main controller inputs
+  SIGNAL tdc_fifo_empty, tdc_fifo_full, trigger_pulse, en_tdc_rdo : STD_LOGIC;  -- main controller inputs
 
-  SIGNAL rd_ds_fifo, rd_tdc_fifo, sel_ds_fifo : std_logic;  -- main controller outputs
+  SIGNAL rd_ds_fifo, rd_tdc_fifo, sel_ds_fifo : STD_LOGIC;  -- main controller outputs
 
-  SIGNAL fifo_ds_full, rdo_dout_strobe : std_logic;  -- test signal, not used
+  SIGNAL fifo_ds_full, rdo_dout_strobe : STD_LOGIC;  -- test signal, not used
 
-  SIGNAL switch_lsb, pushbutton_debounced_input, mcu_mux_sel      : std_logic;
-  SIGNAL data_to_mcu, data_from_mcu, test_data, mode_data         : std_logic_vector (7 DOWNTO 0);
-  SIGNAL mcu_decode, tdc_mirror_fifo_data, jtag_data, status_data : std_logic_vector (7 DOWNTO 0);
-  SIGNAL config_data, reset_data                                  : std_logic_vector (7 DOWNTO 0);
+  SIGNAL switch_lsb, pushbutton_debounced_input, mcu_mux_sel      : STD_LOGIC;
+  SIGNAL data_to_mcu, data_from_mcu, test_data, mode_data         : STD_LOGIC_VECTOR (7 DOWNTO 0);
+  SIGNAL mcu_decode, tdc_mirror_fifo_data, jtag_data, status_data : STD_LOGIC_VECTOR (7 DOWNTO 0);
+  SIGNAL config_data, reset_data                                  : STD_LOGIC_VECTOR (7 DOWNTO 0);
 
-  SIGNAL mcu_adr : std_logic_vector (2 DOWNTO 0);
+  SIGNAL mcu_adr : STD_LOGIC_VECTOR (2 DOWNTO 0);
 
-  SIGNAL mcu_fifo_empty, data_strobe, dummy, readbar_write                             : std_logic;
-  SIGNAL mcu_write_to_pld, mcu_read_from_pld, reset_from_mcu, mcu_read_tdc_data_strobe : std_logic;
+  SIGNAL mcu_fifo_empty, data_strobe, dummy, readbar_write                             : STD_LOGIC;
+  SIGNAL mcu_write_to_pld, mcu_read_from_pld, reset_from_mcu, mcu_read_tdc_data_strobe : STD_LOGIC;
 
-  SIGNAL gated_separator, no_trigger, no_separator        : std_logic;
-  SIGNAL test_reg_write, mode_reg_write, config_reg_write : std_logic;  -- wr enables mcu writes to registers
-  SIGNAL jtag_reg_write, reset_reg_write                  : std_logic;  -- wr enables mcu writes to registers
+  SIGNAL gated_separator, no_trigger, no_separator        : STD_LOGIC;
+  SIGNAL test_reg_write, mode_reg_write, config_reg_write : STD_LOGIC;  -- wr enables mcu writes to registers
+  SIGNAL jtag_reg_write, reset_reg_write                  : STD_LOGIC;  -- wr enables mcu writes to registers
 
-  SIGNAL timeout, clr_timeout, hold : std_logic;  -- signals from / to timeout counter for downstream TDIG reads
-  SIGNAL dummy8                     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL timeout, clr_timeout, hold : STD_LOGIC;  -- signals from / to timeout counter for downstream TDIG reads
+  SIGNAL dummy8                     : STD_LOGIC_VECTOR(7 DOWNTO 0);
 
-  SIGNAL source_sel : std_logic;  --selects source for JTAG TDC configuration: 1 = mcu, 0 = byteblaster
+  SIGNAL source_sel : STD_LOGIC;  --selects source for JTAG TDC configuration: 1 = mcu, 0 = byteblaster
 
-  SIGNAL tdc_select_from_mcu    : std_logic_vector(1 DOWNTO 0);  -- TDC selection from MCU 
-  SIGNAL tdc_select_from_switch : std_logic_vector(1 DOWNTO 0);  -- TDC selection from rotary switch
-  SIGNAL tdc_adr                : std_logic_vector(1 DOWNTO 0);  -- resultant TDC selection
-  SIGNAL tms_source, tdi_source : std_logic;
-  SIGNAL active_tdo, tck_source : std_logic;
-  SIGNAL tdc_active             : std_logic_vector(4 DOWNTO 1);
+  SIGNAL tdc_select_from_mcu    : STD_LOGIC_VECTOR(1 DOWNTO 0);  -- TDC selection from MCU 
+  SIGNAL tdc_select_from_switch : STD_LOGIC_VECTOR(1 DOWNTO 0);  -- TDC selection from rotary switch
+  SIGNAL tdc_adr                : STD_LOGIC_VECTOR(1 DOWNTO 0);  -- resultant TDC selection
+  SIGNAL tms_source, tdi_source : STD_LOGIC;
+  SIGNAL active_tdo, tck_source : STD_LOGIC;
+  SIGNAL tdc_active             : STD_LOGIC_VECTOR(4 DOWNTO 1);
 
-  SIGNAL sig_tck_tdc, sig_tms_tdc, sig_tdi_tdc : std_logic_vector(4 DOWNTO 1);
-  SIGNAL inv_global_clk                        : std_logic;
+  SIGNAL sig_tck_tdc, sig_tms_tdc, sig_tdi_tdc : STD_LOGIC_VECTOR(4 DOWNTO 1);
+  SIGNAL inv_global_clk                        : STD_LOGIC;
   
 BEGIN
 
@@ -263,6 +263,10 @@ BEGIN
   PLD_HIT       <= "00";
   PLD_HIT_EN    <= '0';
   TDC_E_RESET   <= "0000";
+  -- inactive upstream connector output
+  DATA_VALID_US <= '0';
+  US_MUL7(5)    <= '0';
+  US_M24        <= '0';
 
   -- error bits from TDC 1-4 are OR'd together and routed to STATUS buffer (MCU read address = 0
 
@@ -444,17 +448,17 @@ BEGIN
     reset          => data_path_reset,  --
     data_enable    => data_enable,      -- 
     pos_dnstrm     => pos_dnstrm,       --                       
-    trigger_pulse  => tdc_trig_in,  -- trigger pulse from upstream connector                               
+    trigger_pulse  => tdc_trig_in,      -- trigger pulse from upstream connector                               
     sel_ds_fifo    => sel_ds_fifo,      --                      
     fifo_ds_empty  => fifo_ds_empty,    --                     
     rd_ds_fifo     => rd_ds_fifo,       --                               
     separator      => separator,        --
     tdc_fifo_empty => tdc_fifo_empty,   --                           
-    en_tdc_rdo     => en_tdc_rdo,  -- goes to "trigger" input of tdc_rdo state machine
+    en_tdc_rdo     => en_tdc_rdo,       -- goes to "trigger" input of tdc_rdo state machine
     rd_tdc_fifo    => rd_tdc_fifo,      --                              
     output_busy    => output_busy,      -- 
     wr_output      => serializer_input_strobe,
-    timeout        => timeout,          --'0',
+    timeout        => timeout,          -- '0',
     clr_timeout    => clr_timeout );    --
 
   
@@ -473,8 +477,8 @@ BEGIN
   data_enable <= '1';  -- always turn on data path to respond to trigger inputs
 
   pos_dnstrm <= NOT sw(0);  -- switch_lsb; -- even tray position is "downstream" and reads only local fifo
-  -- odd tray position is "upstream" and reads local fifo, then
-  -- downstream fifo
+                                           -- odd tray position is "upstream" and reads local fifo, then
+                                           -- downstream fifo
 
   DS_BUFF_EN <= sw(0);  --switch_lsb; -- upstream board will enable it's downstream input buffers
 
@@ -523,17 +527,17 @@ BEGIN
     -- 11/3 test-- trigger is suspect.  go back to trig_ff_out(4)
     trigger        => trig_ff_out(4),   -- en_tdc_rdo
     trg_reset      => data_path_reset,
-    token_in       => TDC_token,  -- sends output token to first tdc in chain
+    token_in       => TDC_token,        -- sends output token to first tdc in chain
     clk            => global_clk_40M,
     reset          => data_path_reset,
     mcu_pld_int    => mcu_read_tdc_data_strobe,
-    pld_mcu_int    => dummy,      -- not used - was a flag from pld to mcu
+    pld_mcu_int    => dummy,                 -- not used - was a flag from pld to mcu
     mcu_byte       => tdc_mirror_fifo_data,  -- 8 bit data from fifo within tdc_rdo; 
-    -- this data goes to the local mcu i/f for tdig can xfer
-    fifo_empty     => mcu_fifo_empty,   -- MCU_CTRL2
-    rdo_32b_data   => rdo_32b_data,  -- goes to 256 x 32 fifo for xfer to upstream data path
+                                             -- this data goes to the local mcu i/f for tdig can xfer
+    fifo_empty     => mcu_fifo_empty,        -- MCU_CTRL2
+    rdo_32b_data   => rdo_32b_data,          -- goes to 256 x 32 fifo for xfer to upstream data path
     rdo_data_valid => rdo_dout_strobe,
-    sw             => sw          -- position switch input for separator word
+    sw             => sw                     -- position switch input for separator word
     );          
 
   TDC_TOKEN_IN(4) <= TDC_token;  -- sends output token to first tdc in chain
