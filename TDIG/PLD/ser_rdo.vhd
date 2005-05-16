@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.2 2005-05-13 21:07:26 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.3 2005-05-16 19:44:24 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -82,7 +82,7 @@ BEGIN
   --                       
   PROCESS (reset, strb_out)
     VARIABLE ser_ctr  : INTEGER RANGE 0 TO 31;
-    VARIABLE item_ctr : INTEGER RANGE 0 TO 255;
+    VARIABLE item_ctr : INTEGER RANGE 0 TO 511;
   BEGIN
     IF (reset = '1') THEN
       sState  <= s1;
@@ -118,7 +118,9 @@ BEGIN
             sState <= s5;
           END IF;
         WHEN s5 =>
-          wrreq_sig <= '1';
+          IF (item_ctr < 256) THEN
+            wrreq_sig <= '1';
+          END IF;
           sState    <= s6;
         WHEN s6 =>
           sState <= s3;
