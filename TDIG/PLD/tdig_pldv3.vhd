@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.5 2005-05-13 17:26:50 jschamba Exp $
+-- $Id: tdig_pldv3.vhd,v 1.6 2005-05-16 19:41:51 jschamba Exp $
 
 -- change log
 --
@@ -226,6 +226,8 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
 
   SIGNAL sig_tck_tdc, sig_tms_tdc, sig_tdi_tdc : STD_LOGIC_VECTOR(4 DOWNTO 1);
   SIGNAL inv_global_clk                        : STD_LOGIC;
+
+  SIGNAL s_commonReset : STD_LOGIC;
   
 BEGIN
 
@@ -442,13 +444,16 @@ BEGIN
   no_separator <= config_data(0);
   no_trigger   <= config_data(1);
 
+  -- JS: use this one to reset the state machines and FIFOs
+  --            involved in TDC data readout and transfer
+  s_commonReset <= data_path_reset OR MUL24_TRIG;
+  
   -- JS: change the timeout signal in this component:
   tdig_main_control : COMPONENT tdigctl2 PORT MAP (
     clk            => global_clk_40m,   -- 
-    reset          => data_path_reset,  --
+    reset          => s_commonReset,    --
     data_enable    => data_enable,      -- 
     pos_dnstrm     => pos_dnstrm,       --                       
-    trigger_pulse  => tdc_trig_in,      -- trigger pulse from upstream connector                               
     sel_ds_fifo    => sel_ds_fifo,      --                      
     fifo_ds_empty  => fifo_ds_empty,    --                     
     rd_ds_fifo     => rd_ds_fifo,       --                               
@@ -502,7 +507,7 @@ BEGIN
 
   downstream_fifo : output_fifo_256x32 PORT MAP (
     clock => global_clk_40M,
-    aclr  => data_path_reset,
+    aclr  => s_commonReset,
     data  => downstream_32b_data,
     wrreq => downstream_ready,
     rdreq => RD_DS_FIFO,
@@ -526,10 +531,10 @@ BEGIN
     -- REAL CONFIGURATION: use 'en_tdc_rdo' signal from main controller
     -- 11/3 test-- trigger is suspect.  go back to trig_ff_out(4)
     trigger        => trig_ff_out(4),   -- en_tdc_rdo
-    trg_reset      => data_path_reset,
+    trg_reset      => s_commonReset,
     token_in       => TDC_token,        -- sends output token to first tdc in chain
     clk            => global_clk_40M,
-    reset          => data_path_reset,
+    reset          => s_commonReset,
     mcu_pld_int    => mcu_read_tdc_data_strobe,
     pld_mcu_int    => dummy,                 -- not used - was a flag from pld to mcu
     mcu_byte       => tdc_mirror_fifo_data,  -- 8 bit data from fifo within tdc_rdo; 
@@ -560,7 +565,7 @@ BEGIN
   
   local_tdc_fifo : output_fifo_256x32 PORT MAP (
     clock => global_clk_40M,
-    aclr  => data_path_reset,
+    aclr  => s_commonReset,
     data  => rdo_32b_data,
     wrreq => rdo_dout_strobe,
     rdreq => rd_tdc_fifo,
@@ -586,7 +591,7 @@ BEGIN
   
   upstream_output_serializer : COMPONENT par32_to_ser4 PORT MAP (
     clk         => global_clk_40M,
-    reset       => data_path_reset,
+    reset       => s_commonReset,
     din         => serializer_input_data,
     din_strobe  => serializer_input_strobe,
     dclk        => US_D_CLK,             -- upstream output data clock
