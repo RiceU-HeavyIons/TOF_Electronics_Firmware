@@ -323,9 +323,11 @@ set_instance_assignment -name IO_STANDARD LVDS -to hit_mid[8]
 set_instance_assignment -name IO_STANDARD LVDS -to hit_mid[7]
 set_instance_assignment -name IO_STANDARD LVDS -to hit_lo[1]
 set_instance_assignment -name IO_STANDARD LVDS -to hit_lo[0]
+set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
 
 # Assembler Assignments
 # =====================
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
 set_global_assignment -name CYCLONE_CONFIGURATION_DEVICE EPCS1
 
 # Simulator Assignments
