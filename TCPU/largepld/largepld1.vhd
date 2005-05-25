@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.18 2005-05-13 16:07:40 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.19 2005-05-25 17:53:34 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -150,6 +150,15 @@ ARCHITECTURE ver_four OF largepld1 IS
           a_out : OUT STD_LOGIC);
   END COMPONENT;
 
+  COMPONENT DFF
+    PORT (d     : IN  STD_LOGIC;
+          clk   : IN  STD_LOGIC;
+          clrn  : IN  STD_LOGIC;
+          prn   : IN  STD_LOGIC;
+          q     : OUT STD_LOGIC );
+  END COMPONENT;
+
+
   -- ****************************************************************
   -- SIGNAL DECLARATIONS
   -- ****************************************************************
@@ -211,6 +220,7 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL trig_from_ctr                                                           : STD_LOGIC;
   SIGNAL mcu_strobes_fifo                                                        : STD_LOGIC;
   SIGNAL cout, delaya, delayb, stretch, trig_presync                             : STD_LOGIC;
+  SIGNAL br_stretcha, br_stretchb, br_stretchout                                 : STD_LOGIC;
 
   -- INPUT FIFOS
   SIGNAL infifo0_dout : STD_LOGIC_VECTOR (19 DOWNTO 0);  -- from tcd fifo
@@ -1034,7 +1044,23 @@ BEGIN
   -- between a master tcpu, which sends this signal, and a slave which receives it.
   --
   -- JS: also send bunch_reset for RDYRX. this will only send if TCPU is master.
-  mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR s_runReset;
+  -- first stretch the s_runReset signal to cover 50ns.
+
+  dff_inst1 : DFF PORT MAP (
+    d    => s_runReset,
+    clk  => global40mhz,
+    clrn => '1',
+    prn  => '1',
+    q    => br_stretcha);
+  dff_inst2 : DFF PORT MAP (
+    d    => br_stretcha,
+    clk  => global40mhz,
+    clrn => '1',
+    prn  => '1',
+    q    => br_stretchb);
+  br_stretchout <= br_stretcha OR br_stretchb;
+  
+  mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR br_stretchout;
 
   -- This pulse is synchronized because it comes from the MCU.
   -- it is 200ns wide, which is believed to be ok.  
