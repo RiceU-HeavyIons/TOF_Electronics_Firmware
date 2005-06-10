@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.19 2005-05-25 17:53:34 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.20 2005-06-10 18:35:14 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -325,6 +325,13 @@ ARCHITECTURE ver_four OF largepld1 IS
 BEGIN
 
   -- ************************************************************
+  -- unused pins pulled low
+  rs232sel <= "000";
+  rs232enb <= '0';
+  m7_gate  <= '0';
+  spare_c  <= "0000";
+  
+  -- ************************************************************
   -- MASTER / SLAVE assignment:
   
   MS_LO      <= '0';
@@ -356,21 +363,36 @@ BEGIN
   --            tsthi(31)       <= input_fifo_empty;
 
   tstlo(1)  <= tcd_d(0);
+  tstlo(2)  <= '0';
   tstlo(3)  <= tcd_d(1);
+  tstlo(4)  <= '0';
   tstlo(5)  <= tcd_d(2);
+  tstlo(6)  <= '0';
   tstlo(7)  <= tcd_d(3);
+  tstlo(8)  <= '0';
   tstlo(9)  <= tcd_50mhz;
+  tstlo(10) <= '0';
   tstlo(11) <= tcd_10_mhz;
   tst13     <= tcd_cclk1;
   tst17     <= tcd_cclk2;
   tst19     <= tcd_data(0);
   tsthi(21) <= tcd_data(1);
+  tsthi(22) <= '0';
   tsthi(23) <= tcd_data(2);
+  tsthi(24) <= '0';
   tsthi(25) <= tcd_data(3);
+  tsthi(26) <= '0';
   tsthi(27) <= tcd_data(4);
+  tsthi(28) <= '0';
   tsthi(29) <= tcd_data(5);
+  tsthi(30) <= '0';
   tsthi(31) <= tcd_data(6);
+  tsthi(32) <= '0';
   tsthi(33) <= tcd_data(7);
+  tsthi(34) <= '0';
+  tsthi(35) <= '0';
+  tst37     <= '0';
+  tst39     <= '0';
 
   -- TDIG MCU MASTER RESET CONTROL! -----------------------------------------------------
 
