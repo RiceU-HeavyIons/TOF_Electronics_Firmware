@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.20 2005-06-10 18:35:14 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.21 2005-06-13 21:38:24 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -143,6 +143,7 @@ ARCHITECTURE ver_four OF largepld1 IS
     XS_IDLE,
     XS_L0,
     XS_L2,
+    XS_L2a,
     XS_DATA);
 
   COMPONENT GLOBAL
@@ -971,6 +972,9 @@ BEGIN
           wrreq_ddlfifo <= '1';
           xs_next       := XS_L2;
         WHEN XS_L2 =>
+          data_sel      <= '1';
+          xs_next       := XS_L2a;
+        WHEN XS_L2a =>                  -- add some extra settling time
           wrreq_ddlfifo <= '1';
           data_sel      <= '1';
           xs_next       := XS_DATA;
