@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.3 2005-05-16 19:44:24 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.4 2005-06-14 22:47:08 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -81,7 +81,7 @@ BEGIN
   --                 go to beginning for next trigger (s7 & s8)
   --                       
   PROCESS (reset, strb_out)
-    VARIABLE ser_ctr  : INTEGER RANGE 0 TO 31;
+    VARIABLE ser_ctr  : INTEGER RANGE 0 TO 32;
     VARIABLE item_ctr : INTEGER RANGE 0 TO 511;
   BEGIN
     IF (reset = '1') THEN
@@ -114,14 +114,14 @@ BEGIN
           END IF;
         WHEN s4 =>
           shift_en <= '1';
-          IF (ser_ctr = 31) THEN
+          IF (ser_ctr = 32) THEN
             sState <= s5;
           END IF;
         WHEN s5 =>
           IF (item_ctr < 256) THEN
             wrreq_sig <= '1';
           END IF;
-          sState    <= s6;
+          sState <= s6;
         WHEN s6 =>
           sState <= s3;
         WHEN s7 =>
