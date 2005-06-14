@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.6 2005-05-16 19:41:51 jschamba Exp $
+-- $Id: tdig_pldv3.vhd,v 1.7 2005-06-14 22:25:01 jschamba Exp $
 
 -- change log
 --
@@ -269,6 +269,8 @@ BEGIN
   DATA_VALID_US <= '0';
   US_MUL7(5)    <= '0';
   US_M24        <= '0';
+  -- inactive other pins
+  TAMP_PULSE    <= '0';
 
   -- error bits from TDC 1-4 are OR'd together and routed to STATUS buffer (MCU read address = 0
 
@@ -611,12 +613,19 @@ BEGIN
 
   -- these are signals for logic-analyzer probing
   TEST(0)  <= TDC_SER_OUT(1);
+  TEST(1)  <= '0';
   TEST(2)  <= TDC_STRB_OUT(1);
+  TEST(3)  <= '0';
   TEST(4)  <= TDC_TOKEN_OUT(1);
+  TEST(5)  <= '0';
   TEST(6)  <= TDC_token;
+  TEST(7)  <= '0';
   TEST(8)  <= en_tdc_rdo;
+  TEST(9)  <= '0';
   TEST(10) <= data_path_reset;
+  TEST(11) <= '0';
   TEST(12) <= TDC_TRIG_IN;
+  TEST(13) <= '0';
   TEST(14) <= trig_ff_out(4);
 
   ----------------------------------------------------------------------------------------------
