@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.21 2005-06-13 21:38:24 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.22 2006-03-09 21:52:56 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -43,88 +43,88 @@ USE work.my_utilities.ALL;
 ENTITY largepld1 IS
   PORT
     (
-      sloclk3 : IN STD_LOGIC;
-      pldclk0 : IN STD_LOGIC;
+      sloclk3 : IN std_logic;
+      pldclk0 : IN std_logic;
 
-      tst37               : OUT STD_LOGIC;
-      tst39               : OUT STD_LOGIC;
-      tsthi               : OUT STD_LOGIC_VECTOR(35 DOWNTO 21);
-      tst19, tst17, tst13 : OUT STD_LOGIC;
-      tstlo               : OUT STD_LOGIC_VECTOR(11 DOWNTO 1);
+      tst37               : OUT std_logic;
+      tst39               : OUT std_logic;
+      tsthi               : OUT std_logic_vector(35 DOWNTO 21);
+      tst19, tst17, tst13 : OUT std_logic;
+      tstlo               : OUT std_logic_vector(11 DOWNTO 1);
 
-      MS_HI      : OUT STD_LOGIC;  -- Pin used as HI in master/slave selection scheme
-      MS_LO      : OUT STD_LOGIC;  -- Pin used as LO in master/slave selection scheme
-      MS_sel     : IN  STD_LOGIC;  -- Pin used as master/slave input.  will be externally
+      MS_HI      : OUT std_logic;  -- Pin used as HI in master/slave selection scheme
+      MS_LO      : OUT std_logic;  -- Pin used as LO in master/slave selection scheme
+      MS_sel     : IN  std_logic;  -- Pin used as master/slave input.  will be externally
       -- shorted to MS_HI *or* MS_LO.         
-      MS_sel_out : OUT STD_LOGIC;  -- Output to small PLD to determine clock source from M/S select
+      MS_sel_out : OUT std_logic;  -- Output to small PLD to determine clock source from M/S select
 
 
       -- detector data link interface signals 
-      ddl_fbd      : INOUT STD_LOGIC_VECTOR(31 DOWNTO 0);
-      ddl_spare    : OUT   STD_LOGIC;
-      ddl_fobsy_N  : OUT   STD_LOGIC;
-      ddl_foclk    : OUT   STD_LOGIC;
-      ddl_fidir    : IN    STD_LOGIC;
-      ddl_fiben_N  : IN    STD_LOGIC;
-      ddl_filf_N   : IN    STD_LOGIC;
-      ddl_fbctrl_N : INOUT STD_LOGIC;
-      ddl_fbten_N  : INOUT STD_LOGIC;
+      ddl_fbd      : INOUT std_logic_vector(31 DOWNTO 0);
+      ddl_spare    : OUT   std_logic;
+      ddl_fobsy_N  : OUT   std_logic;
+      ddl_foclk    : OUT   std_logic;
+      ddl_fidir    : IN    std_logic;
+      ddl_fiben_N  : IN    std_logic;
+      ddl_filf_N   : IN    std_logic;
+      ddl_fbctrl_N : INOUT std_logic;
+      ddl_fbten_N  : INOUT std_logic;
 
       -- trigger/clock distribution board (TCD) inputs
-      tcd_cclk1          : IN  STD_LOGIC;
-      tcd_cclk2          : IN  STD_LOGIC;
-      tcd_50mhz          : IN  STD_LOGIC;
-      tcd_10_mhz         : IN  STD_LOGIC;
-      tcd_d              : IN  STD_LOGIC_VECTOR(3 DOWNTO 0);
-      systrigin          : IN  STD_LOGIC;
-      systrig1, systrig2 : OUT STD_LOGIC;
+      tcd_cclk1          : IN  std_logic;
+      tcd_cclk2          : IN  std_logic;
+      tcd_50mhz          : IN  std_logic;
+      tcd_10_mhz         : IN  std_logic;
+      tcd_d              : IN  std_logic_vector(3 DOWNTO 0);
+      systrigin          : IN  std_logic;
+      systrig1, systrig2 : OUT std_logic;
 
       -- microcontroller interface signals
-      mcuctl     : IN    STD_LOGIC_VECTOR(3 DOWNTO 0);  -- ctl3 = !read / write ; 2 downto 0 = adr
-      mcud       : INOUT STD_LOGIC_VECTOR(7 DOWNTO 0);  -- bidirectional data
-      pld_int    : IN    STD_LOGIC;     -- data strobe
-      fifo_empty : OUT   STD_LOGIC;     -- mcu fifo empty
+      mcuctl     : IN    std_logic_vector(3 DOWNTO 0);  -- ctl3 = !read / write ; 2 downto 0 = adr
+      mcud       : INOUT std_logic_vector(7 DOWNTO 0);  -- bidirectional data
+      pld_int    : IN    std_logic;     -- data strobe
+      fifo_empty : OUT   std_logic;     -- mcu fifo empty
 
       -- user interface signals
-      led1 : OUT STD_LOGIC;             -- led 1 is io118 (D2)
-      led2 : OUT STD_LOGIC;             -- led 2 is io119 (D3)
-      led3 : OUT STD_LOGIC;             -- led 3 is io120 (D6)
+      led1 : OUT std_logic;             -- led 1 is io118 (D2)
+      led2 : OUT std_logic;             -- led 2 is io119 (D3)
+      led3 : OUT std_logic;             -- led 3 is io120 (D6)
 
-      button : IN STD_LOGIC;            -- button is io117, LABEL SW2 ON PCB
+      button : IN std_logic;            -- button is io117, LABEL SW2 ON PCB
 
       -- rs232 interface signals
-      rs232sel : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
-      rs232enb : OUT STD_LOGIC;
+      rs232sel : OUT std_logic_vector(2 DOWNTO 0);
+      rs232enb : OUT std_logic;
 
       -- board status and configuration signals
-      enable_trayclks : OUT STD_LOGIC;
+      enable_trayclks : OUT std_logic;
 
       -- switches pages in config device
       -- default grounded by jumpers JU23, JU24, JU25
-      pgm : IN STD_LOGIC_VECTOR(2 DOWNTO 0);
+      pgm : IN std_logic_vector(2 DOWNTO 0);
 
       -- outputs to TDIG cards
-      m7_gate : OUT STD_LOGIC;
-      tdctrig : OUT STD_LOGIC;
-      cmd1    : OUT STD_LOGIC;
-      reset_c : OUT STD_LOGIC_VECTOR(4 DOWNTO 1);
-      spare_c : OUT STD_LOGIC_VECTOR(4 DOWNTO 1);
+      m7_gate : OUT std_logic;
+      tdctrig : OUT std_logic;
+      cmd1    : OUT std_logic;
+      reset_c : OUT std_logic_vector(4 DOWNTO 1);
+      spare_c : OUT std_logic_vector(4 DOWNTO 1);
 
       -- inputs from TDIG cards
-      c1_m7d, c2_m7d   : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
-      c3_m7d, c4_m7d   : IN STD_LOGIC_VECTOR(5 DOWNTO 0);
-      c1_tdc, c2_tdc   : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
-      c3_tdc, c4_tdc   : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
-      c1_m24, c2_m24   : IN STD_LOGIC;
-      c3_m24, c4_m24   : IN STD_LOGIC;
-      c1_dclk, c2_dclk : IN STD_LOGIC;
-      c3_dclk, c4_dclk : IN STD_LOGIC;
+      c1_m7d, c2_m7d   : IN std_logic_vector(5 DOWNTO 0);
+      c3_m7d, c4_m7d   : IN std_logic_vector(5 DOWNTO 0);
+      c1_tdc, c2_tdc   : IN std_logic_vector(3 DOWNTO 0);
+      c3_tdc, c4_tdc   : IN std_logic_vector(3 DOWNTO 0);
+      c1_m24, c2_m24   : IN std_logic;
+      c3_m24, c4_m24   : IN std_logic;
+      c1_dclk, c2_dclk : IN std_logic;
+      c3_dclk, c4_dclk : IN std_logic;
 
       -- unused signals
       -- pulled low externally with 0 ohm resistor
-      io5, io19, io36    : IN STD_LOGIC;
-      io37, io278, io279 : IN STD_LOGIC;
-      io295, io296       : IN STD_LOGIC
+      io5, io19, io36    : IN std_logic;
+      io37, io278, io279 : IN std_logic;
+      io295, io296       : IN std_logic
 
       -- uncommitted pin used for simulation only
       --reset_function :                                : IN    std_logic
@@ -147,16 +147,16 @@ ARCHITECTURE ver_four OF largepld1 IS
     XS_DATA);
 
   COMPONENT GLOBAL
-    PORT (a_in  : IN  STD_LOGIC;
-          a_out : OUT STD_LOGIC);
+    PORT (a_in  : IN  std_logic;
+          a_out : OUT std_logic);
   END COMPONENT;
 
   COMPONENT DFF
-    PORT (d     : IN  STD_LOGIC;
-          clk   : IN  STD_LOGIC;
-          clrn  : IN  STD_LOGIC;
-          prn   : IN  STD_LOGIC;
-          q     : OUT STD_LOGIC );
+    PORT (d    : IN  std_logic;
+          clk  : IN  std_logic;
+          clrn : IN  std_logic;
+          prn  : IN  std_logic;
+          q    : OUT std_logic );
   END COMPONENT;
 
 
@@ -166,157 +166,123 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- global signals
 
-  SIGNAL global40mhz : STD_LOGIC;
-  SIGNAL reset       : STD_LOGIC;
+  SIGNAL global40mhz : std_logic;
+  SIGNAL reset       : std_logic;
 
   -- source for global reset
   -- this signal is set currently to inactive
   -- it can be sourced from pushbutton (debounced), mcu, etc.
-
-  SIGNAL reset_function : STD_LOGIC;
-
+  -- SIGNAL reset_function : STD_LOGIC;
 
   -- TCD interface signals
 
-  SIGNAL tcd_data   : STD_LOGIC_VECTOR(19 DOWNTO 0);
-  SIGNAL tcd_strobe : STD_LOGIC;
+  SIGNAL tcd_data   : std_logic_vector(19 DOWNTO 0);
+  SIGNAL tcd_strobe : std_logic;
 
   -- input signals from TDIG after demux
 
-  SIGNAL tdig1_data, tdig2_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
-  SIGNAL tdig3_data, tdig4_data : STD_LOGIC_VECTOR(31 DOWNTO 0);
-  SIGNAL tdig_strobe            : STD_LOGIC_VECTOR( 4 DOWNTO 1);  -- signal from cable demux to input fifo
+  SIGNAL tdig1_data, tdig2_data : std_logic_vector(31 DOWNTO 0);
+  SIGNAL tdig3_data, tdig4_data : std_logic_vector(31 DOWNTO 0);
+  SIGNAL tdig_strobe            : std_logic_vector( 4 DOWNTO 1);  -- signal from cable demux to input fifo
 
-  -- clock enable strobes for TDIG data after demux : used to clock data into input fifos
-
-  SIGNAL tdig1_clken, tdig2_clken, tdig3_clken, tdig4_clken : STD_LOGIC;
-
-  -- combined final data from ping/pong output muxes
-  -- this data will go to DDL interface (and to MCU for debug)
-
-  SIGNAL ping_pong_out : STD_LOGIC_VECTOR(31 DOWNTO 0);
-
-  -- control signals for core data path 
-
-  SIGNAL ping_pong_read_enable, ping_pong_empty : STD_LOGIC;
 
   -- test signals
 
-  SIGNAL button_debounced : STD_LOGIC;  -- debounced 1 clock wide, active high pulse from button  push 
+  SIGNAL button_debounced : std_logic;  -- debounced 1 clock wide, active high pulse from button  push 
                                         -- button is labelled 
 
-  SIGNAL opmode, error_word : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL ddl_read_fifo      : STD_LOGIC;
+  SIGNAL opmode        : std_logic_vector(7 DOWNTO 0);
+  SIGNAL ddl_read_fifo : std_logic;
 
-  SIGNAL bus_enable, tristate_signal_enable, trigger_strobe_to_tdig, star_trigger_level_zero : STD_LOGIC;
-
-  SIGNAL data_strobe, readbar_write                                              : STD_LOGIC;
-  SIGNAL mcu_adr                                                                 : STD_LOGIC_VECTOR(2 DOWNTO 0);
-  SIGNAL mcu_data, pld_to_mcu_before_buffer, mcu_to_pld_after_buffer, mcu_decode : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL mcu_mode_data, mcu_config_data, mcu_filter_sel                          : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL mcu_write_to_pld, mcu_read_from_pld, mode_reg_write, config_reg_write   : STD_LOGIC;
-  SIGNAL mcu_fifo_empty, mcu_filter_reg_write, mcu_bunch_reset, mcu_reset_to_pld : STD_LOGIC;
-  SIGNAL mcu_fifo_out                                                            : STD_LOGIC_VECTOR(31 DOWNTO 0);
-  SIGNAL dummy_counter_out                                                       : STD_LOGIC_VECTOR(14 DOWNTO 0);
-  SIGNAL trig_from_ctr                                                           : STD_LOGIC;
-  SIGNAL mcu_strobes_fifo                                                        : STD_LOGIC;
-  SIGNAL cout, delaya, delayb, stretch, trig_presync                             : STD_LOGIC;
-  SIGNAL br_stretcha, br_stretchb, br_stretchout                                 : STD_LOGIC;
+  SIGNAL data_strobe, readbar_write                                              : std_logic;
+  SIGNAL mcu_adr                                                                 : std_logic_vector(2 DOWNTO 0);
+  SIGNAL mcu_data, pld_to_mcu_before_buffer, mcu_to_pld_after_buffer, mcu_decode : std_logic_vector(7 DOWNTO 0);
+  SIGNAL mcu_mode_data, mcu_config_data, mcu_filter_sel                          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL mcu_write_to_pld, mcu_read_from_pld, mode_reg_write, config_reg_write   : std_logic;
+  SIGNAL mcu_fifo_empty, mcu_filter_reg_write, mcu_bunch_reset, mcu_reset_to_pld : std_logic;
+  SIGNAL mcu_fifo_out                                                            : std_logic_vector(31 DOWNTO 0);
+  SIGNAL dummy_counter_out                                                       : std_logic_vector(14 DOWNTO 0);
+  SIGNAL trig_from_ctr                                                           : std_logic;
+  SIGNAL mcu_strobes_fifo                                                        : std_logic;
+  SIGNAL cout, delaya, delayb, stretch, trig_presync                             : std_logic;
+  SIGNAL delayc, delayd, trig_from_tcdL0, hptdc_trig_presync                     : std_logic;
+  SIGNAL br_stretcha, br_stretchb, br_stretchout                                 : std_logic;
 
   -- INPUT FIFOS
-  SIGNAL infifo0_dout : STD_LOGIC_VECTOR (19 DOWNTO 0);  -- from tcd fifo
-  SIGNAL infifo1_dout : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- from tdig  1 fifo
-  SIGNAL infifo2_dout : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- from tdig  2 fifo
-  SIGNAL infifo3_dout : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- from tdig  3 fifo
-  SIGNAL infifo4_dout : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- from tcd  4 fifo
+  SIGNAL infifo0_dout : std_logic_vector (19 DOWNTO 0);  -- from tcd fifo
+  SIGNAL infifo1_dout : std_logic_vector (31 DOWNTO 0);  -- from tdig  1 fifo
+  SIGNAL infifo2_dout : std_logic_vector (31 DOWNTO 0);  -- from tdig  2 fifo
+  SIGNAL infifo3_dout : std_logic_vector (31 DOWNTO 0);  -- from tdig  3 fifo
+  SIGNAL infifo4_dout : std_logic_vector (31 DOWNTO 0);  -- from tcd  4 fifo
 
-  SIGNAL read_input_fifo, infifo_full, infifo_empty : STD_LOGIC_VECTOR(4 DOWNTO 0);
+  SIGNAL read_input_fifo, infifo_full, infifo_empty : std_logic_vector(4 DOWNTO 0);
 
   -- JS: selectively disable infifo's for reading:
-  SIGNAL infifo_emptyFlt : STD_LOGIC_VECTOR (4 DOWNTO 1);
+  SIGNAL infifo_emptyFlt : std_logic_vector (4 DOWNTO 1);
   -- JS: input FIFO reset signal to empty the FIFOs:
-  SIGNAL infifo_reset    : STD_LOGIC;
+  SIGNAL infifo_reset    : std_logic;
 
-  SIGNAL inmux_dout : STD_LOGIC_VECTOR (31 DOWNTO 0);
-  SIGNAL inmux_sel  : STD_LOGIC_VECTOR (2 DOWNTO 0);
-
-  -- PING_PONG OUTPUT FIFOS
-
-  SIGNAL outfifo0_dout                               : STD_LOGIC_VECTOR (31 DOWNTO 0);
-  SIGNAL outfifo1_dout                               : STD_LOGIC_VECTOR (31 DOWNTO 0);
-  SIGNAL outfifo_in_enable, outfifo_out_enable       : STD_LOGIC_VECTOR (1 DOWNTO 0);
-  SIGNAL outfifo_full, outfifo_empty, write_ddl_fifo : STD_LOGIC_VECTOR (1 DOWNTO 0);
-
-  SIGNAL outmux_write       : STD_LOGIC;  -- control for 2:1 output DDL mux
-  SIGNAL outmux_sel, toggle : STD_LOGIC;
+  SIGNAL inmux_dout : std_logic_vector (31 DOWNTO 0);
 
   -- MCU interface
-
-  SIGNAL wr_mcu_fifo, rd_mcu_fifo, mcu_fifo_full : STD_LOGIC;
-  SIGNAL mcu_data_sel                            : STD_LOGIC_VECTOR(1 DOWNTO 0);
-  SIGNAL mcu_fifoq                               : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL rd_mcu_fifo, mcu_fifo_full : std_logic;
 
   -- test fifo signals -- test fifo output goes to DDL in test mode    
-  SIGNAL wr_final_fifo, rd_test_fifo, test_fifo_full, test_fifo_empty : STD_LOGIC;
-  SIGNAL wr_ddl_fifo, rd_ddl_fifo, ddlfifo_full, ddlfifo_empty        : STD_LOGIC;
-  SIGNAL ping_pong_data, ddl_data, ddl_fifo_indata                    : STD_LOGIC_VECTOR(31 DOWNTO 0);
+  SIGNAL rd_ddl_fifo, ddlfifo_full, ddlfifo_empty : std_logic;
+  SIGNAL ddl_data, ddl_fifo_indata                : std_logic_vector(31 DOWNTO 0);
 
   -- signals to control which state machine controls the main data mux
-  SIGNAL data_mux_sel, mcu_sel, main_data_sel, ctl_one_sel_input : STD_LOGIC_VECTOR(2 DOWNTO 0);
-  SIGNAL mcu_sel_empty                                           : STD_LOGIC;
-
-  SIGNAL dummy                                                       : STD_LOGIC;
-  SIGNAL error1                                                      : STD_LOGIC_VECTOR(7 DOWNTO 0);
-  SIGNAL ctl_one_read_fe_fifo, input_fifo_empty, ctl_one_wr_mcu_fifo : STD_LOGIC;
-  SIGNAL ctl0_read_fe_fifo, ctl0_wr_mcu_fifo, write_mcu_fifo         : STD_LOGIC;
-  SIGNAL clk, read_fifo_enable, ctl_one_write_mcu_fifo               : STD_LOGIC;
-  SIGNAL end_record_tc, incr_end_of_record_cnt                       : STD_LOGIC;
-  SIGNAL dummy7b                                                     : STD_LOGIC_VECTOR(6 DOWNTO 0);
+  SIGNAL mcu_sel, main_data_sel, ctl_one_sel_input           : std_logic_vector(2 DOWNTO 0);
+  SIGNAL ctl_one_read_fe_fifo, input_fifo_empty              : std_logic;
+  SIGNAL ctl0_read_fe_fifo, ctl0_wr_mcu_fifo, write_mcu_fifo : std_logic;
+  SIGNAL clk, read_fifo_enable, ctl_one_wr_mcu_fifo          : std_logic;
+  SIGNAL end_record_tc, incr_end_of_record_cnt               : std_logic;
+  SIGNAL dummy7b                                             : std_logic_vector(6 DOWNTO 0);
 
   -- signal which selects which state machine is in control (set by MCU config bit)
-  SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : STD_LOGIC;
-  SIGNAL sel_eq_3                                    : STD_LOGIC;
-  SIGNAL clr_timeout, timeout_valid                  : STD_LOGIC;
-  SIGNAL ctr_sel                                     : STD_LOGIC_VECTOR(2 DOWNTO 0);
+  SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : std_logic;
+  SIGNAL sel_eq_3                                    : std_logic;
+  SIGNAL clr_timeout, timeout_valid                  : std_logic;
+  SIGNAL ctr_sel                                     : std_logic_vector(2 DOWNTO 0);
 
-  SIGNAL ctl_one_trigger_to_tdc : STD_LOGIC;
+  SIGNAL ctl_one_trigger_to_tdc : std_logic;
 
   -- signals decoded from trigger command bits
-  SIGNAL CMD_L0, CMD_L2, CMD_ABORT, CMD_RESET, CMD_IGNORE : STD_LOGIC;
-  SIGNAL separator                                        : STD_LOGIC;
+  SIGNAL CMD_L0, CMD_L2, CMD_ABORT, CMD_RESET, CMD_IGNORE : std_logic;
+  SIGNAL separator                                        : std_logic;
 
   -- signals for the L2 FIFO
-  SIGNAL clr_l2, xfer_l2              : STD_LOGIC;
-  SIGNAL rd_l2fifo, l2_full, l2_empty : STD_LOGIC;
-  SIGNAL l2latch_q, l2_q, mux_q       : STD_LOGIC_VECTOR (31 DOWNTO 0);
-  SIGNAL data_sel, wrreq_ddlfifo      : STD_LOGIC;
+  SIGNAL clr_l2, xfer_l2              : std_logic;
+  SIGNAL rd_l2fifo, l2_full, l2_empty : std_logic;
+  SIGNAL l2latch_q, l2_q, mux_q       : std_logic_vector (31 DOWNTO 0);
+  SIGNAL data_sel, wrreq_ddlfifo      : std_logic;
 
 
   -- signals to control input to DDL fifo 
-  SIGNAL stuff_sel_dout            : STD_LOGIC_VECTOR(31 DOWNTO 0);
-  SIGNAL ddl_in_sel, ctl_one_stuff : STD_LOGIC;
+  SIGNAL stuff_sel_dout            : std_logic_vector(31 DOWNTO 0);
+  SIGNAL ddl_in_sel, ctl_one_stuff : std_logic;
 
   -- ********************************************************************************
   -- DDL bidir signals separated into IN and OUT (JS)
   -- ********************************************************************************
-  SIGNAL s_fiD      : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- corresponds to ddl_fbd (IN)
-  SIGNAL s_foD      : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- corresponds to ddl_fbd (OUT)
-  SIGNAL s_fiTEN_N  : STD_LOGIC;        -- corresponds to ddl_fbten_N (IN)
-  SIGNAL s_foTEN_N  : STD_LOGIC;        -- corresponds to ddl_fbten_N (OUT)
-  SIGNAL s_fiCTRL_N : STD_LOGIC;        -- corresponds to ddl_fbctrl_N (IN)
-  SIGNAL s_foCTRL_N : STD_LOGIC;        -- corresponds to ddl_fbctrl_N (OUT)
-  SIGNAL s_runReset : STD_LOGIC;        -- Reset external logic at Run Start
-  SIGNAL s_fifoRst  : STD_LOGIC;        -- signal to empty the FIFOs
+  SIGNAL s_fiD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (IN)
+  SIGNAL s_foD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (OUT)
+  SIGNAL s_fiTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (IN)
+  SIGNAL s_foTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (OUT)
+  SIGNAL s_fiCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (IN)
+  SIGNAL s_foCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (OUT)
+  SIGNAL s_runReset : std_logic;        -- Reset external logic at Run Start
+  SIGNAL s_fifoRst  : std_logic;        -- signal to empty the FIFOs
 
   -- new signals
 
-  SIGNAL mode_0_reset, mode_1_reset : STD_LOGIC;  -- state machine reset signals decoded from mode bit(s)
+  SIGNAL mode_0_reset, mode_1_reset : std_logic;  -- state machine reset signals decoded from mode bit(s)
 
-  SIGNAL geo_data    : STD_LOGIC_VECTOR (31 DOWNTO 0);
-  SIGNAL stuff_value : STD_LOGIC_VECTOR (31 DOWNTO 0);  -- stuff value selected by control_one state machine
-  SIGNAL stuff       : STD_LOGIC_VECTOR ( 1 DOWNTO 0);  -- control signal from control_one which selects stuff value
+  SIGNAL geo_data    : std_logic_vector (31 DOWNTO 0);
+  SIGNAL stuff_value : std_logic_vector (31 DOWNTO 0);  -- stuff value selected by control_one state machine
+  SIGNAL stuff       : std_logic_vector ( 1 DOWNTO 0);  -- control signal from control_one which selects stuff value
 
-  CONSTANT separator_id : STD_LOGIC_VECTOR (3 DOWNTO 0) := "1110";
+  CONSTANT separator_id : std_logic_vector (3 DOWNTO 0) := "1110";
 
 
 -- ****************************************************************
@@ -329,12 +295,12 @@ BEGIN
   -- unused pins pulled low
   rs232sel <= "000";
   rs232enb <= '0';
-  m7_gate  <= '0';
+  -- m7_gate  <= '0';
   spare_c  <= "0000";
-  
+
   -- ************************************************************
   -- MASTER / SLAVE assignment:
-  
+
   MS_LO      <= '0';
   MS_HI      <= '1';
   MS_sel_out <= MS_sel;
@@ -448,11 +414,55 @@ BEGIN
   stretch <= delaya OR delayb;
 
   tdctrig <= stretch;                   -- after stretching to 50ns width
-
+  -- m7_gate <= stretch;                   -- also send it out over "RHIC_STRB" line
+  
   -- TO TEST USING AN EXTERNAL PULSE GENERATOR, USE THE FOLLOWING LINE:
 
   -- tdctrig <= systrigin;   -- external pulse generator at J39 (remember PECL input levels)
 
+  -- use the TCD data to trigger the hptdc
+  HPTDC: PROCESS (tcd_data, tcd_strobe) IS
+  BEGIN  -- PROCESS HPTDC
+    IF tcd_strobe = '1' THEN
+      CASE tcd_data(19 DOWNTO 16) IS
+        WHEN "0100" => trig_from_tcdL0 <= '1';
+        WHEN "0101" => trig_from_tcdL0 <= '1';
+        WHEN "0110" => trig_from_tcdL0 <= '1';
+        WHEN "0111" => trig_from_tcdL0 <= '1';
+        WHEN "1000" => trig_from_tcdL0 <= '1';
+        WHEN "1001" => trig_from_tcdL0 <= '1';
+        WHEN "1010" => trig_from_tcdL0 <= '1'; 
+        WHEN "1011" => trig_from_tcdL0 <= '1'; 
+        WHEN "1100" => trig_from_tcdL0 <= '1'; 
+        WHEN OTHERS => trig_from_tcdL0 <= '0';
+      END CASE;
+    ELSE
+      trig_from_tcdL0 <= '0';
+    END IF;
+  END PROCESS HPTDC;
+  
+  hptdc_trigger_mux : mux_2to1_1bit PORT MAP (
+    data0  => trig_from_ctr,
+    data1  => trig_from_tcdL0,
+    sel    => control_select,
+    result => hptdc_trig_presync );  
+
+  DFF_c : DFF_sclr PORT MAP (
+    clock => global40mhz,
+    sclr  => '0',
+    aclr  => '0',
+    data  => hptdc_trig_presync,
+    q     => delayc );
+
+  DFF_d : DFF_sclr PORT MAP (
+    clock => global40mhz,
+    sclr  => '0',
+    aclr  => '0',
+    data  => delayc,
+    q     => delayd );
+
+  m7_gate <= delayc OR delayd;
+  
   -- Turn on TDIG clocks:
 
   enable_trayclks <= '1';
@@ -690,7 +700,7 @@ BEGIN
   -- this signal detects that select ctr has moved to next half tray
   sel_eq_3 <= bool2sl(ctr_sel = "011");
 
-  mode_1_reset <= (NOT control_select) OR s_runReset;   -- "control_select" = mcu_config[0]
+  mode_1_reset <= (NOT control_select) OR s_runReset;  -- "control_select" = mcu_config[0]
   
   Control_one : COMPONENT CTL_ONE PORT MAP (
     clk           => clk,
@@ -895,7 +905,7 @@ BEGIN
   -- ***************************************************************
   -- Here is where the L2 processing is happening:
   -- ***************************************************************
-  
+
   --    first we transfer all L0 data into an L2 FIFO.
 
   -- L2 buffer before DDL fifo:
@@ -948,15 +958,15 @@ BEGIN
   l2main : PROCESS (clk, s_fifoRst)
     VARIABLE xs_present : xfer_state;
     VARIABLE xs_next    : xfer_state;
-    VARIABLE stop_xfer  : BOOLEAN;
+    VARIABLE stop_xfer  : boolean;
     
   BEGIN  -- PROCESS l2main
-    IF (s_fifoRst = '1') THEN                 -- asynchronous reset (active high)
+    IF (s_fifoRst = '1') THEN           -- asynchronous reset (active high)
       xs_present := XS_IDLE;
       xs_next    := XS_IDLE;
       stop_xfer  := false;
       
-    ELSIF clk'EVENT AND clk = '1' THEN  -- rising clock edge
+    ELSIF clk'event AND clk = '1' THEN  -- rising clock edge
       data_sel      <= '0';
       wrreq_ddlfifo <= '0';
       rd_l2fifo     <= '0';
@@ -972,8 +982,8 @@ BEGIN
           wrreq_ddlfifo <= '1';
           xs_next       := XS_L2;
         WHEN XS_L2 =>
-          data_sel      <= '1';
-          xs_next       := XS_L2a;
+          data_sel <= '1';
+          xs_next  := XS_L2a;
         WHEN XS_L2a =>                  -- add some extra settling time
           wrreq_ddlfifo <= '1';
           data_sel      <= '1';
@@ -1085,7 +1095,7 @@ BEGIN
     prn  => '1',
     q    => br_stretchb);
   br_stretchout <= br_stretcha OR br_stretchb;
-  
+
   mcu_bunch_reset <= (mcu_decode(7) AND mcu_write_to_pld) OR br_stretchout;
 
   -- This pulse is synchronized because it comes from the MCU.
