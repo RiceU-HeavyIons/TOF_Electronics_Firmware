@@ -1,4 +1,4 @@
--- $Id: tdig_pldv3.vhd,v 1.8 2006-03-09 22:02:28 jschamba Exp $
+-- $Id: tdig_pldv3.vhd,v 1.9 2006-03-10 21:25:46 jschamba Exp $
 
 -- change log
 --
@@ -21,6 +21,8 @@ USE lpm.lpm_components.ALL;
 
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.ALL;  -- gets global clk primitive
+LIBRARY altera;
+USE altera.altera_primitives_components.ALL;
 
 USE work.tdig_package.ALL;
 
@@ -44,7 +46,7 @@ ENTITY TDIG_pldv3 IS
       TDI_TDC          : OUT std_logic_vector (4 DOWNTO 1);
       TDI_EXT, TDI_MCU : IN  std_logic;
 
-      TRST_TDC         : OUT std_logic_vector (4 DOWNTO 1);
+      TRST_TDC : OUT std_logic_vector (4 DOWNTO 1);
 
       -- PUSHBUTTON INPUT -------------------------------------------
 
@@ -159,9 +161,9 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
 
   -- signals
   SIGNAL global_clk_40M : std_logic;
-  SIGNAL global_reset   : std_logic;
+  -- SIGNAL global_reset   : std_logic;
 
-  SIGNAL LED_MCU : std_logic_vector (6 DOWNTO 0);
+  -- SIGNAL LED_MCU : std_logic_vector (6 DOWNTO 0);
   SIGNAL LED_EXT : std_logic_vector (6 DOWNTO 0);
 
   SIGNAL trig_ff_out     : std_logic_vector (4 DOWNTO 0);
@@ -169,9 +171,9 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
   SIGNAL bReset_ff_out   : std_logic_vector (4 DOWNTO 0);
   SIGNAL hit_delay_out   : std_logic;
 
-  SIGNAL TDC_token  : std_logic;
-  SIGNAL state_test : std_logic;
-  SIGNAL del_trig   : std_logic;
+  SIGNAL TDC_token : std_logic;
+  -- SIGNAL state_test : std_logic;
+  SIGNAL del_trig  : std_logic;
 
   SIGNAL gate1, gate2, gate3 : std_logic;
 
@@ -182,23 +184,23 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
 
   --**************************************************************************************
 
-  SIGNAL serializer_input_strobe                                         : std_logic;
-  SIGNAL downstream_32b_data, downstream_fifo_out, serializer_input_data : std_logic_vector(31 DOWNTO 0);
-  SIGNAL rdo_32b_data, tdc_fifo_out                                      : std_logic_vector(31 DOWNTO 0);
+  SIGNAL serializer_input_strobe                            : std_logic;
+  SIGNAL downstream_32b_data, downstream_fifo_out           : std_logic_vector(31 DOWNTO 0);
+  SIGNAL rdo_32b_data, tdc_fifo_out , serializer_input_data : std_logic_vector(31 DOWNTO 0);
 
-  SIGNAL serializer_ready, outmux_sel, outmux_clken, downstream_ready : std_logic;
+  SIGNAL serializer_ready, outmux_clken, downstream_ready : std_logic;
 
   SIGNAL data_enable, fifo_ds_empty, output_busy, pos_dnstrm : std_logic;  -- main controller inputs
 
   SIGNAL separator : std_logic;         -- valid when data word is a separator word (high nibble = "1110")
 
-  SIGNAL tdc_fifo_empty, tdc_fifo_full, trigger_pulse, en_tdc_rdo : std_logic;  -- main controller inputs
+  SIGNAL tdc_fifo_empty, tdc_fifo_full, en_tdc_rdo : std_logic;  -- main controller inputs
 
   SIGNAL rd_ds_fifo, rd_tdc_fifo, sel_ds_fifo : std_logic;  -- main controller outputs
 
   SIGNAL fifo_ds_full, rdo_dout_strobe : std_logic;  -- test signal, not used
 
-  SIGNAL switch_lsb, pushbutton_debounced_input, mcu_mux_sel      : std_logic;
+  SIGNAL pushbutton_debounced_input                               : std_logic;
   SIGNAL data_to_mcu, data_from_mcu, test_data, mode_data         : std_logic_vector (7 DOWNTO 0);
   SIGNAL mcu_decode, tdc_mirror_fifo_data, jtag_data, status_data : std_logic_vector (7 DOWNTO 0);
   SIGNAL config_data, reset_data                                  : std_logic_vector (7 DOWNTO 0);
@@ -208,7 +210,7 @@ ARCHITECTURE SYN OF TDIG_pldv3 IS
   SIGNAL mcu_fifo_empty, data_strobe, dummy, readbar_write                             : std_logic;
   SIGNAL mcu_write_to_pld, mcu_read_from_pld, reset_from_mcu, mcu_read_tdc_data_strobe : std_logic;
 
-  SIGNAL gated_separator, no_trigger, no_separator        : std_logic;
+  SIGNAL no_trigger, no_separator                         : std_logic;
   SIGNAL test_reg_write, mode_reg_write, config_reg_write : std_logic;  -- wr enables mcu writes to registers
   SIGNAL jtag_reg_write, reset_reg_write                  : std_logic;  -- wr enables mcu writes to registers
 
@@ -481,13 +483,13 @@ BEGIN
 
   -- initial test setup:
 
-  data_enable <= '1';       -- always turn on data path to respond to trigger inputs
+  data_enable <= '1';                   -- always turn on data path to respond to trigger inputs
 
-  pos_dnstrm <= NOT sw(0);  -- even tray position is "downstream" and reads only local fifo
-                            -- odd tray position is "upstream" and reads local fifo, then
-                            -- downstream fifo
+  pos_dnstrm <= NOT sw(0);              -- even tray position is "downstream" and reads only local fifo
+                                        -- odd tray position is "upstream" and reads local fifo, then
+                                        -- downstream fifo
 
-  DS_BUFF_EN <= sw(0);      -- upstream board will enable it's downstream input buffers
+  DS_BUFF_EN <= sw(0);                  -- upstream board will enable it's downstream input buffers
 
   output_busy <= NOT serializer_ready;
 
@@ -528,10 +530,10 @@ BEGIN
     ser_out        => TDC_SER_OUT(1),
     strb_out       => TDC_STRB_OUT(1),
     token_out      => TDC_TOKEN_OUT(1),      -- final token input from TDC chain
-    -- using trigger matching? assign trig_ff_out(4)
-    -- if not using trigger matching, just assign '1'
-    -- REAL CONFIGURATION: use 'en_tdc_rdo' signal from main controller
-    -- 11/3 test-- trigger is suspect.  go back to trig_ff_out(4)
+                                             -- using trigger matching? assign trig_ff_out(4)
+                                             -- if not using trigger matching, just assign '1'
+                                             -- REAL CONFIGURATION: use 'en_tdc_rdo' signal from main controller
+                                             -- 11/3 test-- trigger is suspect.  go back to trig_ff_out(4)
     trigger        => trig_ff_out(4),        -- en_tdc_rdo
     trg_reset      => s_commonReset,
     token_in       => TDC_token,             -- sends output token to first tdc in chain
@@ -685,10 +687,10 @@ BEGIN
   --            0: Byteblaster port
 
   trst_tdc(4 DOWNTO 1) <= "1111";       -- default inactive TRST to all 4 TDCs !!!!!
-  -- Byteblaster does not source TRST
+                                        -- Byteblaster does not source TRST
 
   source_sel <= jtag_data(2);           -- 1 selects mcu jtag, 0 selects byteblaster jtag
-  -- jtag_data is a register written by mcu at adr = 3
+                                        -- jtag_data is a register written by mcu at adr = 3
   
   
   source_select_mux : mux_2_to_1_3bit PORT MAP (
@@ -806,12 +808,12 @@ BEGIN
   -- sync TDC_TRIG_IN to 40MHz and shorten to one clock
   -- use to trigger readout state machine
   trig_ff0 : dff_sclr_sset PORT MAP (
-    data  => TDC_TRIG_IN,             --SMB_in(1), 
+    data  => TDC_TRIG_IN,               --SMB_in(1), 
     q     => trig_ff_out(0),
     clock => global_clk_40M,
     sclr  => '0',
     sset  => '0');
-  
+
   G1 : FOR i IN 1 TO 3 GENERATE
     trig_ffs : dff_sclr_sset PORT MAP (
       data  => trig_ff_out(i-1),
