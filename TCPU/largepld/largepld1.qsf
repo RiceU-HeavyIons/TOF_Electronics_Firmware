@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 4.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:18:38  AUGUST 15, 2004"
-set_global_assignment -name LAST_QUARTUS_VERSION "5.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "5.1 SP2"
 set_global_assignment -name VHDL_FILE my_conversions.vhd
 set_global_assignment -name VHDL_FILE my_utilities.vhd
 set_global_assignment -name VHDL_FILE receiver.vhd
