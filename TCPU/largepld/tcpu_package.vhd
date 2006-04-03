@@ -26,7 +26,7 @@ PACKAGE tcpu_package IS
     enabledt : IN    std_logic;
     enabletr : IN    std_logic;
     tridata  : INOUT std_logic_vector (7 DOWNTO 0);
-    result   : OUT   std_logic_vector (7 DOWNTO 0));
+    result   : OUT   std_logic_vector (7 DOWNTO 0) );
   END COMPONENT;
 
   -- ********************************************************************************
@@ -43,17 +43,17 @@ PACKAGE tcpu_package IS
         fiLF_N     : IN  std_logic;
         fiCTRL_N   : IN  std_logic;
         fiD        : IN  std_logic_vector(31 DOWNTO 0);
-        fifo_q     : IN  std_logic_vector(31 DOWNTO 0);  -- interface fifo data output port
-        fifo_empty : IN  std_logic;                      -- interface fifo "emtpy" signal
-        ext_trg    : IN  std_logic;                      -- external trigger
-        run_reset  : OUT std_logic;                      -- external logic reset at Run Start
+        fifo_q     : IN  std_logic_vector(31 DOWNTO 0); -- interface fifo data output port
+        fifo_empty : IN  std_logic;     		-- interface fifo "emtpy" signal
+        ext_trg    : IN  std_logic;     		-- external trigger
+        run_reset  : OUT std_logic;      	   	-- external logic reset at Run Start
         foD        : OUT std_logic_vector(31 DOWNTO 0);
         foBSY_N    : OUT std_logic;
         foCTRL_N   : OUT std_logic;
         foTEN_N    : OUT std_logic;
-        fifo_rdreq : OUT std_logic                       -- interface fifo read request
-                                                         -- (fifo should be clocked by same clock that 
-                                                         --  drives fiCLK)
+        fifo_rdreq : OUT std_logic      -- interface fifo read request
+                                     	-- (fifo should be clocked by same clock that 
+                                     	--  drives fiCLK)
         );
   END COMPONENT;
 
@@ -80,10 +80,8 @@ PACKAGE tcpu_package IS
   -- controllers and state machines *****************************
   
   COMPONENT CTL_ONE IS PORT (
-    CLK, CMD_L0, FIFO_EMPTY                       : IN  std_logic;
-    RESET, SEL_EQ_0, SEPARATOR, TIMEOUT, SEL_EQ_3 : IN  std_logic;
-    CLR_SEL, CLR_TIMEOUT, CTL_ONE_STUFF, INCR_SEL : OUT std_logic;
-    RD_FIFO, STUFF0, STUFF1, TRIG_TO_TDC, WR_FIFO : OUT std_logic);
+    CLK, CMD_L0, FIFO_EMPTY, RESET, SEL_EQ_0, SEL_EQ_3, SEPARATOR, TIMEOUT                       : IN  std_logic;
+    CLR_SEL, CLR_TIMEOUT, INCR_SEL, RD_FIFO, TRIG_TO_TDC, WR_FIFO, CTL_ONE_STUFF, stuff0, stuff1 : OUT std_logic);
   END COMPONENT;
   
   COMPONENT ALWREAD IS PORT (
@@ -108,9 +106,9 @@ PACKAGE tcpu_package IS
   END COMPONENT;
 
   COMPONENT pushbutton_pulse
-    PORT(clk, reset  : IN  std_logic;
+    PORT( clk, reset : IN  std_logic;
           pushbutton : IN  std_logic;
-          pulseout   : OUT std_logic);
+          pulseout   : OUT std_logic );
   END COMPONENT;
   
   COMPONENT TDIGCTL IS PORT (
@@ -135,8 +133,8 @@ PACKAGE tcpu_package IS
     rdo_32b_data   : OUT std_logic_vector(31 DOWNTO 0);
     rdo_data_valid : OUT std_logic;
     sw             : IN  std_logic_vector(2 DOWNTO 0);  -- position switch input for separator word );       
-    no_separator   : IN  std_logic;                     -- TDIG config bit for noise testing
-    no_trigger     : IN  std_logic);                    -- TDIG config bit for noise testing
+    no_separator   : IN  std_logic;     -- TDIG config bit for noise testing
+    no_trigger     : IN  std_logic );   -- TDIG config bit for noise testing
   END COMPONENT;
 
   COMPONENT ctl4to32 IS
@@ -145,7 +143,7 @@ PACKAGE tcpu_package IS
   END COMPONENT;
 
   COMPONENT sm_sync_enable IS
-    PORT(rega_enable   : IN  std_logic;
+    PORT( rega_enable  : IN  std_logic;
           clk, reset   : IN  std_logic;  -- reset is async               
           regb_enable  : OUT std_logic;  -- clock enable for register b
           output_valid : OUT std_logic
@@ -160,7 +158,7 @@ PACKAGE tcpu_package IS
     select_input    : OUT std_logic_vector(2 DOWNTO 0);
     read_input_fifo : OUT std_logic_vector(4 DOWNTO 0);
     write_ddl_fifo  : OUT std_logic_vector(1 DOWNTO 0);
-    ddl_fifo_sel    : OUT std_logic;    -- select signal for ping-pong output fifos    
+    ddl_fifo_sel    : OUT std_logic;  -- select signal for ping-pong output fifos    
     error1          : OUT std_logic_vector(7 DOWNTO 0);
     trigger_pulse   : OUT std_logic;
     wr_final_fifo   : OUT std_logic;
@@ -168,7 +166,7 @@ PACKAGE tcpu_package IS
     mcu_config      : IN  std_logic_vector(7 DOWNTO 0);
     mcu_filter_sel  : IN  std_logic_vector(7 DOWNTO 0);
     wr_mcu_fifo     : OUT std_logic;
-    rd_mcu_fifo     : IN  std_logic);                                                       
+    rd_mcu_fifo     : IN  std_logic );                                                       
   END COMPONENT;
 
   COMPONENT CTLV1 IS
@@ -186,26 +184,26 @@ PACKAGE tcpu_package IS
     clk              : IN  std_logic;
     reset            : IN  std_logic;
     din              : IN  std_logic_vector(31 DOWNTO 0);
-    din_strobe       : IN  std_logic;                     -- synchronous with input data: used as clock enable 
-    -- for input register and initiates state machine ctr         
+    din_strobe       : IN  std_logic;  -- synchronous with input data: used as clock enable 
+                                       -- for input register and initiates state machine ctr         
     dout             : OUT std_logic_vector(3 DOWNTO 0);
-    dclk             : OUT std_logic;                     -- source synchronous clock transmitted with data over cable
-    dout_strobe      : OUT std_logic;                     -- data strobe transmitted with data over cable
-    -- this signal goes low after last of 8 4bit words is xmitted
-    ready            : OUT std_logic;                     -- status that counter is idle
+    dclk             : OUT std_logic;  -- source synchronous clock transmitted with data over cable
+    dout_strobe      : OUT std_logic;  -- data strobe transmitted with data over cable
+                                       -- this signal goes low after last of 8 4bit words is xmitted
+    ready            : OUT std_logic;   -- status that counter is idle
     vis_ctr_val      : OUT std_logic_vector(3 DOWNTO 0);  -- state machine counter
-    vis_count_enable : OUT std_logic                      -- control flip flop output
+    vis_count_enable : OUT std_logic    -- control flip flop output
     );
   END COMPONENT par32_to_ser4;
 
   COMPONENT ser_4bit_to_par IS
-    PORT(din            : IN  std_logic_vector(3 DOWNTO 0);   -- data from xmit board
-          dclk          : IN  std_logic;                      -- source synchronous clock from xmit board
-          dstrobe       : IN  std_logic;                      -- strobe from xmit board that marks word boundary
-                                                              -- serves as data valid to enable clock to 4bit register
-          clk           : IN  std_logic;                      -- master receive clk
-          reset         : IN  std_logic;                      -- synchronous reset 
-                                                              -- dclk and clk must have constant phase difference
+    PORT( din           : IN  std_logic_vector(3 DOWNTO 0);  -- data from xmit board
+          dclk          : IN  std_logic;  -- source synchronous clock from xmit board
+          dstrobe       : IN  std_logic;  -- strobe from xmit board that marks word boundary
+                                          -- serves as data valid to enable clock to 4bit register
+          clk           : IN  std_logic;  -- master receive clk
+          reset         : IN  std_logic;  -- synchronous reset 
+                                          -- dclk and clk must have constant phase difference
           dout          : OUT std_logic_vector(31 DOWNTO 0);  -- parallel data word output to TCPU fifo 
           output_strobe : OUT std_logic
           --rega_en, regb_en : out std_logic -- test pins
@@ -214,16 +212,16 @@ PACKAGE tcpu_package IS
   END COMPONENT ser_4bit_to_par;
 
   COMPONENT trigger_interface IS
-    PORT(clk, reset     : IN  std_logic;
+    PORT( clk, reset    : IN  std_logic;
           tcd_4bit_data : IN  std_logic_vector(3 DOWNTO 0);
           tcd_clk_50mhz : IN  std_logic;
           tcd_clk_10mhz : IN  std_logic;
           tcd_word      : OUT std_logic_vector(19 DOWNTO 0);
-          tcd_strobe    : OUT std_logic);           
+          tcd_strobe    : OUT std_logic );           
   END COMPONENT;
 
   COMPONENT core_data_path_verb IS
-    PORT(clk, reset            : IN  std_logic;
+    PORT( clk, reset           : IN  std_logic;
           trigger_input_strobe : IN  std_logic;
           tdig_input_strobe    : IN  std_logic_vector(4 DOWNTO 1);
           tcd_data             : IN  std_logic_vector(19 DOWNTO 0);
@@ -241,7 +239,7 @@ PACKAGE tcpu_package IS
           mcu_filter_sel       : IN  std_logic_vector(7 DOWNTO 0);
           mcu_config           : IN  std_logic_vector(7 DOWNTO 0);
           mcu_mode             : IN  std_logic_vector(7 DOWNTO 0);
-          mcu_strobes_fifo     : IN  std_logic);
+          mcu_strobes_fifo     : IN  std_logic );
   END COMPONENT;
 
   -- registers **********************************
@@ -251,15 +249,15 @@ PACKAGE tcpu_package IS
     enable : IN  std_logic;
     sclr   : IN  std_logic;
     data   : IN  std_logic_vector (7 DOWNTO 0);
-    q      : OUT std_logic_vector (7 DOWNTO 0));
+    q      : OUT std_logic_vector (7 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT reg4_en_aclr IS
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            enable : IN  std_logic;
            aclr   : IN  std_logic;
            data   : IN  std_logic_vector (3 DOWNTO 0);
-           q      : OUT std_logic_vector (3 DOWNTO 0));
+           q      : OUT std_logic_vector (3 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT reg4_en IS
@@ -272,12 +270,12 @@ PACKAGE tcpu_package IS
 
 
   COMPONENT reg20_en
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            enable : IN  std_logic;
            sclr   : IN  std_logic;
            aclr   : IN  std_logic;
            data   : IN  std_logic_vector (19 DOWNTO 0);
-           q      : OUT std_logic_vector (19 DOWNTO 0));
+           q      : OUT std_logic_vector (19 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT reg32_en                    -- 32 bit D register with clock enable
@@ -301,15 +299,15 @@ PACKAGE tcpu_package IS
     aclr   : IN  std_logic;
     aset   : IN  std_logic;
     data   : IN  std_logic;
-    q      : OUT std_logic);
+    q      : OUT std_logic );
   END COMPONENT;
 
   COMPONENT DFF_sclr
-    PORT (clock : IN  std_logic;
-           sclr : IN  std_logic;
-           aclr : IN  std_logic;
-           data : IN  std_logic;
-           q    : OUT std_logic);
+    PORT ( clock : IN  std_logic;
+           sclr  : IN  std_logic;
+           aclr  : IN  std_logic;
+           data  : IN  std_logic;
+           q     : OUT std_logic );
   END COMPONENT;
 
   COMPONENT DFF_sclr_sset
@@ -317,13 +315,13 @@ PACKAGE tcpu_package IS
          sclr  : IN  std_logic;
          sset  : IN  std_logic;
          data  : IN  std_logic;
-         q     : OUT std_logic);
+         q     : OUT std_logic );
   END COMPONENT;
 
   COMPONENT tff_sclr PORT (
     clock : IN  std_logic;
     sclr  : IN  std_logic;
-    q     : OUT std_logic);
+    q     : OUT std_logic );
   END COMPONENT;
 
   -- decoders  ***************************************************
@@ -337,7 +335,7 @@ PACKAGE tcpu_package IS
     eq4  : OUT std_logic;
     eq5  : OUT std_logic;
     eq6  : OUT std_logic;
-    eq7  : OUT std_logic);
+    eq7  : OUT std_logic );
   END COMPONENT;
 
   -- multiplexers ***************************************************
@@ -346,14 +344,14 @@ PACKAGE tcpu_package IS
     data1x : IN  std_logic_vector (31 DOWNTO 0);
     data0x : IN  std_logic_vector (31 DOWNTO 0);
     sel    : IN  std_logic;
-    result : OUT std_logic_vector (31 DOWNTO 0));
+    result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_2to1_1bit PORT (
     data1  : IN  std_logic;
     data0  : IN  std_logic;
     sel    : IN  std_logic;
-    result : OUT std_logic);
+    result : OUT std_logic );
   END COMPONENT;
 
   COMPONENT mux_5_to_1 PORT (
@@ -363,7 +361,7 @@ PACKAGE tcpu_package IS
     data1  : IN  std_logic;
     data0  : IN  std_logic;
     sel    : IN  std_logic_vector (2 DOWNTO 0);
-    result : OUT std_logic);
+    result : OUT std_logic );
   END COMPONENT;
   
   COMPONENT mux_3_by_32 PORT (
@@ -371,7 +369,7 @@ PACKAGE tcpu_package IS
     data1x : IN  std_logic_vector (31 DOWNTO 0);
     data0x : IN  std_logic_vector (31 DOWNTO 0);
     sel    : IN  std_logic_vector (1 DOWNTO 0);
-    result : OUT std_logic_vector (31 DOWNTO 0));
+    result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_4x32 PORT (
@@ -380,7 +378,7 @@ PACKAGE tcpu_package IS
     data1x : IN  std_logic_vector (31 DOWNTO 0);
     data0x : IN  std_logic_vector (31 DOWNTO 0);
     sel    : IN  std_logic_vector (1 DOWNTO 0);
-    result : OUT std_logic_vector (31 DOWNTO 0));
+    result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_8_by_8bit PORT (
@@ -393,35 +391,35 @@ PACKAGE tcpu_package IS
     data1x : IN  std_logic_vector (7 DOWNTO 0);
     data0x : IN  std_logic_vector (7 DOWNTO 0);
     sel    : IN  std_logic_vector (2 DOWNTO 0);
-    result : OUT std_logic_vector (7 DOWNTO 0));
+    result : OUT std_logic_vector (7 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT two_by_3bit_mux PORT (
     data1x : IN  std_logic_vector (2 DOWNTO 0);
     data0x : IN  std_logic_vector (2 DOWNTO 0);
     sel    : IN  std_logic;
-    result : OUT std_logic_vector (2 DOWNTO 0));
+    result : OUT std_logic_vector (2 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT two_by_8bit_mux
-    PORT (data1x  : IN  std_logic_vector (7 DOWNTO 0);
+    PORT ( data1x : IN  std_logic_vector (7 DOWNTO 0);
            data0x : IN  std_logic_vector (7 DOWNTO 0);
            sel    : IN  std_logic;
            result : OUT std_logic_vector (7 DOWNTO 0));
   END COMPONENT;
 
   COMPONENT mux_2x32_registered
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            aclr   : IN  std_logic := '0';
            clken  : IN  std_logic := '1';
            data1x : IN  std_logic_vector (31 DOWNTO 0);
            data0x : IN  std_logic_vector (31 DOWNTO 0);
            sel    : IN  std_logic;
-           result : OUT std_logic_vector (31 DOWNTO 0));
+           result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_32_to_4
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            aclr   : IN  std_logic := '0';
            clken  : IN  std_logic := '1';
            data8x : IN  std_logic_vector (3 DOWNTO 0);
@@ -434,13 +432,13 @@ PACKAGE tcpu_package IS
            data1x : IN  std_logic_vector (3 DOWNTO 0);
            data0x : IN  std_logic_vector (3 DOWNTO 0);
            sel    : IN  std_logic_vector (3 DOWNTO 0);
-           result : OUT std_logic_vector (3 DOWNTO 0));
+           result : OUT std_logic_vector (3 DOWNTO 0) );
   END COMPONENT;
 
   -- 4 input by 32bit mux with registered output to select data
   -- from TDIG input fifos
   COMPONENT mux_4x32_registered
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            aclr   : IN  std_logic := '0';
            clken  : IN  std_logic := '1';
            data3x : IN  std_logic_vector (31 DOWNTO 0);
@@ -448,7 +446,7 @@ PACKAGE tcpu_package IS
            data1x : IN  std_logic_vector (31 DOWNTO 0);
            data0x : IN  std_logic_vector (31 DOWNTO 0);
            sel    : IN  std_logic_vector (1 DOWNTO 0);
-           result : OUT std_logic_vector (31 DOWNTO 0));
+           result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
   
   COMPONENT mux_5x32_unreg PORT (
@@ -458,7 +456,7 @@ PACKAGE tcpu_package IS
     data1x : IN  std_logic_vector (31 DOWNTO 0);
     data0x : IN  std_logic_vector (31 DOWNTO 0);
     sel    : IN  std_logic_vector (2 DOWNTO 0);
-    result : OUT std_logic_vector (31 DOWNTO 0));
+    result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_5x32_registered
@@ -471,11 +469,11 @@ PACKAGE tcpu_package IS
           data1x : IN  std_logic_vector (31 DOWNTO 0);
           data0x : IN  std_logic_vector (31 DOWNTO 0);
           sel    : IN  std_logic_vector (2 DOWNTO 0);
-          result : OUT std_logic_vector (31 DOWNTO 0));
+          result : OUT std_logic_vector (31 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT mux_4x8_reg
-    PORT (clock   : IN  std_logic;
+    PORT ( clock  : IN  std_logic;
            aclr   : IN  std_logic := '0';
            clken  : IN  std_logic := '1';
            data3x : IN  std_logic_vector (7 DOWNTO 0);
@@ -493,7 +491,7 @@ PACKAGE tcpu_package IS
     cnt_en : IN  std_logic;
     aclr   : IN  std_logic;
     q      : OUT std_logic_vector (6 DOWNTO 0);
-    cout   : OUT std_logic);
+    cout   : OUT std_logic );
   END COMPONENT;
 
   COMPONENT trigger_counter_15bit PORT (
@@ -501,7 +499,7 @@ PACKAGE tcpu_package IS
     cnt_en : IN  std_logic;
     aclr   : IN  std_logic;
     q      : OUT std_logic_vector (14 DOWNTO 0);
-    cout   : OUT std_logic);
+    cout   : OUT std_logic );
   END COMPONENT;
 
   COMPONENT trigger_counter_12bit PORT (
@@ -509,31 +507,37 @@ PACKAGE tcpu_package IS
     cnt_en : IN  std_logic;
     aclr   : IN  std_logic;
     q      : OUT std_logic_vector (11 DOWNTO 0);
-    cout   : OUT std_logic);
+    cout   : OUT std_logic );
+  END COMPONENT;
+
+  COMPONENT timeout_ctr
+    PORT(clock  : IN  std_logic;
+         cnt_en : IN  std_logic;
+         sclr   : IN  std_logic;
+         q      : OUT std_logic_vector (9 DOWNTO 0);
+         cout   : OUT std_logic );
   END COMPONENT;
 
   COMPONENT data_sel_ctr
-    PORT(clock   : IN  std_logic;
+    PORT( clock  : IN  std_logic;
           cnt_en : IN  std_logic;
           sclr   : IN  std_logic;
           aclr   : IN  std_logic;
-          q      : OUT std_logic_vector (2 DOWNTO 0));
+          q      : OUT std_logic_vector (2 DOWNTO 0) );
   END COMPONENT;
 
   COMPONENT timeout
-    GENERIC (
-      nbit : integer);
-    PORT(clk, reset     : IN  std_logic;
+    PORT( clk, reset    : IN  std_logic;
           clr_timeout   : IN  std_logic;
-          timeout_valid : OUT std_logic);
+          timeout_valid : OUT std_logic );
   END COMPONENT timeout;
 
   COMPONENT ctr_9state
     PORT
-      (clock   : IN  std_logic;
+      ( clock  : IN  std_logic;
         clk_en : IN  std_logic;
         aclr   : IN  std_logic;
-        q      : OUT std_logic_vector (3 DOWNTO 0));
+        q      : OUT std_logic_vector (3 DOWNTO 0) );
   END COMPONENT;
 
   -- decoders  ***************************************************  
@@ -545,7 +549,7 @@ PACKAGE tcpu_package IS
     eq1    : OUT std_logic;
     eq2    : OUT std_logic;
     eq3    : OUT std_logic;
-    eq4    : OUT std_logic);
+    eq4    : OUT std_logic );
   END COMPONENT;
 
   -- fifos  ***************************************************
@@ -559,7 +563,7 @@ PACKAGE tcpu_package IS
           aclr  : IN  std_logic;
           q     : OUT std_logic_vector (31 DOWNTO 0);
           full  : OUT std_logic;
-          empty : OUT std_logic);
+          empty : OUT std_logic );
   END COMPONENT;
 
   COMPONENT input_fifo_256x32
@@ -570,64 +574,64 @@ PACKAGE tcpu_package IS
           aclr  : IN  std_logic;
           q     : OUT std_logic_vector (31 DOWNTO 0);
           full  : OUT std_logic;
-          empty : OUT std_logic);
+          empty : OUT std_logic );
   END COMPONENT;
 
   COMPONENT input_fifo64dx20w
-    PORT (data   : IN  std_logic_vector (19 DOWNTO 0);
+    PORT ( data  : IN  std_logic_vector (19 DOWNTO 0);
            wrreq : IN  std_logic;
            rdreq : IN  std_logic;
            clock : IN  std_logic;
            aclr  : IN  std_logic;
            q     : OUT std_logic_vector (19 DOWNTO 0);
            full  : OUT std_logic;
-           empty : OUT std_logic);
+           empty : OUT std_logic );
   END COMPONENT;
 
   COMPONENT output_fifo_256x32
-    PORT (data   : IN  std_logic_vector (31 DOWNTO 0);
+    PORT ( data  : IN  std_logic_vector (31 DOWNTO 0);
            wrreq : IN  std_logic;
            rdreq : IN  std_logic;
            clock : IN  std_logic;
            aclr  : IN  std_logic;
            q     : OUT std_logic_vector (31 DOWNTO 0);
            full  : OUT std_logic;
-           empty : OUT std_logic);
+           empty : OUT std_logic );
   END COMPONENT;
 
   COMPONENT mcu_fifo_256x24
-    PORT (data   : IN  std_logic_vector (23 DOWNTO 0);
+    PORT ( data  : IN  std_logic_vector (23 DOWNTO 0);
            wrreq : IN  std_logic;
            rdreq : IN  std_logic;
            clock : IN  std_logic;
            aclr  : IN  std_logic;
            q     : OUT std_logic_vector (23 DOWNTO 0);
            full  : OUT std_logic;
-           empty : OUT std_logic);
+           empty : OUT std_logic );
   END COMPONENT;
 
   COMPONENT output_fifo_1024x32
     PORT
-      (data   : IN  std_logic_vector (31 DOWNTO 0);
+      ( data  : IN  std_logic_vector (31 DOWNTO 0);
         wrreq : IN  std_logic;
         rdreq : IN  std_logic;
         clock : IN  std_logic;
         aclr  : IN  std_logic;
         q     : OUT std_logic_vector (31 DOWNTO 0);
         full  : OUT std_logic;
-        empty : OUT std_logic);
+        empty : OUT std_logic );
   END COMPONENT;
-
+  
   COMPONENT output_fifo_2048x32
     PORT
-      (data   : IN  std_logic_vector (31 DOWNTO 0);
+      ( data  : IN  std_logic_vector (31 DOWNTO 0);
         wrreq : IN  std_logic;
         rdreq : IN  std_logic;
         clock : IN  std_logic;
         aclr  : IN  std_logic;
         q     : OUT std_logic_vector (31 DOWNTO 0);
         full  : OUT std_logic;
-        empty : OUT std_logic);
+        empty : OUT std_logic );
   END COMPONENT;
   
 
