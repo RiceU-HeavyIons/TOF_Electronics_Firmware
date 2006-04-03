@@ -342,7 +342,6 @@ set_global_assignment -name VHDL_FILE DFF_sclr_sset.vhd
 set_global_assignment -name VHDL_FILE data_sel_ctr.vhd
 set_global_assignment -name VHDL_FILE timeout.vhd
 set_global_assignment -name VHDL_FILE DFF_sclr.vhd
-set_global_assignment -name VHDL_FILE trigger_interface.vhd
 set_global_assignment -name VHDL_FILE ser_4bit_to_par.vhd
 set_global_assignment -name VHDL_FILE largepld1.vhd
 set_global_assignment -name VHDL_FILE pushbutton_pulse.vhd
