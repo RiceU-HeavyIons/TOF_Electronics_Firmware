@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.24 2006-03-31 21:44:13 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.24.2.1 2006-04-03 21:07:25 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -242,7 +242,6 @@ ARCHITECTURE ver_four OF largepld1 IS
 
   -- signal which selects which state machine is in control (set by MCU config bit)
   SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : std_logic;
-  SIGNAL sel_eq_3                                    : std_logic;
   SIGNAL clr_timeout, timeout_valid                  : std_logic;
   SIGNAL ctr_sel                                     : std_logic_vector(2 DOWNTO 0);
 
@@ -636,14 +635,27 @@ BEGIN
     full  => infifo_full(4),
     empty => infifo_empty(4));
 
-  tcd_input : trigger_interface PORT MAP (
-    clk           => global40mhz,
-    reset         => reset,
-    tcd_4bit_data => tcd_d,
-    tcd_clk_50mhz => tcd_50mhz,
-    tcd_clk_10mhz => tcd_10_mhz,
-    tcd_word      => tcd_data,
-    tcd_strobe    => tcd_strobe);       -- data valid strobe to clock data to fifo      
+  -- trigger interface for teststand:
+  -- use systrigin as the trigger, but strobe in the
+  -- correct trigger data, where tcd_data[19:16] = 4
+  tcd_data <= X"40001";
+
+  -- now create a one clock wide trigger pulse from
+  --  the edge of systrigin:
+  triggerProc : PROCESS (clk, reset)
+    VARIABLE tr_reg1 : STD_LOGIC;
+    VARIABLE tr_reg2 : STD_LOGIC;
+  BEGIN  -- PROCESS
+    IF (reset = '1') THEN
+      tr_reg1 := '0';
+      tr_reg2 := '0';
+      tcd_strobe <= '0';
+    ELSIF (clk'EVENT AND clk = '1') THEN
+      tcd_strobe <= tr_reg1 AND NOT tr_reg2;
+      tr_reg2 := tr_reg1;
+      tr_reg1 := systrigin;
+    END IF;
+  END PROCESS;
 
   tcd_input_fifo : input_fifo64dx20w PORT MAP (  -- tcd data
     clock => clk,
@@ -690,8 +702,6 @@ BEGIN
 
   -- this signal detects that select ctr has rolled over to initial state
   sel_eq_0 <= bool2sl(ctr_sel = "000");
-  -- this signal detects that select ctr has moved to next half tray
-  sel_eq_3 <= bool2sl(ctr_sel = "011");
 
   mode_1_reset <= (NOT control_select) OR s_runReset;  -- "control_select" = mcu_config[0]
   
@@ -703,7 +713,6 @@ BEGIN
     cmd_l0        => CMD_L0,
     fifo_empty    => input_fifo_empty,
     sel_eq_0      => sel_eq_0,
-    sel_eq_3      => sel_eq_3,
     separator     => separator,
     timeout       => timeout_valid,
     clr_sel       => clr_sel,
@@ -871,7 +880,7 @@ BEGIN
     result => ddl_in_sel);  
 
   -- Geographical data depends on the grey cable currently selected:
-  geo_data <= X"C00000BA" OR (X"0000000" & "000" & sel_eq_3);
+  geo_data <= X"C00000BA";
   
   ddl_stuff_mux1 : mux_4x32 PORT MAP (  -- selects between data path value and stuff value
                                         -- according to select input from ddl_stuff_ctl mux
