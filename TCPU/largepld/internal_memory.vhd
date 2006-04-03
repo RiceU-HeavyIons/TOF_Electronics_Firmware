@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: internal_memory.vhd,v 1.3 2006-03-29 18:56:07 jschamba Exp $
+-- $Id: internal_memory.vhd,v 1.2 2004-12-08 22:52:28 tofp Exp $
 --******************************************************************************
 --*  INTERNAL_MEMORY.VHD
 --*
@@ -61,6 +61,8 @@ ARCHITECTURE SYN OF internal_memory IS
 
   SIGNAL s_im_address : std_logic_vector (8 DOWNTO 0);
   SIGNAL s_im_we      : std_logic;
+  SIGNAL s_im_outenab : std_logic;
+  SIGNAL s_im_dio     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_im_din     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_im_dout    : std_logic_vector (31 DOWNTO 0);
 
