@@ -1,16 +1,22 @@
 # Copyright (C) 1991-2005 Altera Corporation
-# Your use of Altera Corporation's design tools, logic functions 
-# and other software and tools, and its AMPP partner logic       
-# functions, and any output files any of the foregoing           
-# (including device programming or simulation files), and any    
-# associated documentation or information are expressly subject  
-# to the terms and conditions of the Altera Program License      
-# Subscription Agreement, Altera MegaCore Function License       
-# Agreement, or other applicable license agreement, including,   
-# without limitation, that your use is for the sole purpose of   
-# programming logic devices manufactured by Altera and sold by   
-# Altera or its authorized distributors.  Please refer to the    
-# applicable agreement for further details.
+# Any  megafunction  design,  and related netlist (encrypted  or  decrypted),
+# support information,  device programming or simulation file,  and any other
+# associated  documentation or information  provided by  Altera  or a partner
+# under  Altera's   Megafunction   Partnership   Program  may  be  used  only
+# to program  PLD  devices (but not masked  PLD  devices) from  Altera.   Any
+# other  use  of such  megafunction  design,  netlist,  support  information,
+# device programming or simulation file,  or any other  related documentation
+# or information  is prohibited  for  any  other purpose,  including, but not
+# limited to  modification,  reverse engineering,  de-compiling, or use  with
+# any other  silicon devices,  unless such use is  explicitly  licensed under
+# a separate agreement with  Altera  or a megafunction partner.  Title to the
+# intellectual property,  including patents,  copyrights,  trademarks,  trade
+# secrets,  or maskworks,  embodied in any such megafunction design, netlist,
+# support  information,  device programming or simulation file,  or any other
+# related documentation or information provided by  Altera  or a megafunction
+# partner, remains with Altera, the megafunction partner, or their respective
+# licensors. No other licenses, including any licenses needed under any third
+# party's intellectual property, are provided herein.
 
 
 # The default values for assignments are stored in the file
@@ -27,7 +33,66 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 4.1
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:18:38  AUGUST 15, 2004"
-set_global_assignment -name LAST_QUARTUS_VERSION "5.1 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION "4.2 SP1"
+set_global_assignment -name VHDL_FILE my_conversions.vhd
+set_global_assignment -name VHDL_FILE my_utilities.vhd
+set_global_assignment -name VHDL_FILE receiver.vhd
+set_global_assignment -name VHDL_FILE control_registers.vhd
+set_global_assignment -name VHDL_FILE ddl.vhd
+set_global_assignment -name VHDL_FILE ALWREAD.vhd
+set_global_assignment -name VHDL_FILE tcpu_package.vhd
+set_global_assignment -name VHDL_FILE CTL4TO32.vhd
+set_global_assignment -name VHDL_FILE bus_tristate_32.vhd
+set_global_assignment -name VHDL_FILE input_fifo_64x32.vhd
+set_global_assignment -name VHDL_FILE input_fifo_256x32.vhd
+set_global_assignment -name VHDL_FILE mux_4x32.vhd
+set_global_assignment -name VHDL_FILE mux_2x32_registered.vhd
+set_global_assignment -name VHDL_FILE mux_5x32_registered.vhd
+set_global_assignment -name VHDL_FILE mux_32_to_4.vhd
+set_global_assignment -name VHDL_FILE mux_3_by_32.vhd
+set_global_assignment -name VHDL_FILE output_fifo_256x32.vhd
+set_global_assignment -name VHDL_FILE output_fifo_2048x32.vhd
+set_global_assignment -name VHDL_FILE reg4_en.vhd
+set_global_assignment -name VHDL_FILE reg20_en.vhd
+set_global_assignment -name VHDL_FILE reg32_en.vhd
+set_global_assignment -name VHDL_FILE DFF_sclr_sset.vhd
+set_global_assignment -name VHDL_FILE data_sel_ctr.vhd
+set_global_assignment -name VHDL_FILE timeout.vhd
+set_global_assignment -name VHDL_FILE DFF_sclr.vhd
+set_global_assignment -name VHDL_FILE trigger_interface.vhd
+set_global_assignment -name VHDL_FILE ser_4bit_to_par.vhd
+set_global_assignment -name VHDL_FILE largepld1.vhd
+set_global_assignment -name VHDL_FILE pushbutton_pulse.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE pushbutton_pulse_sim.vwf
+set_global_assignment -name VHDL_FILE pattern_gen.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE pattern_gen_sim.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim1.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim2.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE trigger_interface_sim1.vwf
+set_global_assignment -name VHDL_FILE mux_8_by_8bit.vhd
+set_global_assignment -name VHDL_FILE count127.vhd
+set_global_assignment -name VHDL_FILE decode_3to5_en.vhd
+set_global_assignment -name VHDL_FILE decoder_3_to_8.vhd
+set_global_assignment -name VHDL_FILE dff_generic.vhd
+set_global_assignment -name VHDL_FILE input_fifo64dx20w.vhd
+set_global_assignment -name VHDL_FILE internal_memory.vhd
+set_global_assignment -name VHDL_FILE mux_2to1_1bit.vhd
+set_global_assignment -name VHDL_FILE mux_2x32.vhd
+set_global_assignment -name VHDL_FILE mux_5_to_1.vhd
+set_global_assignment -name VHDL_FILE mux_5x32_unreg.vhd
+set_global_assignment -name VHDL_FILE bus_tri_8.vhd
+set_global_assignment -name VHDL_FILE pattern_generator.vhd
+set_global_assignment -name VHDL_FILE reg4_en_aclr.vhd
+set_global_assignment -name VHDL_FILE reg8_en.vhd
+set_global_assignment -name VHDL_FILE shorten.vhd
+set_global_assignment -name VHDL_FILE transmitter.vhd
+set_global_assignment -name VHDL_FILE trigger_generator.vhd
+set_global_assignment -name VHDL_FILE two_by_3bit_mux.vhd
+set_global_assignment -name VHDL_FILE trigger_counter_15bit.vhd
+set_global_assignment -name VHDL_FILE ctl_one.vhd
+set_global_assignment -name VHDL_FILE timeout_ctr.vhd
+set_global_assignment -name VHDL_FILE output_fifo_1024x32.vhd
 
 # Pin & Location Assignments
 # ==========================
@@ -242,12 +307,13 @@ set_global_assignment -name AUTO_INCREMENT_CONFIG_DEVICE_JTAG_USER_CODE OFF
 # Simulator Assignments
 # =====================
 set_global_assignment -name ADD_DEFAULT_PINS_TO_SIMULATION_OUTPUT_WAVEFORMS OFF
-set_global_assignment -name GLITCH_INTERVAL "1 ns"
+set_global_assignment -name POWER_ESTIMATION_START_TIME "0.0 ns"
+set_global_assignment -name GLITCH_INTERVAL "1.0 ns"
 set_global_assignment -name VECTOR_INPUT_SOURCE trigger_interface_sim1.vwf
 
 # LogicLock Region Assignments
 # ============================
-set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT OFF
+set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT off
 
 # -------------------
 # start CLOCK(C_DCLK)
@@ -316,62 +382,3 @@ set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT OFF
 
 # end ENTITY(largepld1)
 # ---------------------
-
-set_global_assignment -name VHDL_FILE my_conversions.vhd
-set_global_assignment -name VHDL_FILE my_utilities.vhd
-set_global_assignment -name VHDL_FILE receiver.vhd
-set_global_assignment -name VHDL_FILE control_registers.vhd
-set_global_assignment -name VHDL_FILE ddl.vhd
-set_global_assignment -name VHDL_FILE ALWREAD.vhd
-set_global_assignment -name VHDL_FILE tcpu_package.vhd
-set_global_assignment -name VHDL_FILE CTL4TO32.vhd
-set_global_assignment -name VHDL_FILE bus_tristate_32.vhd
-set_global_assignment -name VHDL_FILE input_fifo_64x32.vhd
-set_global_assignment -name VHDL_FILE input_fifo_256x32.vhd
-set_global_assignment -name VHDL_FILE mux_4x32.vhd
-set_global_assignment -name VHDL_FILE mux_2x32_registered.vhd
-set_global_assignment -name VHDL_FILE mux_5x32_registered.vhd
-set_global_assignment -name VHDL_FILE mux_32_to_4.vhd
-set_global_assignment -name VHDL_FILE mux_3_by_32.vhd
-set_global_assignment -name VHDL_FILE output_fifo_256x32.vhd
-set_global_assignment -name VHDL_FILE output_fifo_2048x32.vhd
-set_global_assignment -name VHDL_FILE reg4_en.vhd
-set_global_assignment -name VHDL_FILE reg20_en.vhd
-set_global_assignment -name VHDL_FILE reg32_en.vhd
-set_global_assignment -name VHDL_FILE DFF_sclr_sset.vhd
-set_global_assignment -name VHDL_FILE data_sel_ctr.vhd
-set_global_assignment -name VHDL_FILE timeout.vhd
-set_global_assignment -name VHDL_FILE DFF_sclr.vhd
-set_global_assignment -name VHDL_FILE trigger_interface.vhd
-set_global_assignment -name VHDL_FILE ser_4bit_to_par.vhd
-set_global_assignment -name VHDL_FILE largepld1.vhd
-set_global_assignment -name VHDL_FILE pushbutton_pulse.vhd
-set_global_assignment -name VECTOR_WAVEFORM_FILE pushbutton_pulse_sim.vwf
-set_global_assignment -name VHDL_FILE pattern_gen.vhd
-set_global_assignment -name VECTOR_WAVEFORM_FILE pattern_gen_sim.vwf
-set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim.vwf
-set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim1.vwf
-set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim2.vwf
-set_global_assignment -name VECTOR_WAVEFORM_FILE trigger_interface_sim1.vwf
-set_global_assignment -name VHDL_FILE mux_8_by_8bit.vhd
-set_global_assignment -name VHDL_FILE count127.vhd
-set_global_assignment -name VHDL_FILE decode_3to5_en.vhd
-set_global_assignment -name VHDL_FILE decoder_3_to_8.vhd
-set_global_assignment -name VHDL_FILE dff_generic.vhd
-set_global_assignment -name VHDL_FILE input_fifo64dx20w.vhd
-set_global_assignment -name VHDL_FILE internal_memory.vhd
-set_global_assignment -name VHDL_FILE mux_2to1_1bit.vhd
-set_global_assignment -name VHDL_FILE mux_2x32.vhd
-set_global_assignment -name VHDL_FILE mux_5_to_1.vhd
-set_global_assignment -name VHDL_FILE mux_5x32_unreg.vhd
-set_global_assignment -name VHDL_FILE bus_tri_8.vhd
-set_global_assignment -name VHDL_FILE pattern_generator.vhd
-set_global_assignment -name VHDL_FILE reg4_en_aclr.vhd
-set_global_assignment -name VHDL_FILE reg8_en.vhd
-set_global_assignment -name VHDL_FILE shorten.vhd
-set_global_assignment -name VHDL_FILE transmitter.vhd
-set_global_assignment -name VHDL_FILE trigger_generator.vhd
-set_global_assignment -name VHDL_FILE two_by_3bit_mux.vhd
-set_global_assignment -name VHDL_FILE trigger_counter_15bit.vhd
-set_global_assignment -name VHDL_FILE ctl_one.vhd
-set_global_assignment -name VHDL_FILE output_fifo_1024x32.vhd
