@@ -81,7 +81,7 @@ PACKAGE tcpu_package IS
   
   COMPONENT CTL_ONE IS PORT (
     CLK, CMD_L0, FIFO_EMPTY                       : IN  std_logic;
-    RESET, SEL_EQ_0, SEPARATOR, TIMEOUT, SEL_EQ_3 : IN  std_logic;
+    RESET, SEL_EQ_0, SEPARATOR, TIMEOUT           : IN  std_logic;
     CLR_SEL, CLR_TIMEOUT, CTL_ONE_STUFF, INCR_SEL : OUT std_logic;
     RD_FIFO, STUFF0, STUFF1, TRIG_TO_TDC, WR_FIFO : OUT std_logic);
   END COMPONENT;
