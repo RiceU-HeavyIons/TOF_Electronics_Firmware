@@ -1,4 +1,4 @@
--- $Id: largepld1.vhd,v 1.24 2006-03-31 21:44:13 jschamba Exp $
+-- $Id: largepld1.vhd,v 1.23 2006-03-27 19:35:06 jschamba Exp $
 -- notes:
 
 -- 1. 9/10/04: c1_m24, c2_m24, c3_m24, c4_m24   signals are used as the
@@ -221,7 +221,6 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL infifo_emptyFlt : std_logic_vector (4 DOWNTO 1);
   -- JS: input FIFO reset signal to empty the FIFOs:
   SIGNAL infifo_reset    : std_logic;
-  SIGNAL trig_word : std_logic_vector (11 DOWNTO 0);
 
   SIGNAL inmux_dout : std_logic_vector (31 DOWNTO 0);
 
@@ -244,6 +243,7 @@ ARCHITECTURE ver_four OF largepld1 IS
   SIGNAL control_select, incr_sel, clr_sel, sel_eq_0 : std_logic;
   SIGNAL sel_eq_3                                    : std_logic;
   SIGNAL clr_timeout, timeout_valid                  : std_logic;
+  SIGNAL l2_timeout_valid                            : std_logic;
   SIGNAL ctr_sel                                     : std_logic_vector(2 DOWNTO 0);
 
   SIGNAL ctl_one_trigger_to_tdc : std_logic;
@@ -251,6 +251,14 @@ ARCHITECTURE ver_four OF largepld1 IS
   -- signals decoded from trigger command bits
   SIGNAL CMD_L0, CMD_L2, CMD_ABORT, CMD_RESET, CMD_IGNORE : std_logic;
   SIGNAL separator                                        : std_logic;
+
+  -- signals for the L2 FIFO
+  SIGNAL clr_l2, xfer_l2              : std_logic;
+  SIGNAL rd_l2fifo, l2_full, l2_empty : std_logic;
+  SIGNAL l2latch_q, l2_q, mux_q       : std_logic_vector (31 DOWNTO 0);
+  SIGNAL l2latch_in                   : std_logic_vector (19 DOWNTO 0);
+  SIGNAL data_sel, wrreq_ddlfifo      : std_logic;
+
 
   -- signals to control input to DDL fifo 
   SIGNAL stuff_sel_dout            : std_logic_vector(31 DOWNTO 0);
@@ -655,9 +663,8 @@ BEGIN
     full  => infifo_full(0),
     empty => infifo_empty(0));
 
-  trig_word <= X"A00" OR ("000" & stuff(0) & X"00");
   infifo_mux : mux_5x32_unreg PORT MAP (
-    data0x(31 DOWNTO 20) => trig_word,
+    data0x(31 DOWNTO 20) => X"A00",
     data0x(19 DOWNTO 0)  => infifo0_dout,
     data1x               => infifo1_dout,
     data2x               => infifo2_dout,
@@ -701,17 +708,22 @@ BEGIN
     clk           => clk,
     reset         => mode_1_reset,
     cmd_l0        => CMD_L0,
+    cmd_abort     => CMD_ABORT,
+    cmd_l2        => CMD_L2,
     fifo_empty    => input_fifo_empty,
     sel_eq_0      => sel_eq_0,
     sel_eq_3      => sel_eq_3,
     separator     => separator,
     timeout       => timeout_valid,
+    l2_timeout    => l2_timeout_valid,
     clr_sel       => clr_sel,
     clr_timeout   => clr_timeout,
     incr_sel      => incr_sel,
     rd_fifo       => ctl_one_read_fe_fifo,
     trig_to_tdc   => ctl_one_trigger_to_tdc,
     wr_fifo       => ctl_one_wr_mcu_fifo,
+    clr_l2        => clr_l2,
+    xfer_l2       => xfer_l2,
     ctl_one_stuff => ctl_one_stuff,
     stuff0        => stuff(0),
     stuff1        => stuff(1));
@@ -735,6 +747,17 @@ BEGIN
       reset         => reset,
       clr_timeout   => clr_timeout,
       timeout_valid => timeout_valid);
+
+  -- Control_one uses this timeout counter to move out of L2 processing when 
+  -- there is no L2trigger command ithin the timeout period
+  l2_timeout_counter : timeout
+    GENERIC MAP (
+      nbit => 16)
+    PORT MAP (
+      clk           => clk,
+      reset         => reset,
+      clr_timeout   => clr_timeout,
+      timeout_valid => l2_timeout_valid);
 
   -- decoder for trigger commands and separator word
   command_decode : PROCESS (inmux_dout) IS
@@ -900,6 +923,43 @@ BEGIN
   -- Here is where the L2 processing is happening:
   -- ***************************************************************
 
+  --    first we transfer all L0 data into an L2 FIFO.
+
+  -- L2 buffer before DDL fifo:
+  l2_fifo : output_fifo_2048x32 PORT MAP (
+    clock => clk,
+    aclr  => (s_fifoRst OR clr_l2),
+    data  => ddl_fifo_indata,
+    wrreq => write_mcu_fifo,
+    rdreq => rd_l2fifo,
+    q     => l2_q,
+    full  => l2_full,
+    empty => l2_empty);
+
+
+  WITH input_fifo_empty SELECT
+    l2latch_in <=
+    infifo0_dout WHEN '0',
+    X"00000"     WHEN OTHERS;           -- latch "0" when TCD FIFO is empty
+
+  -- now we store the trigger command in a latch.
+  -- latch to store L2 trigger command:
+  l2_latch : lpm_latch GENERIC MAP (
+    LPM_WIDTH => 32)
+    PORT MAP (
+      data(31 DOWNTO 20) => X"B00",
+      data(19 DOWNTO 0)  => l2latch_in,
+      gate               => xfer_l2,
+      q                  => l2latch_q);
+
+  -- this MUX handles putting either the FIFO
+  -- or the L2 trigger from l2_latch into the final FIFO
+  l2_mux : mux_2x32
+    PORT MAP (
+      data1x => l2latch_q,
+      data0x => l2_q,
+      sel    => data_sel,
+      result => mux_q);
 
   -- and this is where the L2-accepted data gets stored
   -- for the DDL component to read from. Data in this FIFO
@@ -909,12 +969,61 @@ BEGIN
   final_ddl_fifo : output_fifo_2048x32 PORT MAP (
     clock => clk,
     aclr  => s_fifoRst,
-    data  => ddl_fifo_indata,
-    wrreq => write_mcu_fifo,
+    data  => mux_q,
+    wrreq => wrreq_ddlfifo,
     rdreq => rd_ddl_fifo,
     q     => ddl_data,
     full  => ddlfifo_full,
     empty => ddlfifo_empty);   
+
+  -- now the state machine for transfering data from the
+  -- L2-FIFO to the final DDL FIFO:
+  l2main : PROCESS (clk, s_fifoRst)
+    VARIABLE xs_present : xfer_state;
+    VARIABLE xs_next    : xfer_state;
+    VARIABLE stop_xfer  : boolean;
+    
+  BEGIN  -- PROCESS l2main
+    IF (s_fifoRst = '1') THEN           -- asynchronous reset (active high)
+      xs_present := XS_IDLE;
+      xs_next    := XS_IDLE;
+      stop_xfer  := false;
+      
+    ELSIF clk'event AND clk = '1' THEN  -- rising clock edge
+      data_sel      <= '0';
+      wrreq_ddlfifo <= '0';
+      rd_l2fifo     <= '0';
+      stop_xfer     := (l2_q = X"EA000000");
+
+      CASE xs_present IS
+        WHEN XS_IDLE =>
+          IF (xfer_l2 = '1') THEN
+            xs_next := XS_L0;
+          END IF;
+        WHEN XS_L0 =>
+          rd_l2fifo     <= '1';
+          wrreq_ddlfifo <= '1';
+          xs_next       := XS_L2;
+        WHEN XS_L2 =>
+          data_sel <= '1';
+          xs_next  := XS_L2a;
+        WHEN XS_L2a =>                  -- add some extra settling time
+          wrreq_ddlfifo <= '1';
+          data_sel      <= '1';
+          xs_next       := XS_DATA;
+        WHEN XS_DATA =>
+          IF (stop_xfer) THEN
+            xs_next := XS_IDLE;
+          ELSE
+            rd_l2fifo     <= '1' AND (NOT l2_empty);
+            wrreq_ddlfifo <= '1' AND (NOT l2_empty);
+          END IF;
+          
+      END CASE;
+      xs_present := xs_next;
+      
+    END IF;
+  END PROCESS l2main;
 
   -- ********************************************************************************
   -- MCU interface
