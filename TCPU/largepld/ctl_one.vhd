@@ -1,6 +1,6 @@
---  F:\JO\TOF\TCPU\COPY OF LARGEPLD\CTL_ONE.vhd
---  VHDL code created by Xilinx's StateCAD 6.2i
---  Wed Mar 29 10:54:09 2006
+--  G:\JO\TOF\TCPU\LARGEPLD1_LB011905_VERA_RESTORED\CTL_ONE.vhd
+--  VHDL code created by Xilinx's StateCAD 5.03
+--  Wed Jan 19 14:13:29 2005
 
 --  This VHDL code (for use with IEEE compliant tools) was generated using: 
 --  enumerated state assignment with structured code format.
@@ -11,17 +11,16 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.all;
 
 ENTITY CTL_ONE IS
-	PORT (CLK,CMD_L0,FIFO_EMPTY,RESET,SEL_EQ_0,SEL_EQ_3,SEPARATOR,TIMEOUT: IN 
-		std_logic;
+	PORT (CLK,CMD_L0,FIFO_EMPTY,RESET,SEL_EQ_0,SEPARATOR,TIMEOUT: IN std_logic;
 		CLR_SEL,CLR_TIMEOUT,CTL_ONE_STUFF,INCR_SEL,RD_FIFO,STUFF0,STUFF1,
 			TRIG_TO_TDC,WR_FIFO : OUT std_logic);
 END;
 
 ARCHITECTURE BEHAVIOR OF CTL_ONE IS
 	TYPE type_sreg IS (STATE0,STATE1,STATE2,STATE3,STATE4,STATE5,STATE6,STATE7,
-		STATE8,STATE9,STATE10,STATE12,STATE13,STATE14,STATE15,STATE16,STATE17,STATE18
-		,STATE19,STATE21,STATE23,STATE27,STATE28,STATE29,STATE30,STATE31,STATE32,
-		STATE33,STATE34);
+		STATE8,STATE9,STATE10,STATE11,STATE12,STATE13,STATE14,STATE15,STATE16,STATE17
+		,STATE18,STATE19,STATE20,STATE21,STATE22,STATE23,STATE24,STATE25,STATE26,
+		STATE27);
 	SIGNAL sreg, next_sreg : type_sreg;
 BEGIN
 	PROCESS (CLK, RESET, next_sreg)
@@ -33,7 +32,7 @@ BEGIN
 		END IF;
 	END PROCESS;
 
-	PROCESS (sreg,CMD_L0,FIFO_EMPTY,SEL_EQ_0,SEL_EQ_3,SEPARATOR,TIMEOUT)
+	PROCESS (sreg,CMD_L0,FIFO_EMPTY,SEL_EQ_0,SEPARATOR,TIMEOUT)
 	BEGIN
 		CLR_SEL <= '0'; CLR_TIMEOUT <= '0'; CTL_ONE_STUFF <= '0'; INCR_SEL <= '0'; 
 			RD_FIFO <= '0'; STUFF0 <= '0'; STUFF1 <= '0'; TRIG_TO_TDC <= '0'; WR_FIFO <= 
@@ -63,23 +62,23 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( FIFO_EMPTY='0' ) THEN
-					next_sreg<=STATE3;
-				END IF;
 				IF ( FIFO_EMPTY='1' ) THEN
 					next_sreg<=STATE1;
 				END IF;
+				IF ( FIFO_EMPTY='0' ) THEN
+					next_sreg<=STATE3;
+				END IF;
 			WHEN STATE2 =>
+				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
-				RD_FIFO<='0';
+				STUFF1<='0';
+				STUFF0<='0';
 				INCR_SEL<='0';
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				WR_FIFO<='1';
-				STUFF0<='1';
-				STUFF1<='0';
-				next_sreg<=STATE10;
+				RD_FIFO<='1';
+				next_sreg<=STATE0;
 			WHEN STATE3 =>
 				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
@@ -90,11 +89,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( CMD_L0='1' ) THEN
-					next_sreg<=STATE21;
-				END IF;
 				IF ( CMD_L0='0' ) THEN
 					next_sreg<=STATE2;
+				END IF;
+				IF ( CMD_L0='1' ) THEN
+					next_sreg<=STATE21;
 				END IF;
 			WHEN STATE4 =>
 				WR_FIFO<='0';
@@ -117,11 +116,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( TIMEOUT='1' ) THEN
-					next_sreg<=STATE14;
-				END IF;
 				IF ( TIMEOUT='0' ) THEN
 					next_sreg<=STATE12;
+				END IF;
+				IF ( TIMEOUT='1' ) THEN
+					next_sreg<=STATE14;
 				END IF;
 			WHEN STATE6 =>
 				TRIG_TO_TDC<='0';
@@ -135,14 +134,14 @@ BEGIN
 				CLR_TIMEOUT<='1';
 				next_sreg<=STATE4;
 			WHEN STATE7 =>
-				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
 				STUFF0<='0';
 				INCR_SEL<='0';
 				CTL_ONE_STUFF<='0';
-				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
+				WR_FIFO<='1';
+				CLR_TIMEOUT<='1';
 				RD_FIFO<='1';
 				next_sreg<=STATE15;
 			WHEN STATE8 =>
@@ -155,11 +154,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
+				IF ( SEPARATOR='1' ) THEN
+					next_sreg<=STATE7;
+				END IF;
 				IF ( SEPARATOR='0' ) THEN
 					next_sreg<=STATE6;
-				END IF;
-				IF ( SEPARATOR='1' ) THEN
-					next_sreg<=STATE31;
 				END IF;
 			WHEN STATE9 =>
 				WR_FIFO<='0';
@@ -171,23 +170,39 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( SEL_EQ_0='1' ) THEN
-					next_sreg<=STATE27;
-				END IF;
 				IF ( SEL_EQ_0='0' ) THEN
-					next_sreg<=STATE29;
+					next_sreg<=STATE5;
+				END IF;
+				IF ( SEL_EQ_0='1' ) THEN
+					next_sreg<=STATE10;
 				END IF;
 			WHEN STATE10 =>
 				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
 				STUFF0<='0';
+				RD_FIFO<='0';
 				INCR_SEL<='0';
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				RD_FIFO<='1';
-				next_sreg<=STATE27;
+				IF ( TIMEOUT='0' ) THEN
+					next_sreg<=STATE24;
+				END IF;
+				IF ( TIMEOUT='1' ) THEN
+					next_sreg<=STATE11;
+				END IF;
+			WHEN STATE11 =>
+				TRIG_TO_TDC<='0';
+				RD_FIFO<='0';
+				INCR_SEL<='0';
+				CLR_TIMEOUT<='0';
+				CLR_SEL<='0';
+				CTL_ONE_STUFF<='1';
+				STUFF1<='1';
+				STUFF0<='0';
+				WR_FIFO<='1';
+				next_sreg<=STATE0;
 			WHEN STATE12 =>
 				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
@@ -198,22 +213,22 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( FIFO_EMPTY='0' ) THEN
-					next_sreg<=STATE8;
-				END IF;
 				IF ( FIFO_EMPTY='1' ) THEN
 					next_sreg<=STATE5;
 				END IF;
+				IF ( FIFO_EMPTY='0' ) THEN
+					next_sreg<=STATE8;
+				END IF;
 			WHEN STATE13 =>
-				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
 				STUFF0<='0';
-				RD_FIFO<='0';
 				CTL_ONE_STUFF<='0';
 				CLR_SEL<='0';
+				WR_FIFO<='1';
 				CLR_TIMEOUT<='1';
 				INCR_SEL<='1';
+				RD_FIFO<='1';
 				next_sreg<=STATE9;
 			WHEN STATE14 =>
 				WR_FIFO<='0';
@@ -236,11 +251,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( TIMEOUT='0' ) THEN
-					next_sreg<=STATE16;
-				END IF;
 				IF ( TIMEOUT='1' ) THEN
 					next_sreg<=STATE14;
+				END IF;
+				IF ( TIMEOUT='0' ) THEN
+					next_sreg<=STATE16;
 				END IF;
 			WHEN STATE16 =>
 				WR_FIFO<='0';
@@ -252,11 +267,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( FIFO_EMPTY='1' ) THEN
-					next_sreg<=STATE15;
-				END IF;
 				IF ( FIFO_EMPTY='0' ) THEN
 					next_sreg<=STATE17;
+				END IF;
+				IF ( FIFO_EMPTY='1' ) THEN
+					next_sreg<=STATE15;
 				END IF;
 			WHEN STATE17 =>
 				WR_FIFO<='0';
@@ -268,11 +283,11 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( SEPARATOR='1' ) THEN
-					next_sreg<=STATE32;
-				END IF;
 				IF ( SEPARATOR='0' ) THEN
 					next_sreg<=STATE18;
+				END IF;
+				IF ( SEPARATOR='1' ) THEN
+					next_sreg<=STATE13;
 				END IF;
 			WHEN STATE18 =>
 				TRIG_TO_TDC<='0';
@@ -296,51 +311,51 @@ BEGIN
 				CLR_SEL<='0';
 				RD_FIFO<='1';
 				next_sreg<=STATE15;
+			WHEN STATE20 =>
+				WR_FIFO<='0';
+				TRIG_TO_TDC<='0';
+				STUFF1<='0';
+				STUFF0<='0';
+				RD_FIFO<='0';
+				INCR_SEL<='0';
+				CTL_ONE_STUFF<='0';
+				CLR_TIMEOUT<='0';
+				CLR_SEL<='0';
+				next_sreg<=STATE5;
 			WHEN STATE21 =>
 				STUFF1<='0';
 				STUFF0<='0';
-				RD_FIFO<='0';
 				INCR_SEL<='0';
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
 				WR_FIFO<='1';
+				RD_FIFO<='1';
 				TRIG_TO_TDC<='1';
-				next_sreg<=STATE34;
+				next_sreg<=STATE22;
+			WHEN STATE22 =>
+				TRIG_TO_TDC<='0';
+				RD_FIFO<='0';
+				INCR_SEL<='0';
+				CLR_TIMEOUT<='0';
+				CLR_SEL<='0';
+				CTL_ONE_STUFF<='1';
+				STUFF1<='0';
+				STUFF0<='0';
+				WR_FIFO<='1';
+				next_sreg<=STATE23;
 			WHEN STATE23 =>
 				TRIG_TO_TDC<='0';
 				RD_FIFO<='0';
-				INCR_SEL<='0';
 				CLR_SEL<='0';
 				CTL_ONE_STUFF<='1';
 				STUFF1<='0';
 				STUFF0<='1';
-				WR_FIFO<='1';
-				CLR_TIMEOUT<='1';
-				next_sreg<=STATE28;
-			WHEN STATE27 =>
-				TRIG_TO_TDC<='0';
-				RD_FIFO<='0';
-				INCR_SEL<='0';
-				CLR_TIMEOUT<='0';
-				CLR_SEL<='0';
-				CTL_ONE_STUFF<='1';
-				STUFF1<='1';
-				STUFF0<='0';
-				WR_FIFO<='1';
-				next_sreg<=STATE0;
-			WHEN STATE28 =>
-				TRIG_TO_TDC<='0';
-				RD_FIFO<='0';
-				CLR_TIMEOUT<='0';
-				CLR_SEL<='0';
-				CTL_ONE_STUFF<='1';
-				STUFF0<='1';
-				STUFF1<='1';
 				WR_FIFO<='1';
 				INCR_SEL<='1';
-				next_sreg<=STATE5;
-			WHEN STATE29 =>
+				CLR_TIMEOUT<='1';
+				next_sreg<=STATE20;
+			WHEN STATE24 =>
 				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
@@ -350,24 +365,29 @@ BEGIN
 				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				IF ( SEL_EQ_3='1' ) THEN
-					next_sreg<=STATE30;
+				IF ( FIFO_EMPTY='1' ) THEN
+					next_sreg<=STATE10;
 				END IF;
-				IF ( SEL_EQ_3='0' ) THEN
-					next_sreg<=STATE5;
+				IF ( FIFO_EMPTY='0' ) THEN
+					next_sreg<=STATE25;
 				END IF;
-			WHEN STATE30 =>
+			WHEN STATE25 =>
+				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
+				STUFF1<='0';
+				STUFF0<='0';
 				RD_FIFO<='0';
 				INCR_SEL<='0';
+				CTL_ONE_STUFF<='0';
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
-				CTL_ONE_STUFF<='1';
-				STUFF0<='1';
-				STUFF1<='1';
-				WR_FIFO<='1';
-				next_sreg<=STATE5;
-			WHEN STATE31 =>
+				IF ( CMD_L0='0' ) THEN
+					next_sreg<=STATE26;
+				END IF;
+				IF ( CMD_L0='1' ) THEN
+					next_sreg<=STATE11;
+				END IF;
+			WHEN STATE26 =>
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
 				STUFF0<='0';
@@ -377,19 +397,8 @@ BEGIN
 				CLR_SEL<='0';
 				WR_FIFO<='1';
 				CLR_TIMEOUT<='1';
-				next_sreg<=STATE7;
-			WHEN STATE32 =>
-				TRIG_TO_TDC<='0';
-				STUFF1<='0';
-				STUFF0<='0';
-				RD_FIFO<='0';
-				INCR_SEL<='0';
-				CTL_ONE_STUFF<='0';
-				CLR_TIMEOUT<='0';
-				CLR_SEL<='0';
-				WR_FIFO<='1';
-				next_sreg<=STATE33;
-			WHEN STATE33 =>
+				next_sreg<=STATE27;
+			WHEN STATE27 =>
 				WR_FIFO<='0';
 				TRIG_TO_TDC<='0';
 				STUFF1<='0';
@@ -399,18 +408,7 @@ BEGIN
 				CLR_TIMEOUT<='0';
 				CLR_SEL<='0';
 				RD_FIFO<='1';
-				next_sreg<=STATE13;
-			WHEN STATE34 =>
-				WR_FIFO<='0';
-				TRIG_TO_TDC<='0';
-				STUFF1<='0';
-				STUFF0<='0';
-				INCR_SEL<='0';
-				CTL_ONE_STUFF<='0';
-				CLR_TIMEOUT<='0';
-				CLR_SEL<='0';
-				RD_FIFO<='1';
-				next_sreg<=STATE23;
+				next_sreg<=STATE10;
 			WHEN OTHERS =>
 		END CASE;
 	END PROCESS;
