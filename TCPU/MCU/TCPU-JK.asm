@@ -1,22 +1,22 @@
-; $Id: TCPU-JK.asm,v 1.4 2005-03-24 21:19:16 tofp Exp $
+; $Id: TCPU-JK.asm,v 1.5 2006-04-12 15:32:42 jschamba Exp $
 ;
 #DEFINE		CODE_BASE 0x0000
 
 ; file: TDIG-B.asm
 
 ;******************************************************************************
-;    Date:          9/13/04                                                  *
+;    Date:          9/13/04                                                   *
 ;    File Version:  2.0                                                       *
 ;                                                                             *
-;    Author:		Justin Kennington          								  *
-;    Company:       Blue Sky Electronics           						      *
+;    Author:		Justin Kennington                                     *
+;    Company:       Blue Sky Electronics                                      *
 ;                                                                             * 
 ;******************************************************************************
 
 ;******************************************************************************
 ;                                                                             *
-;    Files required:         P18F8720.INC   								  *
-;                            18f8720.lkr								      *
+;    Files required:         P18F8720.INC                                     *
+;                            18f8720.lkr                                      *
 ;                            MCU_config.asm                                   *
 ;                                                                             *
 ;******************************************************************************
@@ -34,28 +34,42 @@
 ; The __CONFIG directive defines configuration data within the .ASM file.
 ; The labels following the directive are defined in the P18F8720.INC file.
 ; The PIC18FXX20 Data Sheet explains the functions of the configuration bits.
+	;; this is the old way of defining the configuration bits
+;	__CONFIG	_CONFIG1H, _OSCS_OFF_1H & _EC_OSC_1H
+;	__CONFIG	_CONFIG2L, _BOR_OFF_2L & _BORV_20_2L & _PWRT_ON_2L
+;	__CONFIG	_CONFIG2H, _WDT_OFF_2H & _WDTPS_128_2H
+;	__CONFIG	_CONFIG3L, _XMC_MODE_3L
+;	__CONFIG	_CONFIG3H, _CCP2MX_ON_3H
+;	__CONFIG	_CONFIG4L, _STVR_OFF_4L & _LVP_OFF_4L & _DEBUG_ON_4L
+;	__CONFIG	_CONFIG5L, _CP0_OFF_5L & _CP1_OFF_5L & _CP2_OFF_5L & _CP3_OFF_5L & _CP4_OFF_5L & _CP5_OFF_5L & _CP6_OFF_5L & _CP7_OFF_5L 
+;	__CONFIG	_CONFIG5H, _CPB_OFF_5H & _CPD_OFF_5H
+;	__CONFIG	_CONFIG6L, _WRT0_OFF_6L & _WRT1_OFF_6L & _WRT2_OFF_6L & _WRT3_OFF_6L & _WRT4_OFF_6L & _WRT5_OFF_6L & _WRT6_OFF_6L & _WRT7_OFF_6L 
+;	__CONFIG	_CONFIG6H, _WRTC_OFF_6H & _WRTB_OFF_6H & _WRTD_OFF_6H
+;	__CONFIG	_CONFIG7L, _EBTR0_OFF_7L & _EBTR1_OFF_7L & _EBTR2_OFF_7L & _EBTR3_OFF_7L &  _EBTR4_OFF_7L & _EBTR5_OFF_7L & _EBTR6_OFF_7L & _EBTR7_OFF_7L 
+;	__CONFIG	_CONFIG7H, _EBTRB_OFF_7H
 
-	__CONFIG	_CONFIG1H, _OSCS_OFF_1H & _EC_OSC_1H		
-	__CONFIG	_CONFIG2L, _BOR_OFF_2L & _BORV_20_2L & _PWRT_ON_2L
-	__CONFIG	_CONFIG2H, _WDT_OFF_2H & _WDTPS_128_2H
-	__CONFIG	_CONFIG3L, _XMC_MODE_3L
-	__CONFIG	_CONFIG3H, _CCP2MX_ON_3H
-	__CONFIG	_CONFIG4L, _STVR_OFF_4L & _LVP_OFF_4L & _DEBUG_ON_4L
-	__CONFIG	_CONFIG5L, _CP0_OFF_5L & _CP1_OFF_5L & _CP2_OFF_5L & _CP3_OFF_5L & _CP4_OFF_5L & _CP5_OFF_5L & _CP6_OFF_5L & _CP7_OFF_5L 
-	__CONFIG	_CONFIG5H, _CPB_OFF_5H & _CPD_OFF_5H
-	__CONFIG	_CONFIG6L, _WRT0_OFF_6L & _WRT1_OFF_6L & _WRT2_OFF_6L & _WRT3_OFF_6L & _WRT4_OFF_6L & _WRT5_OFF_6L & _WRT6_OFF_6L & _WRT7_OFF_6L 
-	__CONFIG	_CONFIG6H, _WRTC_OFF_6H & _WRTB_OFF_6H & _WRTD_OFF_6H
-	__CONFIG	_CONFIG7L, _EBTR0_OFF_7L & _EBTR1_OFF_7L & _EBTR2_OFF_7L & _EBTR3_OFF_7L &  _EBTR4_OFF_7L & _EBTR5_OFF_7L & _EBTR6_OFF_7L & _EBTR7_OFF_7L 
-	__CONFIG	_CONFIG7H, _EBTRB_OFF_7H
+	;; This is the new way to define the configuration bits for 18F devices
+	CONFIG	OSCS = OFF, OSC = ECIO		
+	CONFIG	BOR = OFF, BORV = 25, PWRT = OFF
+	CONFIG	WDT = OFF, WDTPS = 128
+	CONFIG	MODE = EM
+	CONFIG	CCP2MUX = ON
+	CONFIG	STVR = OFF, LVP = OFF, DEBUG = OFF
+	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CP4 = OFF, CP5 = OFF, CP6 = OFF, CP7 = OFF 
+	CONFIG	CPB = OFF, CPD = OFF
+	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF,  WRT4 = OFF,  WRT5 = OFF, WRT6 = OFF, WRT7 = OFF 
+	CONFIG	WRTC = OFF, WRTB = OFF, WRTD = OFF
+	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF,  EBTR4 = OFF, EBTR5 = OFF, EBTR6 = OFF, EBTR7 = OFF 
+	CONFIG	EBTRB = OFF
 
 	CBLOCK 0x000
-	ctr			; 0x000 counter used for loops
+	ctr             ; 0x000 counter used for loops
 	ctr2		; 0x001	another counter
 	inst		; 0x002 holds JTAG instructions before output
 	dsize		; 0x003 holds the size of the DRScan register in bytes
-				; (e.g. 4 for ID_Code, 81 for config bits)
+                        ; (e.g. 4 for ID_Code, 81 for config bits)
 	TDObyte		; 0x004 one byte of TDO input.  TDO comes in serially, is fed into TDObyte
-				; and then TDOByte is written to memory and re-used.
+                        ; and then TDOByte is written to memory and re-used.
 	write_to	; 0x005	Destination address for writing to MCP 2515
 	TDC_pointer	; 0x006 Tells what TDC the MUX is pointed at
 	prev_desc	; 0x007 previously received descriptor & CAN header
