@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.1 2006-08-11 22:11:01 jschamba Exp $
+; $Id: SRunner.asm,v 1.2 2006-08-30 18:46:02 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                                             *
@@ -17,12 +17,20 @@
 
         UDATA
 asOneByte   RES     01
-__asTemp    RES     01
-        GLOBAL  asOneByte
+__asTemp1   RES     01
+__asTemp2   RES     01
+__asTemp3   RES     01
+asAddress   RES     03
+        GLOBAL  asOneByte, asAddress
+
+AS_MEM: UDATA
+
+asDataBytes RES     .256
+        GLOBAL  asDataBytes
 
 
 ;*****************************************************************
-; macro set_nconfig
+; macros to set or clear the Active Serial Configuration lines
 set_NCONFIG macro
     bsf     PORTC, 5
     endm
@@ -71,23 +79,26 @@ as_disable macro
     bcf     PORTC, 6
     endm
 
+; macro to choose the correct ASP Configuration device lines on the CPLD
 as_select macro ASDEVICE
     movlw   ASDEVICE
     swapf   WREG        ; move value to bits
     rrncf   WREG        ; 3,4,5
-    movwf   __asTemp    ; store away temporarily
+    movwf   __asTemp1   ; store away temporarily
     movlw   0xC7        ; mask out other bits
     andwf   LATA,W      ; and read PORTA
-    iorwf   __asTemp,W  ; set bits which were stored above
+    iorwf   __asTemp1,W ; set bits which were stored above
     movwf   LATA        ; and move back to PORTA output latch
     endm
 
+; macro to Program one byte starting from MSB with ONE_BYTE as input literal
 mAsProgramByteMSB macro ONE_BYTE
     movlw   ONE_BYTE
     movwf   asOneByte
     call    asProgramByteMSB
     endm
 
+; macro to Program one byte starting from LSB with ONE_BYTE as input literal
 mAsProgramByteLSB macro ONE_BYTE
     movlw   ONE_BYTE
     movwf   asOneByte
@@ -133,7 +144,10 @@ asStart:
 ;***********************************************************
 ;* Function:    asDone
 ;*
-;* Description: 
+;* Description: sets all the AS signals back to default, 
+;*              disables the AS pins at the CPLD (will be
+;*              tri-stated) amd selects device 7 (not
+;*              stuffed on prototype THUB)
 ;*
 ;* Inputs:      None
 ;*
@@ -165,7 +179,7 @@ asDone:
 ;************************************************************
 asProgramByteMSB:
     movlw   8
-    movwf   __asTemp   ; do the next section for 8 bits:
+    movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
 
 asProgLoop1:
@@ -175,8 +189,34 @@ asProgLoop1:
     bnc     $+4
     set_ASDI                ; ASDI = 1, if (carry == 1)
     set_DCLK
-    decfsz  __asTemp, F
+    decfsz  __asTemp1, F
     bra     asProgLoop1
+    return
+;***********************************************************
+;* Function:    asProgramByteMSB_IF
+;*
+;* Description: write bits to ASDI starting with MSB, while
+;*              moving DCLK up and down
+;*
+;* Inputs:      FSR0 contains address of byte to program
+;*
+;* Outputs:     None
+;*
+;************************************************************
+asProgramByteMSB_IF:
+    movlw   8
+    movwf   __asTemp1  ; do the next section for 8 bits:
+    ;; byte is located in location "asOneByte"
+
+asProgLoop6:
+    clr_DCLK
+    clr_ASDI
+    rlcf    INDF0, F    ; rotate left through carry and store back
+    bnc     $+4
+    set_ASDI                ; ASDI = 1, if (carry == 1)
+    set_DCLK
+    decfsz  __asTemp1, F
+    bra     asProgLoop6
     return
 
 ;***********************************************************
@@ -192,7 +232,7 @@ asProgLoop1:
 ;************************************************************
 asProgramByteLSB:
     movlw   8
-    movwf   __asTemp   ; do the next section for 8 bits:
+    movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
 
 asProgLoop2:
@@ -202,8 +242,34 @@ asProgLoop2:
     bnc     $+4
     set_ASDI                ; ASDI = 1, if (carry == 1)
     set_DCLK
-    decfsz  __asTemp, F
+    decfsz  __asTemp1, F
     bra     asProgLoop2
+    return
+;***********************************************************
+;* Function:    asProgramByteLSB_IF
+;*
+;* Description: write bits to ASDI starting with LSB, while
+;*              moving DCLK up and down
+;*
+;* Inputs:      FSR0 contains address of byte to program
+;*
+;* Outputs:     None
+;*
+;************************************************************
+asProgramByteLSB_IF:
+    movlw   8
+    movwf   __asTemp1  ; do the next section for 8 bits:
+    ;; byte is located in location "asOneByte"
+
+asProgLoop7:
+    clr_DCLK
+    clr_ASDI
+    rrcf    INDF0, F    ; rotate right through carry and store back
+    bnc     $+4
+    set_ASDI                ; ASDI = 1, if (carry == 1)
+    set_DCLK
+    decfsz  __asTemp1, F
+    bra     asProgLoop7
     return
 
 ;***********************************************************
@@ -220,7 +286,7 @@ asProgLoop2:
 asReadByteMSB:
     clrf    asOneByte   ; clear temporary storage
     movlw   8
-    movwf   __asTemp   ; do the next section for 8 bits:
+    movwf   __asTemp1  ; do the next section for 8 bits:
     
 asProgLoop3:
     clr_DCLK
@@ -229,7 +295,7 @@ asProgLoop3:
     movf    PORTC,W         ; read PORTC 
     rrcf    WREG            ; rotate bit 0 into carry
     rlcf    asOneByte, F    ; rotate carry bit into "asOneByte[0]" and shift left
-    decfsz  __asTemp, F
+    decfsz  __asTemp1, F
     bra     asProgLoop3
     return 
 
@@ -247,7 +313,7 @@ asProgLoop3:
 asReadByteLSB:
     clrf    asOneByte   ; clear temporary storage
     movlw   8
-    movwf   __asTemp   ; do the next section for 8 bits:
+    movwf   __asTemp1   ; do the next section for 8 bits:
     
 asProgLoop4:
     clr_DCLK
@@ -256,7 +322,7 @@ asProgLoop4:
     movf    PORTC,W         ; read PORTC 
     rrcf    WREG            ; rotate bit 0 into carry
     rrcf    asOneByte, F    ; rotate carry bit into "asOneByte[7]" and shift right
-    decfsz  __asTemp, F
+    decfsz  __asTemp1, F
     bra     asProgLoop4
     return 
 
@@ -296,6 +362,8 @@ asReadSiliconID:
 ;*
 ;************************************************************
 asBulkErase:
+    GLOBAL  asBulkErase
+
     clr_NCS
     mAsProgramByteMSB   AS_WRITE_ENABLE
     set_NCS
@@ -306,15 +374,68 @@ asBulkErase:
     nop
     clr_NCS
     mAsProgramByteMSB   AS_READ_STATUS
-asCheckStatus:
+asCheckStatus1:
     call    asReadByteMSB
     rrcf    asOneByte,W     ; rotate lowest bit into carry
-    bc      asCheckStatus   ; keep polling if this bit is high
+    bc      asCheckStatus1  ; keep polling if this bit is high
     ; bulk erase finished
-    set_ncs
+    set_NCS
     return
 
+;***********************************************************
+;* Function:    asProgram256
+;*
+;* Description: Write 256 bytes contained in asDataBytes
+;*              to address pointed to by asAddress
+;*
+;* Inputs:      None
+;*
+;* Outputs:     None
+;*
+;************************************************************
+asProgram256:
+    GLOBAL  asProgram256
 
+    movlw   low(asAddress)
+    movwf   FSR0L
+    movlw   high(asAddress)
+    movwf   FSR0H
+
+    clr_NCS
+    mAsProgramByteMSB   AS_WRITE_ENABLE
+    set_NCS
+
+    clr_NCS
+    mAsProgramByteMSB   AS_PAGE_PROGRAM
+    call    asProgramByteMSB_IF     ; bits 23 - 16 of address
+    incf    FSR0L, F   
+    call    asProgramByteMSB_IF     ; bits 15 - 8 of address
+    incf    FSR0L, F   
+    call    asProgramByteMSB_IF     ; bits 7 - 0 of address
+
+    movlw   low(asDataBytes)
+    movwf   FSR0L
+    movlw   high(asDataBytes)
+    movwf   FSR0H
+
+    clrf    __asTemp2        ; "0" = "256"
+asProgLoop5:
+    call    asProgramByteLSB_IF     ; program data byte
+    incf    FSR0L, F
+    decfsz  __asTemp2, F
+    bra     asProgLoop5
+    
+    set_NCS
+    nop
+    clr_NCS
+    mAsProgramByteMSB   AS_READ_STATUS
+asCheckStatus2:
+    call    asReadByteMSB
+    rrcf    asOneByte,W     ; rotate lowest bit into carry
+    bc      asCheckStatus2  ; keep polling if this bit is high
+    ; byte write finished
+    set_NCS
+    return 
 
     END
    

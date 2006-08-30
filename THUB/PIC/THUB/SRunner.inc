@@ -1,4 +1,4 @@
-; $Id: SRunner.inc,v 1.1 2006-08-11 22:11:01 jschamba Exp $
+; $Id: SRunner.inc,v 1.2 2006-08-30 18:46:02 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.inc                                                             *
@@ -14,9 +14,9 @@
 #define __SRUNNER_INC
 
 #ifndef  AS_PRIOR_SOURCE
-    EXTERN  asReadSiliconID, asStart, asDone
+    EXTERN  asReadSiliconID, asStart, asDone, asBulkErase, asProgram256
 
-    EXTERN  asOneByte
+    EXTERN  asOneByte, asAddress, asDataBytes
 #endif
 
 AS_WRITE_ENABLE:    =   0x06

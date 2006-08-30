@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.1 2006-08-11 22:11:01 jschamba Exp $
+; $Id: main.asm,v 1.2 2006-08-30 18:46:02 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -51,7 +51,6 @@
 ;see the .inc file for futher details on notation.  Below are a few examples.
 
 
-
 ;   Oscillator Selection:
 	CONFIG	OSC = ECIO, FCMEN = OFF, IESO = OFF
 	CONFIG	PWRT = ON, BOREN = OFF, BORV = 0
@@ -75,13 +74,11 @@
 
 		UDATA
 
-CANDt1		    RES     02
-#ifdef  RX_TEST
-RxMsgID         RES     04
-RxData          RES     08
-RxDtLngth       RES     01
-RxFlag          RES     01
-#endif
+CANDt1		    RES     08  ; CAN Tx Data
+RxMsgID         RES     04  ; CAN MsgID, starting from LSB
+RxData          RES     08  ; CAN Rx Data
+RxDtLngth       RES     01  ; CAN Message length
+RxFlag          RES     01  ; Receive flag
 
 ;		UDATA_ACS
 ;
@@ -102,7 +99,7 @@ RxFlag          RES     01
 
 RESET_VECTOR	CODE	0x0000
 
-	goto    Main		;go to start of main code
+	goto    Main		    ; go to start of main code
 
 ;******************************************************************************
 ;High priority interrupt vector
@@ -111,7 +108,7 @@ RESET_VECTOR	CODE	0x0000
 
 HI_INT_VECTOR	CODE	0x0008
 #ifndef CANIntLowPrior
-	call	CANISR ; Call CAN Interrupt Service Routine
+	call	CANISR          ; Call CAN Interrupt Service Routine
 #endif	
 	retfie	FAST		
 ;******************************************************************************
@@ -121,13 +118,13 @@ HI_INT_VECTOR	CODE	0x0008
 
 LOW_INT_VECTOR	CODE	0x0018
 #ifdef  CANIntLowPrior
-	movwf   W_IL            ;Save W
-	movff   STATUS,STAT_IL  ;Save STATUS
-	movff   BSR,BSR_IL      ;Save BSR
-	call    CANISR      ;Call CAN Interrupt Service routine
-	movff   BSR_IL,BSR      ;Restore BSR
-	movff   STAT_IL,STATUS  ;Restore Status
-	movf    W_IL,W          ;Restore W reg
+	movwf   W_IL            ; Save W
+	movff   STATUS,STAT_IL  ; Save STATUS
+	movff   BSR,BSR_IL      ; Save BSR
+	call    CANISR          ; Call CAN Interrupt Service routine
+	movff   BSR_IL,BSR      ; Restore BSR
+	movff   STAT_IL,STATUS  ; Restore Status
+	movf    W_IL,W          ; Restore W reg
 #endif
 		retfie
 
@@ -138,15 +135,10 @@ LOW_INT_VECTOR	CODE	0x0018
 MAIN_START	CODE
 Main:
 
-	call Init18F4680	;  Initialize all features
+	call Init18F4680	;  Initialize all features / IO ports
 
-	;; now set 2 LEDs high, and 2 LEDs low:
-	;; UC_CPLD0-3:	
-	;; movlw	0x03
-	;; movwf	PORTC
-	
 ;; Here is where the CAN code starts
-	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1 
+	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1, with 20MHz clock results in 1Mbit/s 
 	mCANInit   1, 1, 5, 3, 1,CAN_CONFIG_ALL_VALID_MSG
 
 ;Set Loop-back mode for testing in Stand alone mode
@@ -156,188 +148,46 @@ Main:
 	mCANSetOpMode     CAN_OP_MODE_CONFIG
 
 ;Following settings will ensure only following messages in Buf 0
-; 0x25 and 0x125 (Filter Hit 0)
-; 0x36 and 0x136 (Filter Hit 1)
+; 0x012 (Filter Hit 0)
+; 0x014 (Filter Hit 1)
 
-;Set Mask B0 to 0xfffffeff
-    mCANSetReg CAN_MASK_B0, 0xfffffeff, CAN_CONFIG_XTD_MSG
-;Set Filter 0 with 0x25
-    mCANSetReg CAN_FILTER_B0_F1, 0x025, CAN_CONFIG_XTD_MSG
-;Set Filter 1 with 0x36
-    mCANSetReg CAN_FILTER_B0_F2, 0x036, CAN_CONFIG_XTD_MSG
-
-
-
-;Following settings will ensure only following messages in Buf 1
-; 0x08,0x88, 0x1000008, 0x1000088 (Filter Hit 2)
-; 0x06,0x86, 0x1000006, 0x1000086 (Filter Hit 3)
-; 0x02,0x82, 0x1000002, 0x1000082 (Filter Hit 4)
-; 0x01,0x81, 0x1000001, 0x1000081 (Filter Hit 5)
-
-;Set Mask B1 to 0xfeffff7f
-    mCANSetReg CAN_MASK_B1,0xfeffff7f, CAN_CONFIG_XTD_MSG
-;Set Filter 2 with 0x08
-    mCANSetReg CAN_FILTER_B1_F1,0x08, CAN_CONFIG_XTD_MSG
-;Set Filter 3 with 0x05
-    mCANSetReg CAN_FILTER_B1_F2,0x06, CAN_CONFIG_XTD_MSG
-;Set Filter 4 with 0x02
-    mCANSetReg CAN_FILTER_B1_F3,0x02, CAN_CONFIG_XTD_MSG
-;Set Filter 5 with 0x01
-    ;mCANSetReg CAN_FILTER_B1_F4,0x01, CAN_CONFIG_XTD_MSG
-    mCANSetReg CAN_FILTER_B1_F4,0x01, CAN_CONFIG_STD_MSG
+;Set Mask B0 to 0xffffffff
+    mCANSetReg CAN_MASK_B0, 0xffffffff, CAN_CONFIG_STD_MSG
+;Set Filter 0 with 0x12
+    mCANSetReg CAN_FILTER_B0_F1, 0x012, CAN_CONFIG_STD_MSG
+;Set Filter 1 with 0x14
+    mCANSetReg CAN_FILTER_B0_F2, 0x014, CAN_CONFIG_STD_MSG
 
 ; Restore to Normal mode.
     mCANSetOpMode     CAN_OP_MODE_NORMAL
 
-
 ;-------------------------------
-;Message 1, Data 01,02, ID 20
+;Startup Message, Data ff,00,00,00,ID 15
 Msg1Agn:
     movlw   low(CANDt1)
     movwf   FSR0L
     movlw   high(CANDt1)
     movwf   FSR0H
-    movlw   0x01
+    movlw   0xFF
     movwf   POSTINC0
-    movlw   0x02
+    movlw   0x00
     movwf   POSTINC0
-    mCANSendMsg  0x20,CANDt1,2,CAN_TX_STD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg1Agn         ;Buffer Full, Try again
+    movwf   POSTINC0
+    movwf   POSTINC0
+    mCANSendMsg  0x15,CANDt1,4,CAN_TX_STD_FRAME
+    addlw   0x00            ; Check for return value of 0 in W
+    bz      Msg1Agn         ; Buffer Full, Try again
 ;-------------------------------
 
-
-;-------------------------------
-;Message 2, Data 03,04, ID 30
-Msg2Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x03
-    movwf   POSTINC0
-    movlw   0x04
-    movwf   POSTINC0
-    movlw   0xaa
-    movwf   POSTINC0
-    movlw   0xbb
-    movwf   POSTINC0
-    mCANSendMsg  0x30,CANDt1,4,CAN_TX_STD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg2Agn         ;Buffer Full, Try again
-;-------------------------------
-
-
-;-------------------------------
-;Message 3, Data 05,06, ID 15
-Msg3Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x05
-    movwf   POSTINC0
-    movlw   0x06
-    movwf   POSTINC0
-    mCANSendMsg  0x15,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg3Agn         ;Buffer Full, Try again
-;-------------------------------
-
-
-;-------------------------------
-;Message 4, Data 07,08, ID 05
-Msg4Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x07
-    movwf   POSTINC0
-    movlw   0x08
-    movwf   POSTINC0
-    mCANSendMsg  0x05,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg4Agn         ;Buffer Full, Try again
-;-------------------------------
-
-
-;-------------------------------
-;Message 5, Data 09,0A, ID 10
-Msg5Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x09
-    movwf   POSTINC0
-    movlw   0x0A
-    movwf   POSTINC0
-    mCANSendMsg  0x10,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg5Agn         ;Buffer Full, Try again
-;------------------------------
-
-
-
-;-------------------------------
-;Message 6, Data 0B,0C, ID 35
-Msg6Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x0B
-    movwf   POSTINC0
-    movlw   0x0C
-    movwf   POSTINC0
-    mCANSendMsg  0x35,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg6Agn         ;Buffer Full, Try again
-;-------------------------------
-
-
-;-------------------------------
-;Message 7, Data 0D,0E, ID 20
-Msg7Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x0D
-    movwf   POSTINC0
-    movlw   0x0E
-    movwf   POSTINC0
-    mCANSendMsg  0x20,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg7Agn         ;Buffer Full, Try again
-;-------------------------------
-
-;-------------------------------
-;Message 8, Data 0F,10, ID 05
-Msg8Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
-    movlw   0x0F
-    movwf   POSTINC0
-    movlw   0x10
-    movwf   POSTINC0
-    mCANSendMsg  0x05,CANDt1,2,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg8Agn         ;Buffer Full, Try again
-;-------------------------------
-
-;       mCANAbortAll         ;Use to abort transmission of all messages.
-;       mCANGetTxErrCnt      ;Get Tx Error count
-;       mCANGetRxErrCnt      ;Get Rx Error count
+;       mCANAbortAll         ; Use to abort transmission of all messages.
+;       mCANGetTxErrCnt      ; Get Tx Error count
+;       mCANGetRxErrCnt      ; Get Rx Error count
 
 RcvMsg:
+
+; loop until we receive a CANbus message with the above filters
 Loop:                                   
-
     nop
-
 	mCANReadMsg  RxMsgID, RxData, RxDtLngth, RxFlag
 	xorlw   0x01
 	bnz     Loop
@@ -350,51 +200,64 @@ Loop:
 ;       information
         
 	nop
-; move first data byte to the uc_CPLD bus, which has LEDs attached
-; to the lowest 4 bits
-	;; movff RxData, PORTC
 
-;    movlw   CAN_RX_FILTER_BITS    ; mask out FILTER bits
-;    andwf   RxFlag, W
-;
-;    sublw   CAN_RX_FILTER_0
-;    bz      TofWriteReg 
-;
-;    movlw   CAN_RX_FILTER_BITS    ; mask out FILTER bits
-;    andwf   RxFlag, W
-;
-;    sublw   CAN_RX_FILTER_1
-;    bz      TofReadReg
-;
-;    movlw   CAN_RX_FILTER_BITS    ; mask out FILTER bits
-;    andwf   RxFlag, W
-;
-;    sublw   CAN_RX_FILTER_2
-;    bz      TofReadSiID
-;
     movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
     andwf   RxFlag, F               ; and store back
     
     movf    RxFlag,W                ; WREG = filter bits
-    sublw   CAN_RX_FILTER_0
-    bz      TofWriteReg 
+    sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
+    bnz     is_it_read              ; if not, check next
+    call    TofHandleWrite          ; if yes, it is a "Write" HLP message
+    bra     Loop                    ; back to receiver loop
 
-    movf    RxFlag,W
-    sublw   CAN_RX_FILTER_1
-    bz      TofReadReg
-
-    movf    RxFlag,W
-    sublw   CAN_RX_FILTER_2
-    bz      TofReadSiID
-
-    movf    RxFlag,W
-    sublw   CAN_RX_FILTER_5
-    bz      Msg8Agn
-
-    nop
-
-    bra     Loop
+is_it_read:
+    movf    RxFlag,W                ; WREG = filter bits
+    sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
+    bnz     Loop                    ; if not, back to receiver loop
+    call    TofHandleRead           ; if yes, it is a "Read" HLP message
+    bra     Loop                    ; back to receiver loop
         
+;**************************************************************
+;* which write command?
+;**************************************************************
+TofHandleWrite:
+    btfss   RxData, 7
+    bra     is_it_programPLD
+    call    TofWriteReg
+    return
+is_it_programPLD:
+    movf    RxData,W        ; WREG = RxData
+    andlw   0xF8
+    sublw   0x20            ; if (32 <= RxData[0] <= 39)
+    bnz     unknown_message ; false: send error message
+    call    TofProgramPLD   ; true: write PLD register
+    return
+
+;**************************************************************
+;* which read command?
+;**************************************************************
+TofHandleRead:
+    btfss   RxData, 7       ; if ( 0x80 < RxData[0] < 0xFF )
+    bra     unknown_message ; false: send error message
+    call    TofReadReg      ; true: read PLD register
+    return
+
+unknown_message: 
+    ; send an error message here (message ID=0x017)
+    movlw   0x17
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+unknownMsgAgn
+    nop
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    addlw   0x00            ; Check for return value of 0 in WREG
+    bz      unknownMsgAgn   ; Buffer Full, Try again
+    return
+
+;**************************************************************
+;* CAN "Write" Commands
+;**************************************************************
 TofWriteReg:
     movff   RxData, PORTD   ; put first byte as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -405,8 +268,142 @@ TofWriteReg:
     movff   RxData+1, PORTD ; second byte as register data on PORTD
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
-    bra     Loop            ; back to receiver loop
+    return                  ; back to receiver loop
 
+TofProgramPLD:
+    ; 0x20: call asStart, followed by asBulkErase
+    movf    RxData,W        ; WREG = RxData
+    sublw   0x20
+    bnz     is_it_writeAddress
+    call    asStart
+    call    asBulkErase
+    ; send WriteResponse packet
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+
+is_it_writeAddress:
+    ; 0x21: asAddress[23:16] = RxData[1]
+    ;       asAddress[15:8]  = RxData[2]
+    ;       asAddress[7:0]   = RxData[3]
+    ;       and reset FSR1H to beginning of "asDataBytes"
+    movf    RxData,W
+    sublw   0x21
+    bnz     is_it_writeDataByte
+    movff   RxData+1, asAddress
+    movff   RxData+2, asAddress+1
+    movff   RxData+3, asAddress+2
+    movlw   low(asDataBytes)
+    movwf   FSR2L
+    movlw   high(asDataBytes)
+    movwf   FSR2H
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+
+is_it_writeDataByte:
+    ; 0x22: put RxData[1:x] into RAM pointed to by FSR1    
+    movf    RxData,W
+    sublw   0x22
+    bnz     is_it_writePage
+    movlw   low(RxData+1)
+    movwf   FSR0L
+    movlw   high(RxData+1)
+    movwf   FSR0H
+    movf    RxDtLngth,W
+    decfsz  WREG,W
+    bra     mainProgLoop1
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+mainProgLoop1:
+    movff   POSTINC0, POSTINC2
+    decfsz  WREG,W
+    bra     mainProgLoop1
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return   
+
+is_it_writePage:
+    ; 0x23: put RxData[1:x] into RAM pointed to by FSR1 
+    ;       then call asProgram256   
+    movf    RxData,W
+    sublw   0x23
+    bnz     is_it_endPLDProgram
+    movlw   low(RxData+1)
+    movwf   FSR0L
+    movlw   high(RxData+1)
+    movwf   FSR0H
+    movf    RxDtLngth,W
+    decfsz  WREG,W
+    bra     mainProgLoop2
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+mainProgLoop2:
+    movff   POSTINC0, POSTINC2
+    decfsz  WREG,W
+    bra     mainProgLoop2
+    call    asProgram256
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+
+is_it_endPLDProgram:
+    ; 0x24: call asDone
+    movf    RxData,W
+    sublw   0x24
+    bnz     is_it_readSiID
+    call    asDone
+    ; sendWriteResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+
+is_it_readSiID:
+    movf    RxData,W
+    sublw   0x27
+    bz      TofReadSiID
+    call    unknown_message
+    return
+TofReadSiID:
+    mAsReadSiliconID    CANDt1
+Msg9Agn:
+    mCANSendMsg  0x05,CANDt1,1,CAN_TX_XTD_FRAME
+    addlw   0x00            ; Check for return value of 0 in W
+    bz      Msg9Agn         ; Buffer Full, Try again
+    return                  ; back to receiver loop
+
+
+;**************************************************************
+;* CAN "Read" Commands
+;**************************************************************
 TofReadReg:
     movff   RxData, PORTD   ; put first byte as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -414,7 +411,7 @@ TofReadReg:
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
     
-;Message 1, Data 01,02, ID 20
+    ;setup address pointer to CAN payload
     movlw   low(CANDt1)
     movwf   FSR0L
     movlw   high(CANDt1)
@@ -429,20 +426,9 @@ TofReadReg:
     clrf    TRISD           ; PORT D as output again
 MsgTofAgn:
     mCANSendMsg  0x20,CANDt1,1,CAN_TX_STD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      MsgTofAgn       ;Buffer Full, Try again
-    bra     Loop            ; back to receiver loop
-
-TofReadSiID:
-
-    mAsReadSiliconID    CANDt1
-;-------------------------------
-;Message 9, Data 0F,10, ID 07
-Msg9Agn:
-    mCANSendMsg  0x07,CANDt1,1,CAN_TX_XTD_FRAME
-    addlw   0x00            ;Check for return value of 0 in W
-    bz      Msg9Agn         ;Buffer Full, Try again
-    bra Loop                ; back to receiver loop
+    addlw   0x00            ; Check for return value of 0 in W
+    bz      MsgTofAgn       ; Buffer Full, Try again
+    return                  ; back to receiver loop
 
 ;******************************************************************************
 ;End of program
