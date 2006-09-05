@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.2 2006-08-30 18:46:02 jschamba Exp $
+; $Id: main.asm,v 1.3 2006-09-05 21:43:01 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -183,14 +183,15 @@ Msg1Agn:
 ;       mCANGetTxErrCnt      ; Get Tx Error count
 ;       mCANGetRxErrCnt      ; Get Rx Error count
 
-RcvMsg:
-
+;**************************************************************
+;* Default Receive Loop
+;**************************************************************
+QuietLoop:
 ; loop until we receive a CANbus message with the above filters
-Loop:                                   
     nop
 	mCANReadMsg  RxMsgID, RxData, RxDtLngth, RxFlag
 	xorlw   0x01
-	bnz     Loop
+	bnz     QuietLoop
 
 ;Message Recd. Successfully 
 ;       RxMsgID = 32 bit ID
@@ -200,7 +201,6 @@ Loop:
 ;       information
         
 	nop
-
     movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
     andwf   RxFlag, F               ; and store back
     
@@ -208,30 +208,64 @@ Loop:
     sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
     bnz     is_it_read              ; if not, check next
     call    TofHandleWrite          ; if yes, it is a "Write" HLP message
-    bra     Loop                    ; back to receiver loop
+    bra     QuietLoop               ; back to receiver loop
 
 is_it_read:
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
-    bnz     Loop                    ; if not, back to receiver loop
+    bnz     QuietLoop               ; if not, back to receiver loop
     call    TofHandleRead           ; if yes, it is a "Read" HLP message
-    bra     Loop                    ; back to receiver loop
+    bra     QuietLoop               ; back to receiver loop
         
+;**************************************************************
+;* Receiver Loop with Data send
+;**************************************************************
+PLDLoop:
+    call    getPLDData
+	mCANReadMsg  RxMsgID, RxData, RxDtLngth, RxFlag
+	xorlw   0x01
+	bnz     PLDLoop
+
+	nop
+    movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
+    andwf   RxFlag, F               ; and store back
+    
+    movf    RxFlag,W                ; WREG = filter bits
+    sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
+    bnz     is_it_read2             ; if not, check next
+    call    TofHandleWrite          ; if yes, it is a "Write" HLP message
+    bra     PLDLoop                 ; back to receiver loop
+
+is_it_read2:
+    movf    RxFlag,W                ; WREG = filter bits
+    sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
+    bnz     PLDLoop                 ; if not, back to receiver loop
+    call    TofHandleRead           ; if yes, it is a "Read" HLP message
+    bra     PLDLoop                 ; back to receiver loop
+
+
 ;**************************************************************
 ;* which write command?
 ;**************************************************************
 TofHandleWrite:
-    btfss   RxData, 7
-    bra     is_it_programPLD
-    call    TofWriteReg
+    btfss   RxData, 7           ; test if bit 7 in RxData[0] is set
+    bra     is_it_MCU_RDOUT_MODE    ; false: test next command
+    call    TofWriteReg         ; true: write POLD register
+    return
+is_it_MCU_RDOUT_MODE:
+    movf    RxData,W            ; WREG = RxData
+    sublw   0x0A                ; if (RxData[0] == 0x0a)
+    bnz     is_it_programPLD    ; false: test next command
+    call    TofSetRDOUT_MODE    ; true: set MCU DATA Readout Mode
     return
 is_it_programPLD:
-    movf    RxData,W        ; WREG = RxData
+    movf    RxData,W            ; WREG = RxData
     andlw   0xF8
-    sublw   0x20            ; if (32 <= RxData[0] <= 39)
-    bnz     unknown_message ; false: send error message
-    call    TofProgramPLD   ; true: write PLD register
+    sublw   0x20                ; if (32 <= RxData[0] <= 39)
+    bnz     unknown_message     ; false: send error message
+    call    TofProgramPLD       ; true: a "program PLD" command
     return
+    
 
 ;**************************************************************
 ;* which read command?
@@ -258,6 +292,11 @@ unknownMsgAgn
 ;**************************************************************
 ;* CAN "Write" Commands
 ;**************************************************************
+TofSetRDOUT_MODE:
+    btfss   RxData+1, 0     ; test if bit 0 in RxData[1] is set
+    goto    QuietLoop       ; false: continue in QuietLoop
+    goto    PLDLoop         ; true: continue in PLDLoop    
+
 TofWriteReg:
     movff   RxData, PORTD   ; put first byte as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -332,11 +371,11 @@ mainProgLoop1:
     decfsz  WREG,W
     bra     mainProgLoop1
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+;    movlw   0x03
+;    movwf   RxMsgID
+;    movlw   CAN_TX_STD_FRAME
+;    movwf   RxFlag
+;    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
     return   
 
 is_it_writePage:
@@ -405,7 +444,7 @@ Msg9Agn:
 ;* CAN "Read" Commands
 ;**************************************************************
 TofReadReg:
-    movff   RxData, PORTD   ; put first byte as register address on PORTD
+    movff   RxData, LATD    ; put first byte as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
@@ -429,6 +468,89 @@ MsgTofAgn:
     addlw   0x00            ; Check for return value of 0 in W
     bz      MsgTofAgn       ; Buffer Full, Try again
     return                  ; back to receiver loop
+
+getPLDData:
+    ;setup address pointer to CAN payload
+    movlw   low(CANDt1)
+    movwf   FSR0L
+    movlw   high(CANDt1)
+    movwf   FSR0H
+
+    banksel PORTD
+
+    ; read register 0x87, contains the trigger command
+    movlw   0x87   
+    movwf   LATD            ; put WREG as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    setf    TRISD           ; set PORT D as input
+    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DS      ; DS hi
+    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    bcf     uc_fpga_DS      ; DS lo
+    bsf     uc_fpga_DIR     ; DIR hi
+    clrf    TRISD           ; PORT D as output again
+
+    banksel CANDt1
+    ; test if trigger command not zero:
+    tstfsz  CANDt1          ; if (CANDt1[0] == 0)
+    bra     readToken       ; true: valid PLD Data read, read token and send it over CANbus
+    return                  ; false: back to loop
+
+
+readToken:
+    banksel PORTD
+
+    movlw   0x86            ; DAQ cmd, token[11:8]  
+    movwf   LATD            ; put WREG as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    setf    TRISD           ; set PORT D as input
+    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DS      ; DS hi
+    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    bcf     uc_fpga_DS      ; DS lo
+    bsf     uc_fpga_DIR     ; DIR hi
+    clrf    TRISD           ; PORT D as output again
+
+    movlw   0x85            ; token[7:0]
+    movwf   LATD            ; put WREG as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    setf    TRISD           ; set PORT D as input
+    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DS      ; DS hi
+    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    bcf     uc_fpga_DS      ; DS lo
+    bsf     uc_fpga_DIR     ; DIR hi
+    clrf    TRISD           ; PORT D as output again
+
+    ; now write to register 0x87 to clear trigger word
+    movlw   0x87   
+    movwf   LATD            ; put WREG as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    bsf     uc_fpga_DS      ; DS hi
+    bcf     uc_fpga_DS      ; DS lo
+
+sendPLDData:
+    mCANSendMsg  0x0,CANDt1,3,CAN_TX_STD_FRAME
+    addlw   0x00            ; Check for return value of 0 in W
+    bz      sendPLDData     ; Buffer Full, Try again
+
+    return
 
 ;******************************************************************************
 ;End of program
