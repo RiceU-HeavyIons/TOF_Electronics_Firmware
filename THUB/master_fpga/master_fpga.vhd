@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.1 2006-07-24 22:19:44 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.2 2006-09-05 21:46:52 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2006-07-07
+-- Last update: 2006-09-05
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -34,7 +34,8 @@ ENTITY master_fpga IS
       -- Mictor outputs
       mic            : OUT   std_logic_vector(64 DOWNTO 0);
       -- bus to serdes fpga's
-      ma, mb, mc, md : IN    std_logic_vector(35 DOWNTO 0);
+      ma             : OUT   std_logic_vector(35 DOWNTO 0);
+      mb, mc, md     : IN    std_logic_vector(35 DOWNTO 0);
       me, mf, mg, mh : IN    std_logic_vector(35 DOWNTO 0);
       m_all          : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
@@ -96,11 +97,26 @@ ARCHITECTURE a OF master_fpga IS
       reg3        : IN  std_logic_vector(7 DOWNTO 0);
       reg4        : IN  std_logic_vector(7 DOWNTO 0);
       reg5        : IN  std_logic_vector(7 DOWNTO 0);
+      reg6        : IN  std_logic_vector(7 DOWNTO 0);
+      reg7        : IN  std_logic_vector(7 DOWNTO 0);
+      reg8        : IN  std_logic_vector(7 DOWNTO 0);
       reg_addr    : OUT std_logic_vector(2 DOWNTO 0);
+      reg_clr     : OUT std_logic;
       reg_load    : OUT std_logic;
       uc_data_out : OUT std_logic_vector(7 DOWNTO 0)
       );
   END COMPONENT uc_fpga_interface;
+
+  COMPONENT tcd IS
+    PORT (
+      rhic_strobe : IN  std_logic;
+      data_strobe : IN  std_logic;
+      data        : IN  std_logic_vector (3 DOWNTO 0);
+      aclr        : IN  std_logic;
+      trgword     : OUT std_logic_vector (19 DOWNTO 0);
+      trigger     : OUT std_logic
+      );
+  END COMPONENT tcd;
 
   SIGNAL globalclk : std_logic;
   SIGNAL arstn     : std_logic;
@@ -125,11 +141,16 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_uc_i     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg_addr : std_logic_vector(2 DOWNTO 0);
   SIGNAL s_reg_load : std_logic;
+  SIGNAL s_reg_clr  : std_logic;
   SIGNAL s_reg1     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg2     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg3     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg4     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg5     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg6     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg7     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg8     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_trigger : std_logic;
 
 BEGIN
 
@@ -144,6 +165,15 @@ BEGIN
   m_all <= cpld(3 DOWNTO 0);
 
   -- Mictor defaults
+
+
+  mic(0) <= s_ucDIR;
+  mic(1) <= s_ucCTL;
+  mic(2) <= s_ucDS;
+  mic(3) <= s_reg_load;
+  mic(4) <= s_reg_clr;
+  mic(7 DOWNTO 5) <= s_reg_addr;
+  mic(15 DOWNTO 8) <= s_uc_i;
   -- this one for the TCD:
   -- mic( 3 DOWNTO  0) <= tcd_d;
   -- mic( 4)           <= tcd_clk;
@@ -151,27 +181,25 @@ BEGIN
   -- mic( 7 DOWNTO  6) <= s_fiD( 7 DOWNTO  6);
 
   -- and this one for the DDL:
-  mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
+  --mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
 
-  --  mic( 7 DOWNTO  0) <= s_fiD( 7 DOWNTO  0);
-  mic(8)            <= '0';
-  mic(9)            <= s_fiTEN_N;
-  mic(10)           <= s_fiCTRL_N;
-  mic(11)           <= fiDIR;
-  mic(12)           <= fiBEN_N;
-  mic(14 DOWNTO 13) <= (OTHERS => '0');
-  mic(15)           <= globalclk;
-  mic(31 DOWNTO 16) <= (OTHERS => '0');
+--  mic(0)          <= tcd_strb;
+--  mic(1)          <= tcd_clk;
+--  mic(5 DOWNTO 2) <= tcd_d;
+--  mic(7 DOWNTO 6) <= "00";
+
+--  mic(8)            <= '0';
+--  mic(9)            <= s_fiTEN_N;
+--  mic(10)           <= s_fiCTRL_N;
+--  mic(11)           <= fiDIR;
+--  mic(12)           <= fiBEN_N;
+ --  mic(14 DOWNTO 13) <= (OTHERS => '0');
+  -- mic(15)           <= globalclk;
+  mic(63 DOWNTO 16) <= (OTHERS => '0');
   -- mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
   -- mic(63 DOWNTO 48) <= (OTHERS => '0');
-  mic(63 DOWNTO 50) <= (OTHERS => '0');
-
-  mic(49)           <= ma(19);
-  mic(48)           <= ma(18);
-  mic(47 DOWNTO 32) <= ma(15 DOWNTO 0);
-
   -- mic(63 DOWNTO  0) <= (OTHERS => '0');
-  mic(64) <= clk;
+  mic(64)           <= clk;
 
   -- Other defaults
 
@@ -249,9 +277,32 @@ BEGIN
       reg3        => s_reg3,
       reg4        => s_reg4,
       reg5        => s_reg5,
+      reg6        => s_reg6,
+      reg7        => s_reg7,
+      reg8        => s_reg8,
       reg_addr    => s_reg_addr,
       reg_load    => s_reg_load,
+      reg_clr     => s_reg_clr,
       uc_data_out => s_uc_o);
 
+
+  tcd_inst : tcd
+    PORT MAP (
+      rhic_strobe           => tcd_strb,
+      data_strobe           => tcd_clk,
+      data                  => tcd_d,
+      aclr                  => s_reg_clr,
+      trgword(19 DOWNTO 16) => s_reg8(3 DOWNTO 0),
+      trgword(15 DOWNTO 8)  => s_reg7,
+      trgword(7 DOWNTO 0)   => s_reg6,
+      trigger               => s_trigger);
+
+  s_reg8(7 DOWNTO 4) <= "0000";
+
+  ma(7 DOWNTO 0)   <= s_reg1;
+  ma(15 DOWNTO 8)  <= s_reg2;
+  ma(23 DOWNTO 16) <= s_reg3;
+  ma(31 DOWNTO 24) <= s_reg4;
+  ma(35 DOWNTO 32) <= s_reg5(3 DOWNTO 0);
 
 END a;
