@@ -1,5 +1,5 @@
-; $Id: THUB.def,v 1.1 2006-08-11 22:11:01 jschamba Exp $
-	#define uc_fpga_DIR	PORTA,0x02
-	#define uc_fpga_CTL	PORTA,0x01
-	#define uc_fpga_DS	PORTA,0x00
+; $Id: THUB.def,v 1.2 2006-09-05 21:41:53 jschamba Exp $
+	#define uc_fpga_DIR	LATA,0x02
+	#define uc_fpga_CTL	LATA,0x01
+	#define uc_fpga_DS	LATA,0x00
 
