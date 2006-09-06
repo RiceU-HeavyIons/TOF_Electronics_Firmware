@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.3 2006-09-05 21:43:01 jschamba Exp $
+; $Id: main.asm,v 1.4 2006-09-06 19:46:01 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -471,10 +471,14 @@ MsgTofAgn:
 
 getPLDData:
     ;setup address pointer to CAN payload
+    banksel CANDt1
     movlw   low(CANDt1)
     movwf   FSR0L
     movlw   high(CANDt1)
     movwf   FSR0H
+
+    movlw   0xa0
+    movwf   POSTINC0
 
     banksel PORTD
 
@@ -496,8 +500,21 @@ getPLDData:
 
     banksel CANDt1
     ; test if trigger command not zero:
-    tstfsz  CANDt1          ; if (CANDt1[0] == 0)
+    tstfsz  CANDt1+1        ; if (CANDt1[1] == 0)
     bra     readToken       ; true: valid PLD Data read, read token and send it over CANbus
+
+    ; now write to register 0x87 to advance the TCD FIFO
+    banksel PORTD
+    movlw   0x87   
+    movwf   LATD            ; put WREG as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    bsf     uc_fpga_DS      ; DS hi
+    bcf     uc_fpga_DS      ; DS lo
+
     return                  ; false: back to loop
 
 
@@ -534,7 +551,7 @@ readToken:
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
 
-    ; now write to register 0x87 to clear trigger word
+    ; now write to register 0x87 to advance the TCD FIFO
     movlw   0x87   
     movwf   LATD            ; put WREG as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -546,7 +563,7 @@ readToken:
     bcf     uc_fpga_DS      ; DS lo
 
 sendPLDData:
-    mCANSendMsg  0x0,CANDt1,3,CAN_TX_STD_FRAME
+    mCANSendMsg  0x0,CANDt1,4,CAN_TX_STD_FRAME
     addlw   0x00            ; Check for return value of 0 in W
     bz      sendPLDData     ; Buffer Full, Try again
 
