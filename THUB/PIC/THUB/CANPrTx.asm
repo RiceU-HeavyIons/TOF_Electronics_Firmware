@@ -1,4 +1,4 @@
-; $Id: CANPrTx.asm,v 1.1 2006-08-11 22:11:01 jschamba Exp $
+; $Id: CANPrTx.asm,v 1.2 2006-09-12 22:49:50 jschamba Exp $
 ;****************************************************************************
 ;*
 ;*              CAN Library routines in Assembly
@@ -1313,13 +1313,18 @@ CopyBuffer:
         movlw   high(RXB0D1)
         movwf   FSR0H
 
-        banksel _DataLength
+        banksel _DataLength        
+        tstfsz  _DataLength
+        bra     StartCopying
+        bra     MarkBufferOpen
+StartCopying:
         movf    _DataLength,w
 CopyNxtRxData:
         movff   POSTINC0,POSTINC1
         decfsz  WREG
         bra     CopyNxtRxData
 
+MarkBufferOpen:
         bcf     RXB0CON,RXFUL   ;Indicate that buffer is open to receive Msg.
 
         movlw   B'11110001'
