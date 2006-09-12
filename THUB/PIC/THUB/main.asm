@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.4 2006-09-06 19:46:01 jschamba Exp $
+; $Id: main.asm,v 1.5 2006-09-12 22:51:29 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -18,11 +18,11 @@
 ;                                                                             *
 ;******************************************************************************
 ;                                                                             *
-;    Filename:      main.asm                                                             *
+;    Filename:      main.asm                                                  *
 ;    Date:                                                                    *
 ;    File Version:                                                            *
 ;                                                                             *
-;    Author:        J. Schambach                                                                 *
+;    Author:        J. Schambach                                              *
 ;    Company:                                                                 *
 ;                                                                             * 
 ;******************************************************************************
@@ -65,6 +65,16 @@
 	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CPB = OFF, CPD = OFF
 	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
 	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
+
+
+    __idlocs _IDLOC0, 0x1 ;IDLOC register 0 will be programmed to 1.
+    __idlocs _IDLOC1, 0x2 ;IDLOC register 1 will be programmed to 2.
+    __idlocs _IDLOC2, 0x3 ;IDLOC register 2 will be programmed to 3.
+    __idlocs _IDLOC3, 0x4 ;IDLOC register 3 will be programmed to 4.
+    __idlocs _IDLOC4, 0x5 ;IDLOC register 4 will be programmed to 5.
+    __idlocs _IDLOC5, 0x6 ;IDLOC register 5 will be programmed to 6.
+    __idlocs _IDLOC6, 0x7 ;IDLOC register 6 will be programmed to 7.
+    __idlocs _IDLOC7, 0x8 ;IDLOC register 7 will be programmed to 8.
 
 ;******************************************************************************
 ;Variable definitions
@@ -444,18 +454,19 @@ Msg9Agn:
 ;* CAN "Read" Commands
 ;**************************************************************
 TofReadReg:
-    movff   RxData, LATD    ; put first byte as register address on PORTD
-    bsf     uc_fpga_CTL     ; put CTL hi
-    bsf     uc_fpga_DS      ; put DS hi
-    bcf     uc_fpga_DS      ; DS back low
-    bcf     uc_fpga_CTL     ; CTL back low
-    
     ;setup address pointer to CAN payload
     movlw   low(CANDt1)
     movwf   FSR0L
     movlw   high(CANDt1)
     movwf   FSR0H
 
+    banksel PORTD
+    movff   RxData, LATD    ; put first byte as register address on PORTD
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+    
     setf    TRISD           ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
