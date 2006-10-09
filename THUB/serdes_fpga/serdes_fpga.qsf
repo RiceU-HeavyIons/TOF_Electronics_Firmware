@@ -465,8 +465,14 @@ set_instance_assignment -name CLOCK_SETTINGS PLD_INPUT_CLOCK -to clk
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD LVTTL
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
 set_global_assignment -name ENABLE_CLOCK_LATENCY ON
-set_global_assignment -name VHDL_FILE fifo.vhd
+set_global_assignment -name REMOVE_DUPLICATE_REGISTERS OFF
+set_instance_assignment -name TOGGLE_RATE "0 MHz" -to sra_d[1]
+set_global_assignment -name VHDL_FILE zbt_ctrl_top.vhd
+set_global_assignment -name VHDL_FILE addr_ctrl_out.vhd
+set_global_assignment -name VHDL_FILE data_inout.vhd
+set_global_assignment -name VHDL_FILE pipe_delay.vhd
+set_global_assignment -name VHDL_FILE pipe_stage.vhd
 set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
-set_global_assignment -name REMOVE_DUPLICATE_REGISTERS OFF
+set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
