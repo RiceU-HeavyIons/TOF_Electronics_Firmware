@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.2 2006-09-05 21:46:52 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.3 2006-11-30 15:49:16 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2006-09-05
+-- Last update: 2006-11-29
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -118,6 +118,28 @@ ARCHITECTURE a OF master_fpga IS
       );
   END COMPONENT tcd;
 
+  COMPONENT ddl IS
+    PORT (
+      reset      : IN  std_logic;
+      fiCLK      : IN  std_logic;
+      fiTEN_N    : IN  std_logic;
+      fiDIR      : IN  std_logic;
+      fiBEN_N    : IN  std_logic;
+      fiLF_N     : IN  std_logic;
+      fiCTRL_N   : IN  std_logic;
+      fiD        : IN  std_logic_vector(31 DOWNTO 0);
+      fifo_q     : IN  std_logic_vector(31 DOWNTO 0);  -- interface fifo data output port
+      fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
+      ext_trg    : IN  std_logic;       -- external trigger
+      run_reset  : OUT std_logic;       -- reset external logic at Run Start
+      foD        : OUT std_logic_vector(31 DOWNTO 0);
+      foBSY_N    : OUT std_logic;
+      foCTRL_N   : OUT std_logic;
+      foTEN_N    : OUT std_logic;
+      fifo_rdreq : OUT std_logic        -- interface fifo read request
+      );
+  END COMPONENT ddl;
+
   SIGNAL globalclk : std_logic;
   SIGNAL arstn     : std_logic;
 
@@ -150,7 +172,11 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg6     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7     : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg8     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_trigger : std_logic;
+  SIGNAL s_trigger  : std_logic;
+  SIGNAL s_runReset : std_logic;
+  SIGNAL ddl_data : std_logic_vector (31 DOWNTO 0);
+  SIGNAL ddlfifo_empty : std_logic;
+  SIGNAL rd_ddl_fifo : std_logic;
 
 BEGIN
 
@@ -167,13 +193,15 @@ BEGIN
   -- Mictor defaults
 
 
-  mic(0) <= s_ucDIR;
-  mic(1) <= s_ucCTL;
-  mic(2) <= s_ucDS;
-  mic(3) <= s_reg_load;
-  mic(4) <= s_reg_clr;
-  mic(7 DOWNTO 5) <= s_reg_addr;
-  mic(15 DOWNTO 8) <= s_uc_i;
+  -- mic(0) <= s_ucDIR;
+  -- mic(1) <= s_ucCTL;
+  -- mic(2) <= s_ucDS;
+  -- mic(3) <= s_reg_load;
+  -- mic(4) <= s_reg_clr;
+  -- mic(7 DOWNTO 5) <= s_reg_addr;
+  -- mic(15 DOWNTO 8) <= s_uc_i;
+  -- mic(15 DOWNTO 8) <= (OTHERS => '0');
+  
   -- this one for the TCD:
   -- mic( 3 DOWNTO  0) <= tcd_d;
   -- mic( 4)           <= tcd_clk;
@@ -181,23 +209,23 @@ BEGIN
   -- mic( 7 DOWNTO  6) <= s_fiD( 7 DOWNTO  6);
 
   -- and this one for the DDL:
-  --mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
+  mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
 
 --  mic(0)          <= tcd_strb;
 --  mic(1)          <= tcd_clk;
 --  mic(5 DOWNTO 2) <= tcd_d;
 --  mic(7 DOWNTO 6) <= "00";
 
---  mic(8)            <= '0';
---  mic(9)            <= s_fiTEN_N;
---  mic(10)           <= s_fiCTRL_N;
---  mic(11)           <= fiDIR;
---  mic(12)           <= fiBEN_N;
- --  mic(14 DOWNTO 13) <= (OTHERS => '0');
-  -- mic(15)           <= globalclk;
-  mic(63 DOWNTO 16) <= (OTHERS => '0');
-  -- mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
-  -- mic(63 DOWNTO 48) <= (OTHERS => '0');
+  mic(8)            <= '0';
+  mic(9)            <= s_fiTEN_N;
+  mic(10)           <= s_fiCTRL_N;
+  mic(11)           <= fiDIR;
+  mic(12)           <= fiBEN_N;
+  mic(14 DOWNTO 13) <= (OTHERS => '0');
+  mic(15)           <= globalclk;
+  -- mic(63 DOWNTO 16) <= (OTHERS => '0');
+  mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
+  mic(63 DOWNTO 48) <= (OTHERS => '0');
   -- mic(63 DOWNTO  0) <= (OTHERS => '0');
   mic(64)           <= clk;
 
@@ -211,15 +239,15 @@ BEGIN
   -- ********************************************************************************
 
   -- detector data link interface signals
-  fobsy_n    <= '1';
+  -- fobsy_n    <= '1';
   foclk      <= globalclk;
   s_fiTEN_N  <= fbten_n;
   s_fiCTRL_N <= fbctrl_n;
   s_fiD      <= fbd;
 
-  s_foTEN_N  <= '1';
-  s_foCTRL_N <= '1';
-  s_foD      <= (OTHERS => '0');
+  -- s_foTEN_N  <= '1';
+  -- s_foCTRL_N <= '1';
+  -- s_foD      <= (OTHERS => '0');
 
   ddlbus : PROCESS (fiben_n, fidir, s_foTEN_N, s_foCTRL_N, fbd, s_foD)
   BEGIN
@@ -233,6 +261,30 @@ BEGIN
       fbd      <= s_foD;
     END IF;
   END PROCESS;
+
+  -- unused for now:
+  ddl_data <= (OTHERS => '0');
+  ddlfifo_empty <= '1';
+  
+  ddl_inst : ddl PORT MAP (             -- DDL
+    fiD        => s_fiD,
+    foD        => s_foD,
+    foBSY_N    => fobsy_n,
+    fiCLK      => globalclk,
+    fiDIR      => fidir,
+    fiBEN_N    => fiben_n,
+    fiLF_N     => filf_n,
+    fiCTRL_N   => s_fiCTRL_N,
+    foCTRL_N   => s_foCTRL_N,
+    fiTEN_N    => s_fiTEN_N,
+    foTEN_N    => s_foTEN_N,
+    ext_trg    => '0',                  -- external trigger (for testing)
+    run_reset  => s_runReset,           -- external logic reset at run start
+    reset      => '0', -- reset,
+    fifo_q     => ddl_data,
+    fifo_empty => ddlfifo_empty,
+    fifo_rdreq => rd_ddl_fifo
+    );
 
   -- ********************************************************************************
   -- micro interface defaults
