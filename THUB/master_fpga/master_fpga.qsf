@@ -49,8 +49,12 @@ set_location_assignment PIN_AD22 -to fbctrl_n
 set_location_assignment PIN_AC20 -to fbd[0]
 set_location_assignment PIN_AF20 -to fbd[1]
 set_location_assignment PIN_AE20 -to fbd[2]
-set_location_assignment PIN_AC22 -to fbd[3]
-set_location_assignment PIN_AB21 -to fbd[4]
+# JS: these two are interchanged with respect to each other:
+#set_location_assignment PIN_AC22 -to fbd[3]
+#set_location_assignment PIN_AB21 -to fbd[4]
+# JS: here we correct this: 
+set_location_assignment PIN_AC22 -to fbd[4]
+set_location_assignment PIN_AB21 -to fbd[3]
 set_location_assignment PIN_AC21 -to fbd[5]
 set_location_assignment PIN_AD21 -to fbd[6]
 set_location_assignment PIN_AD23 -to fbd[7]
@@ -493,8 +497,21 @@ set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulati
 
 set_global_assignment -name FMAX_REQUIREMENT "40 MHz" -section_id clk
 set_instance_assignment -name CLOCK_SETTINGS clk -to clk
+set_global_assignment -name VHDL_FILE my_utilities.vhd
+set_global_assignment -name VHDL_FILE my_conversions.vhd
+set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
+set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_receiver.vhd
+set_global_assignment -name VHDL_FILE ddl_registers.vhd
+set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
+set_global_assignment -name VHDL_FILE ddl_top.vhd
 set_global_assignment -name VHDL_FILE tcd_interface.vhd
 set_global_assignment -name VHDL_FILE master_fpga.vhd
 set_global_assignment -name VHDL_FILE control_registers.vhd
 set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id tcd_strb
+set_instance_assignment -name CLOCK_SETTINGS tcd_strb -to tcd_strb
+set_global_assignment -name FMAX_REQUIREMENT "50 MHz" -section_id tcd_clk
+set_instance_assignment -name CLOCK_SETTINGS tcd_clk -to tcd_clk
