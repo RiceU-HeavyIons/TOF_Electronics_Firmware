@@ -515,3 +515,4 @@ set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id tcd_strb
 set_instance_assignment -name CLOCK_SETTINGS tcd_strb -to tcd_strb
 set_global_assignment -name FMAX_REQUIREMENT "50 MHz" -section_id tcd_clk
 set_instance_assignment -name CLOCK_SETTINGS tcd_clk -to tcd_clk
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
