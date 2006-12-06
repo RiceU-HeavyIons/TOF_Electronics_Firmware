@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:57:31  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION "6.0 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION 6.1
 
 # Pin & Location Assignments
 # ==========================
@@ -323,6 +323,7 @@ set_location_assignment PIN_G23 -to sra_bw[2]
 set_location_assignment PIN_G24 -to sra_bw[3]
 set_location_assignment PIN_F26 -to sra_clk
 set_location_assignment PIN_M22 -to sra_d[0]
+set_location_assignment PIN_M21 -to dummy
 #set_location_assignment PIN_M21 -to sra_d[1]
 set_location_assignment PIN_N20 -to sra_d[2]
 set_location_assignment PIN_M20 -to sra_d[3]
@@ -477,3 +478,5 @@ set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
 set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
