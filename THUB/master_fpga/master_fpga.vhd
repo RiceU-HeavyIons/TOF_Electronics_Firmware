@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.3 2006-11-30 15:49:16 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.4 2006-12-06 17:14:01 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2006-11-29
+-- Last update: 2006-12-05
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -226,6 +226,7 @@ BEGIN
   -- mic(63 DOWNTO 16) <= (OTHERS => '0');
   mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
   mic(63 DOWNTO 48) <= (OTHERS => '0');
+  mic(31 DOWNTO 16) <= (OTHERS => '0');
   -- mic(63 DOWNTO  0) <= (OTHERS => '0');
   mic(64)           <= clk;
 
