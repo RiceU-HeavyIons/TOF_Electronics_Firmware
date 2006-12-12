@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.4 2006-12-06 17:14:01 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.5 2006-12-12 23:18:36 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2006-12-05
+-- Last update: 2006-12-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -35,8 +35,9 @@ ENTITY master_fpga IS
       mic            : OUT   std_logic_vector(64 DOWNTO 0);
       -- bus to serdes fpga's
       ma             : OUT   std_logic_vector(35 DOWNTO 0);
-      mb, mc, md     : IN    std_logic_vector(35 DOWNTO 0);
-      me, mf, mg, mh : IN    std_logic_vector(35 DOWNTO 0);
+      mb, mc, md     : INOUT std_logic_vector(35 DOWNTO 0);
+      mf, mg, mh     : INOUT std_logic_vector(35 DOWNTO 0);
+      me             : INOUT std_logic_vector(35 DOWNTO 0);
       m_all          : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
       cpld           : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
@@ -187,6 +188,15 @@ BEGIN
   -- LEDs
   led <= "00";
 
+  -- SERDES FPGA interfaces:
+  mb <= (OTHERS => 'Z');
+  mc <= (OTHERS => 'Z');
+  md <= (OTHERS => 'Z');
+  me <= (OTHERS => 'Z');
+  mf <= (OTHERS => 'Z');
+  mg <= (OTHERS => 'Z');
+  mh <= (OTHERS => 'Z');
+  
   -- bus to SERDES FPGA is driven by CPLD
   m_all <= cpld(3 DOWNTO 0);
 
@@ -295,7 +305,7 @@ BEGIN
   s_ucDS  <= uc_fpga_hi(8);
   s_uc_i  <= uc_fpga_lo;
 
-  uc_bus : PROCESS (s_ucDIR) IS
+  uc_bus : PROCESS (s_ucDIR, s_uc_o) IS
   BEGIN  -- PROCESS uc_bus
     IF (s_ucDIR = '1') THEN
       uc_fpga_lo <= (OTHERS => 'Z');
