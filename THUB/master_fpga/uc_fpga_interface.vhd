@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.2 2006-09-05 21:46:52 jschamba Exp $
+-- $Id: uc_fpga_interface.vhd,v 1.3 2006-12-12 23:27:05 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-06-27
--- Last update: 2006-09-05
+-- Last update: 2006-12-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -53,18 +53,13 @@ ARCHITECTURE SYN OF uc_fpga_interface IS
   SIGNAL state : State_type;
 
   SIGNAL is_address : boolean;
-  SIGNAL is_idle    : boolean;
   SIGNAL is_data_w  : boolean;
-  SIGNAL is_data_r  : boolean;
-  SIGNAL was_read   : boolean                      := false;
   SIGNAL addr       : std_logic_vector(2 DOWNTO 0) := "111";
 
 BEGIN  -- ARCHITECTURE SYN
 
   is_address <= (ctl = '1') AND (ds = '1') AND (dir = '1');
-  is_idle    <= (ctl = '0') AND (ds = '0');
   is_data_w  <= (ctl = '0') AND (ds = '1') AND (dir = '1');
-  is_data_r  <= (ctl = '0') AND (ds = '1') AND (dir = '0');
 
   reg_addr <= addr;
 
@@ -73,7 +68,6 @@ BEGIN  -- ARCHITECTURE SYN
     IF arstn = '0' THEN                     -- asynchronous reset (active low)
       addr     <= (OTHERS => '1');
       reg_load <= '0';
-      was_read <= false;
     ELSIF clock'event AND clock = '1' THEN  -- rising clock edge
       reg_load <= '0';
       reg_clr  <= '0';
