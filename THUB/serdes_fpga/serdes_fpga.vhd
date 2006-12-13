@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.2 2006-10-09 19:02:17 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.3 2006-12-13 16:43:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2006-08-03
+-- Last update: 2006-12-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -41,7 +41,6 @@ ENTITY serdes_fpga IS
       -- ADDR[17] and ADDR[18] on schematic are actually TCK and TDO, so renamed 
       -- ADDR[19] and ADDR[20] to be ADDR[17] and ADDR[18], respectively
       sra_addr, srb_addr                                 : OUT   std_logic_vector(18 DOWNTO 0);
-      -- sra_d                                              : IN    std_logic_vector(31 DOWNTO 0);
       sra_d                                              : INOUT std_logic_vector(31 DOWNTO 0);
       srb_d                                              : INOUT std_logic_vector(31 DOWNTO 0);
       sra_tck, srb_tck                                   : OUT   std_logic;  -- JTAG
@@ -68,7 +67,8 @@ ENTITY serdes_fpga IS
       -- ***** LEDs *****
       led                                                : OUT   std_logic_vector(1 DOWNTO 0);
       -- ***** test points *****
-      tp                                                 : IN    std_logic_vector(15 DOWNTO 1)
+      dummy                                              : IN    std_logic;
+      tp                                                 : IN    std_logic_vector(15 DOWNTO 2)
 
       );
 END serdes_fpga;
@@ -104,20 +104,20 @@ ARCHITECTURE a OF serdes_fpga IS
   COMPONENT zbt_ctrl_top
     PORT (
       clk           : IN    std_logic;
-      RESET_N       : IN    std_logic;                              -- active LOW asynchronous reset
+      RESET_N       : IN    std_logic;                      -- active LOW asynchronous reset
 -- local bus interface
       ADDR          : IN    std_logic_vector(18 DOWNTO 0);
       DATA_IN       : IN    std_logic_vector(31 DOWNTO 0);
       DATA_OUT      : OUT   std_logic_vector(31 DOWNTO 0);
-      RD_WR_N       : IN    std_logic;                              -- active LOW write
-      ADDR_ADV_LD_N : IN    std_logic;                              -- advance/load address (active LOW load)
-      DM            : IN    std_logic_vector(3 DOWNTO 0);  -- data mask bits                   
+      RD_WR_N       : IN    std_logic;                      -- active LOW write
+      ADDR_ADV_LD_N : IN    std_logic;                      -- advance/load address (active LOW load)
+      DM            : IN    std_logic_vector(3 DOWNTO 0);   -- data mask bits                   
 -- SRAM interface
-      SA            : OUT   std_logic_vector(18 DOWNTO 0);   -- address bus to RAM   
-      DQ            : INOUT std_logic_vector(31 DOWNTO 0);   -- data to/from RAM
-      RW_N          : OUT   std_logic;                              -- active LOW write
-      ADV_LD_N      : OUT   std_logic;                              -- active LOW load
-      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)   -- active LOW byte enables
+      SA            : OUT   std_logic_vector(18 DOWNTO 0);  -- address bus to RAM   
+      DQ            : INOUT std_logic_vector(31 DOWNTO 0);  -- data to/from RAM
+      RW_N          : OUT   std_logic;                      -- active LOW write
+      ADV_LD_N      : OUT   std_logic;                      -- active LOW load
+      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)    -- active LOW byte enables
       );
   END COMPONENT;
 
@@ -145,6 +145,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_rw_n          : std_logic;
   SIGNAL s_addr_adv_ld_n : std_logic;
   SIGNAL s_dm            : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_sram_dataout  : std_logic_vector(31 DOWNTO 0);
 
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
@@ -153,7 +154,17 @@ BEGIN
 
   global_clk_buffer : global PORT MAP (a_in => clk, a_out => globalclk);
 
-  serdes_clk <= '0';
+  -- create 20 MHz clock with TFF:
+  div2 : TFF PORT MAP (
+    t    => '1',
+    clk  => globalclk,
+    clrn => '1',
+    prn  => '1',
+    q    => clk20mhz);
+
+  serdes_clk <= clk20mhz;
+  -- serdes_clk <= '0';
+  -- serdes_clk <= globalclk;
 
   -- PLL
   pll_instance : pll PORT MAP (
@@ -208,30 +219,52 @@ BEGIN
   END PROCESS dip_latch;
 
 
+  -- SERDES utilities
+  local_aclr <= m_all(1);
+
+  -- Counter as data input to channel 0 TX
+  counter17b : lpm_counter GENERIC MAP (
+    LPM_WIDTH     => 17,
+    LPM_TYPE      => "LPM_COUNTER",
+    LPM_DIRECTION => "UP")
+    PORT MAP (
+      -- clock  => serdes_clk,
+      clock  => counter25b_q(24),
+      q      => counter_q,
+      clk_en => ctr_enable,             -- turned on by dip-switch
+      aclr   => local_aclr);            -- clear with dip-switch
+
+  -- ctr_enable <= sync_dip WHEN (y = A) ELSE '0';
+  ctr_enable <= sync_dip;
+
   -- SERDES defaults
 
   -- channel 0
-  ch0_den     <= '0';
-  ch0_ren     <= '0';
-  ch0_sync    <= '0';
-  ch0_tpwdn_n <= '0';
-  ch0_rpwdn_n <= '0';
-  ch0_loc_le  <= '0';
-  ch0_line_le <= '0';
-  ch0_txd     <= (OTHERS => '0');
-  led(0)      <= ch0_lock_n;
+  ch0_den              <= '1';          -- tx enabled
+  ch0_ren              <= '0';
+  ch0_sync             <= m_all(3);     -- sync turned on by dip-switch
+  ch0_tpwdn_n          <= m_all(2);     -- tx turned on by dip-switch
+  ch0_rpwdn_n          <= '0';
+  ch0_loc_le           <= '0';
+  ch0_line_le          <= '0';
+  -- ch0_txd     <= (OTHERS => '0');
+  ch0_txd(16 DOWNTO 0) <= counter_q;
+  ch0_txd(17)          <= sync_dip;
+  led(0)               <= ch0_lock_n;
 
   -- channel 1
-  ch1_den     <= '0';
-  ch1_ren     <= '0';
-  ch1_sync    <= '0';
-  ch1_tpwdn_n <= '0';
-  ch1_rpwdn_n <= '0';
-  ch1_loc_le  <= '0';
-  ch1_line_le <= '0';
-  ch1_txd     <= (OTHERS => '0');
-  led(1)      <= ch1_lock_n;
+  ch1_den          <= '0';
+  ch1_ren          <= '1';                   -- rx enabled
+  ch1_sync         <= '0';
+  ch1_tpwdn_n      <= '0';
+  ch1_rpwdn_n      <= '1';                   -- rx powered on
+  ch1_loc_le       <= '0';
+  ch1_line_le      <= '0';
+  ch1_txd          <= (OTHERS => '0');
+  led(1)           <= ch1_lock_n;
   -- mt(17 DOWNTO 0) <= ch1_rxd;           -- to mictor for display
+  mt(30 DOWNTO 16) <= ch1_rxd(14 DOWNTO 0);  -- to mictor for display
+  mt(31)           <= ch1_rclk;
 
   -- channel 2
   ch2_den     <= '0';
@@ -257,15 +290,16 @@ BEGIN
   -- tx clocks and rx refclocks
   -- all of these clocks come directly to the SERDES
   -- daughtercard (differentially), so just put GND ON
-  -- those lines.
+  -- those lines if not used.
+  -- when resistor is changed to this path, assign proper clock here:
   ch0_tck    <= serdes_clk;
   ch1_tck    <= serdes_clk;
-  ch2_tck    <= '0';
-  ch3_tck    <= '0';
+  ch2_tck    <= serdes_clk;
+  ch3_tck    <= serdes_clk;
   ch0_refclk <= serdes_clk;
   ch1_refclk <= serdes_clk;
-  ch2_refclk <= '0';
-  ch3_refclk <= '0';
+  ch2_refclk <= serdes_clk;
+  ch3_refclk <= serdes_clk;
 
 
   zbt_ctrl_top_inst1 : zbt_ctrl_top
@@ -275,31 +309,37 @@ BEGIN
 -- local bus interface
       ADDR(15 DOWNTO 0)     => ma(15 DOWNTO 0),
       ADDR(18 DOWNTO 16)    => (OTHERS => '0'),
-      DATA_IN(17 DOWNTO  0) => ma(33 DOWNTO 16),
+      DATA_IN(17 DOWNTO 0)  => ma(33 DOWNTO 16),
       DATA_IN(31 DOWNTO 18) => (OTHERS => '0'),
-      DATA_OUT              => mt,
+      DATA_OUT              => s_sram_dataout,
       RD_WR_N               => s_rw_n,
       ADDR_ADV_LD_N         => s_addr_adv_ld_n,
       DM                    => s_dm,
 -- SRAM interface
-      SA                    => srb_addr,
+      SA                    => srb_addr,     -- SRAM B
       DQ                    => srb_d,
       RW_N                  => srb_rw,
       ADV_LD_N              => srb_adv,
       BW_N                  => srb_bw
+      -- SA                    => sra_addr,  -- SRAM A
+      -- DQ                    => sra_d,
+      -- RW_N                  => sra_rw,
+      -- ADV_LD_N              => sra_adv,
+      -- BW_N                  => sra_bw
       );
 
+  mt(15 DOWNTO 0) <= s_sram_dataout(15 DOWNTO 0);
 
   sram_sm : PROCESS (clkp_160mhz, pll_locked) IS
   BEGIN  -- PROCESS uc_fpga_sm
-    IF pll_locked = '0' THEN                     -- asynchronous reset (active low)
-      state    <= State0;
-      s_dm <= (OTHERS => '0');
-      s_rw_n <= '0';
+    IF pll_locked = '0' THEN                            -- asynchronous reset (active low)
+      state           <= State0;
+      s_dm            <= (OTHERS => '0');
+      s_rw_n          <= '0';
       s_addr_adv_ld_n <= '1';
     ELSIF clkp_160mhz'event AND clkp_160mhz = '1' THEN  -- rising clock edge
-      s_dm <= (OTHERS => '0');
-      s_rw_n <= '0';
+      s_dm            <= (OTHERS => '0');
+      s_rw_n          <= '0';
       s_addr_adv_ld_n <= '1';
       CASE state IS
         WHEN State0 =>
@@ -308,17 +348,17 @@ BEGIN
           END IF;
         WHEN State1 =>
           s_addr_adv_ld_n <= '0';
-          s_rw_n <= ma(34);
-          s_dm <= (OTHERS => '1');
-          state <= State1a;
-        WHEN State1a =>                 -- this state is for testing of the waveforms only
+          s_rw_n          <= ma(34);
+          s_dm            <= (OTHERS => '1');
+          state           <= State1a;
+        WHEN State1a =>                                 -- this state is for testing of the waveforms only
           s_addr_adv_ld_n <= '0';
-          s_rw_n <= ma(34);
-          s_dm <= (OTHERS => '1');
-          state <= State2;
+          s_rw_n          <= ma(34);
+          s_dm            <= (OTHERS => '1');
+          state           <= State2;
         WHEN State2 =>
           s_addr_adv_ld_n <= '0';
-          state <= State3;
+          state           <= State3;
         WHEN State3 =>
           IF ma(35) = '0' THEN
             state <= State0;
