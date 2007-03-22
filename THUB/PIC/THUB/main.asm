@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.5 2006-09-12 22:51:29 jschamba Exp $
+; $Id: main.asm,v 1.6 2007-03-22 22:51:54 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -214,12 +214,15 @@ QuietLoop:
     movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
     andwf   RxFlag, F               ; and store back
     
+; first check if this is a HLP Write command
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
     bnz     is_it_read              ; if not, check next
     call    TofHandleWrite          ; if yes, it is a "Write" HLP message
     bra     QuietLoop               ; back to receiver loop
 
+
+; Now check if it is a HLP Read command
 is_it_read:
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
@@ -228,10 +231,12 @@ is_it_read:
     bra     QuietLoop               ; back to receiver loop
         
 ;**************************************************************
-;* Receiver Loop with Data send
+;* Receive Loop with Data from PLD send
 ;**************************************************************
 PLDLoop:
+; first get data from the PLD, if any, and send it over CANbus
     call    getPLDData
+; now check if there is a CANbus message pending
 	mCANReadMsg  RxMsgID, RxData, RxDtLngth, RxFlag
 	xorlw   0x01
 	bnz     PLDLoop
@@ -239,13 +244,15 @@ PLDLoop:
 	nop
     movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
     andwf   RxFlag, F               ; and store back
-    
+
+; first check if it is a HLP Write command    
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
     bnz     is_it_read2             ; if not, check next
     call    TofHandleWrite          ; if yes, it is a "Write" HLP message
     bra     PLDLoop                 ; back to receiver loop
 
+; then check if it is a HLP Read command
 is_it_read2:
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
@@ -255,6 +262,8 @@ is_it_read2:
 
 
 ;**************************************************************
+;* Now handle HLP commands.
+;* 
 ;* which write command?
 ;**************************************************************
 TofHandleWrite:
