@@ -1,4 +1,4 @@
-; $Id: init_18F4680.asm,v 1.1 2006-08-11 22:11:01 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.2 2007-03-22 22:04:48 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                                             *
@@ -157,14 +157,14 @@ Init18F4680:
 ; the 4th pin is an input only pin.
 ; For this port, TRISE also controls the operation of the Parallel Slave Port:	
 ; B7=IBF B6=OBF B5=IBOV B4=PSPMODE B2:0=TRISE2:0 
-; PORTE bit#:   0 : PLL_CALL	(i)
+; PORTE bit#:   0 : PLL_CALL	(o)
 ;               1 : LOL		    (i)
 ;               2 : CPLD_TMS	(i)
 ;               3 : MCLR#
 
 	clrf  PORTE		; clear output data latches
 
-	movlw 0x07 
+	movlw 0x06 
 	movwf TRISE
 
 
