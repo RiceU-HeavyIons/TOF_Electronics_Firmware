@@ -1,11 +1,11 @@
-; $Id: init_18F4680.asm,v 1.2 2007-03-22 22:04:48 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.3 2007-03-22 22:51:32 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
-;    Filename:      init_18F4680.asm                                                             *
+;    Filename:      init_18F4680.asm                                          *
 ;    Date:                                                                    *
 ;    File Version:                                                            *
 ;                                                                             *
-;    Author:        J. Schambach                                                                 *
+;    Author:        J. Schambach                                              *
 ;    Company:                                                                 *
 ;                                                                             * 
 ;******************************************************************************
