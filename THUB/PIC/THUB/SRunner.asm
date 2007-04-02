@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.3 2007-03-22 22:52:24 jschamba Exp $
+; $Id: SRunner.asm,v 1.4 2007-04-02 22:12:10 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -32,51 +32,51 @@ asDataBytes RES     .256
 ;*****************************************************************
 ; macros to set or clear the Active Serial Configuration lines
 set_NCONFIG macro
-    bsf     PORTC, 5
+    bsf     PORTC, 5, 0
     endm
 
 clr_NCONFIG macro
-    bcf     PORTC, 5
+    bcf     LATC, 5, 0
     endm
 
 set_NCE macro
-    bsf     PORTC, 4
+    bsf     LATC, 4, 0
     endm
 
 clr_NCE macro
-    bcf     PORTC, 4
+    bcf     LATC, 4, 0
     endm
 
 set_NCS macro
-    bsf     PORTC, 3
+    bsf     LATC, 3, 0
     endm
 
 clr_NCS macro
-    bcf     PORTC, 3
+    bcf     LATC, 3, 0
     endm
 
 set_DCLK macro
-    bsf     PORTC, 1
+    bsf     LATC, 1, 0
     endm
 
 clr_DCLK macro
-    bcf     PORTC, 1
+    bcf     LATC, 1, 0
     endm
 
 set_ASDI macro
-    bsf     PORTC, 2
+    bsf     LATC, 2, 0
     endm
 
 clr_ASDI macro
-    bcf     PORTC, 2
+    bcf     LATC, 2, 0
     endm
 
 as_enable macro
-    bsf     PORTC, 6
+    bsf     LATC, 6, 0
     endm
 
 as_disable macro
-    bcf     PORTC, 6
+    bcf     LATC, 6, 0
     endm
 
 ; macro to choose the correct ASP Configuration device lines on the CPLD
@@ -84,15 +84,17 @@ as_select macro ASDEVICE
     movlw   ASDEVICE
     swapf   WREG        ; move value to bits
     rrncf   WREG        ; 3,4,5
+    banksel __asTemp1
     movwf   __asTemp1   ; store away temporarily
     movlw   0xC7        ; mask out other bits
-    andwf   LATA,W      ; and read PORTA
+    andwf   LATA,W, 0   ; and read PORTA
     iorwf   __asTemp1,W ; set bits which were stored above
-    movwf   LATA        ; and move back to PORTA output latch
+    movwf   LATA,0      ; and move back to PORTA output latch
     endm
 
 ; macro to Program one byte starting from MSB with ONE_BYTE as input literal
 mAsProgramByteMSB macro ONE_BYTE
+    banksel asOneByte
     movlw   ONE_BYTE
     movwf   asOneByte
     call    asProgramByteMSB
@@ -100,6 +102,7 @@ mAsProgramByteMSB macro ONE_BYTE
 
 ; macro to Program one byte starting from LSB with ONE_BYTE as input literal
 mAsProgramByteLSB macro ONE_BYTE
+    banksel asOneByte
     movlw   ONE_BYTE
     movwf   asOneByte
     call    asProgramByteLSB
@@ -178,6 +181,7 @@ asDone:
 ;*
 ;************************************************************
 asProgramByteMSB:
+    banksel __asTemp1
     movlw   8
     movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
@@ -204,6 +208,7 @@ asProgLoop1:
 ;*
 ;************************************************************
 asProgramByteMSB_IF:
+    banksel __asTemp1
     movlw   8
     movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
@@ -231,6 +236,7 @@ asProgLoop6:
 ;*
 ;************************************************************
 asProgramByteLSB:
+    banksel __asTemp1
     movlw   8
     movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
@@ -257,6 +263,7 @@ asProgLoop2:
 ;*
 ;************************************************************
 asProgramByteLSB_IF:
+    banksel __asTemp1
     movlw   8
     movwf   __asTemp1  ; do the next section for 8 bits:
     ;; byte is located in location "asOneByte"
@@ -284,6 +291,7 @@ asProgLoop7:
 ;*
 ;************************************************************
 asReadByteMSB:
+    banksel __asTemp1
     clrf    asOneByte   ; clear temporary storage
     movlw   8
     movwf   __asTemp1  ; do the next section for 8 bits:
@@ -292,7 +300,7 @@ asProgLoop3:
     clr_DCLK
     nop
     set_DCLK
-    movf    PORTC,W         ; read PORTC 
+    movf    PORTC,W,0       ; read PORTC 
     rrcf    WREG            ; rotate bit 0 into carry
     rlcf    asOneByte, F    ; rotate carry bit into "asOneByte[0]" and shift left
     decfsz  __asTemp1, F
@@ -311,6 +319,7 @@ asProgLoop3:
 ;*
 ;************************************************************
 asReadByteLSB:
+    banksel __asTemp1
     clrf    asOneByte   ; clear temporary storage
     movlw   8
     movwf   __asTemp1   ; do the next section for 8 bits:
