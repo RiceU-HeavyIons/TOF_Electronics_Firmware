@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.7 2007-03-29 15:25:12 jschamba Exp $
+; $Id: main.asm,v 1.8 2007-04-02 22:05:01 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -150,7 +150,8 @@ MAIN_START	CODE
 Main:
 
 	call Init18F4680	;  Initialize all features / IO ports
-    setf QuietFlag      ;  Initially don't send any PLD data (QuietFlag = 0xff)
+    setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
+
 ;; Here is where the CAN code starts
 	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1, with 20MHz clock results in 1Mbit/s 
 	mCANInit   1, 1, 5, 3, 1,CAN_CONFIG_ALL_VALID_MSG
@@ -168,16 +169,16 @@ Main:
 
 ;Set Mask B0 to 0xffffffff
     mCANSetReg CAN_MASK_B0, 0xffffffff, CAN_CONFIG_STD_MSG
-;Set Filter 0 with 0x12
+;Set Filter 0 with 0x402
     mCANSetReg CAN_FILTER_B0_F1, 0x402, CAN_CONFIG_STD_MSG
-;Set Filter 1 with 0x14
+;Set Filter 1 with 0x404
     mCANSetReg CAN_FILTER_B0_F2, 0x404, CAN_CONFIG_STD_MSG
 
 ; Restore to Normal mode.
     mCANSetOpMode     CAN_OP_MODE_NORMAL
 
 ;-------------------------------
-;Startup Message, Data ff,00,00,00,ID 15
+;Startup Message, Data ff,00,00,00,ID 0x407
 Msg1Agn:
     movlw   low(CANDt1)
     movwf   FSR0L
@@ -189,7 +190,7 @@ Msg1Agn:
     movwf   POSTINC0
     movwf   POSTINC0
     movwf   POSTINC0
-; Send ALERT message (command = 7, msgID = 0x407
+; Send ALERT message (command = 7, msgID = 0x407)
     mCANSendMsg  0x407,CANDt1,4,CAN_TX_STD_FRAME
     addlw   0x00            ; Check for return value of 0 in W
     bz      Msg1Agn         ; Buffer Full, Try again
@@ -219,8 +220,6 @@ QuietLoop:
 ;       RxDtLngth = Length f Received data
 ;       RxFlag = Flag of CAN_RX_MSG_FLAGS type, Use it for Message
 ;       information
-        
-	nop
     movlw   CAN_RX_FILTER_BITS      ; mask out FILTER bits
     andwf   RxFlag, F               ; and store back
     
@@ -229,17 +228,18 @@ QuietLoop:
     sublw   CAN_RX_FILTER_0         ; check if Filter0 fired
     bnz     is_it_read              ; if not, check next
     call    TofHandleWrite          ; if yes, it is a "Write" HLP message
-    bra     QuietLoop               ; back to receiver loop
+    bra     MicroLoop               ; back to receiver loop
 
 
 ; Now check if it is a HLP Read command (msgID = 0x404)
 is_it_read:
     movf    RxFlag,W                ; WREG = filter bits
     sublw   CAN_RX_FILTER_1         ; check if Filter1 fired
-    bnz     QuietLoop               ; if not, back to receiver loop
+    bnz     MicroLoop               ; if not, back to receiver loop
     call    TofHandleRead           ; if yes, it is a "Read" HLP message
     bra     MicroLoop               ; back to receiver loop
         
+
 ;**************************************************************
 ;* Get TCD Data from PLD and send it
 ;**************************************************************
