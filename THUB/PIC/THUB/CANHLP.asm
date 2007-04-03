@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.1 2007-03-29 15:25:12 jschamba Exp $
+; $Id: CANHLP.asm,v 1.2 2007-04-03 20:36:01 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -14,8 +14,8 @@
 
 	#include <P18F4680.INC>		;processor specific variable definitions
     #include "CANHLP.inc"
-	#include "CANPrTx.inc"		;CAN functions
-    #include "SRunner.inc"
+	#include "CANPrTx.inc"		; CAN functions
+    #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
 
     EXTERN  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag
@@ -71,9 +71,11 @@ TofHandleRead:
     ;****** Read Silicon ID ***************************************
     ;* msgID = 0x404
     ;* RxData[0] = 0x27
+    ;* RxData[1] = FPGA number to read (1 - 8 for SERDES FPGA,
+    ;*                                  0 for Master FPGA
     ;*
     ;* Effect: read Silicon ID of EEPROM and return as a
-    ;*          Read Response (not quite logical, need to correct this!)
+    ;*          Read Response
     ;**************************************************************
     movf    RxData,W
     sublw   0x27
@@ -141,11 +143,15 @@ TofProgramPLD:
     ;****** Initialize Program EEPROM *****************************
     ;* msgID = 0x402
     ;* RxData[0] = 0x20
+    ;* RxData[1] = FPGA number to program (1 - 8 for SERDES FPGA,
+    ;*                                     0 for Master FPGA
     ;* Effect: call asStart, followed by asBulkErase
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x20
     bnz     is_it_writeAddress
+    movf    RxData+1,W
+    call    asSelect
     call    asStart
     call    asBulkErase
     ; send WriteResponse packet
@@ -279,7 +285,6 @@ is_it_endPLDProgram:
     ;*
     ;* Effect: call asDone
     ;**************************************************************
-    ; 0x24: call asDone
     movf    RxData,W
     sublw   0x24
     bz      TofEndPLDProgram
@@ -288,6 +293,8 @@ is_it_endPLDProgram:
 
 TofEndPLDProgram:
     call    asDone
+    ; set FPGA programming lines to device H (= 8)
+    mAsSelect 8
     ; sendWriteResponse
     movlw   0x03
     movwf   RxMsgID
@@ -336,7 +343,11 @@ MsgTofAgn:
     ;****** Read Silicon ID ***************************************
     ;**************************************************************
 TofReadSiID:
+    movf    RxData+1,W
+    call    asSelect
     mAsReadSiliconID    CANDt1
+    ; set FPGA programming lines to device H (= 8)
+    mAsSelect 8
 Msg9Agn:
     mCANSendMsg  0x405,CANDt1,1,CAN_TX_XTD_FRAME
     addlw   0x00            ; Check for return value of 0 in W
