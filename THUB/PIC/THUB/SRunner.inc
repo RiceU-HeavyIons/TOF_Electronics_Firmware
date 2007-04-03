@@ -1,4 +1,4 @@
-; $Id: SRunner.inc,v 1.3 2007-03-22 22:52:46 jschamba Exp $
+; $Id: SRunner.inc,v 1.4 2007-04-03 20:32:41 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.inc                                               *
@@ -14,7 +14,7 @@
 #define __SRUNNER_INC
 
 #ifndef  AS_PRIOR_SOURCE
-    EXTERN  asReadSiliconID, asStart, asDone, asBulkErase, asProgram256
+    EXTERN  asReadSiliconID, asStart, asDone, asBulkErase, asProgram256, asSelect
 
     EXTERN  asOneByte, asAddress, asDataBytes
 #endif
@@ -40,6 +40,10 @@ mAsReadSiliconID macro varAddress
     movff   asOneByte, INDF0
     endm
 
+mAsSelect macro ASDEVICE
+    movlw   ASDEVICE
+    call    asSelect
+    endm
 
 #endif
 

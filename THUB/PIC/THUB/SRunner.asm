@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.4 2007-04-02 22:12:10 jschamba Exp $
+; $Id: SRunner.asm,v 1.5 2007-04-03 20:32:41 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -79,18 +79,28 @@ as_disable macro
     bcf     LATC, 6, 0
     endm
 
-; macro to choose the correct ASP Configuration device lines on the CPLD
-as_select macro ASDEVICE
-    movlw   ASDEVICE
-    swapf   WREG        ; move value to bits
-    rrncf   WREG        ; 3,4,5
-    banksel __asTemp1
-    movwf   __asTemp1   ; store away temporarily
-    movlw   0xC7        ; mask out other bits
-    andwf   LATA,W, 0   ; and read PORTA
-    iorwf   __asTemp1,W ; set bits which were stored above
-    movwf   LATA,0      ; and move back to PORTA output latch
+pulse_asClk macro
+    bsf     LATA, 3
+    bcf     LATA, 3
     endm
+
+pulse_asRst macro
+    bsf     LATA, 4
+    bcf     LATA, 4
+    endm
+
+; macro to choose the correct ASP Configuration device lines on the CPLD
+;as_select macro ASDEVICE
+;    movlw   ASDEVICE
+;    swapf   WREG        ; move value to bits
+;    rrncf   WREG        ; 3,4,5
+;    banksel __asTemp1
+;    movwf   __asTemp1   ; store away temporarily
+;    movlw   0xC7        ; mask out other bits
+;    andwf   LATA,W, 0   ; and read PORTA
+;    iorwf   __asTemp1,W ; set bits which were stored above
+;    movwf   LATA,0      ; and move back to PORTA output latch
+;    endm
 
 ; macro to Program one byte starting from MSB with ONE_BYTE as input literal
 mAsProgramByteMSB macro ONE_BYTE
@@ -115,6 +125,33 @@ mAsProgramByteLSB macro ONE_BYTE
 
 SRunner CODE
 ;***********************************************************
+;* Function:    asSelect
+;*
+;* Description: sets up the FPGA to talk to by first 
+;*              pulsing the asRst pin on PORTA (pin 4)
+;*              and then pulsing the asClk pin on 
+;*              PORTA (pin 3) WREG times
+;*
+;* Inputs:      WREG = number of FPGA to talk to
+;*
+;* Outputs:     None
+;*
+;************************************************************
+asSelect:
+    GLOBAL asSelect
+
+    movwf   __asTemp1 
+    pulse_asRst     ; pulse asReset pin (PORTA:4)
+    sublw   0
+    bnz     asSelectLoop
+    return
+asSelectLoop:
+    pulse_asClk
+    decfsz  __asTemp1, F
+    bra     asSelectLoop
+    return
+
+;***********************************************************
 ;* Function:    asStart
 ;*
 ;* Description: sets all AS signals to default, enables the
@@ -135,7 +172,7 @@ asStart:
     clr_NCE
     set_NCS
     clr_DCLK    
-    as_select 0
+    ; as_select 1
     ;; now enable the pins
     as_enable
 
@@ -166,7 +203,7 @@ asDone:
     set_NCS
     ;; disable pins
     as_disable
-    as_select 7
+    ; as_select 7
     return
 
 ;***********************************************************
