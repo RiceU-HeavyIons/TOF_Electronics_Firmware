@@ -1,4 +1,4 @@
-; $Id: init_18F4680.asm,v 1.3 2007-03-22 22:51:32 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.4 2007-04-03 20:33:57 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -92,7 +92,7 @@ Init18F4680:
 ;               6 : CPLD_TDO	(i)
 
 ;	clrf  PORTA		; clear output data latches
-    movlw 0x3C      ; set DIR high (direction: UC ->PLD), uc_cpld(10..8) = 7
+    movlw 0x04      ; set DIR high (direction: UC ->PLD), uc_cpld(10..8) = 0
     movwf PORTA
 
 	movlw 0xC0
