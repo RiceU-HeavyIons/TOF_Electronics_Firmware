@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.1 2006-10-09 18:29:07 jschamba Exp $
+-- $Id: cpld.vhd,v 1.2 2007-04-03 20:28:25 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2006-10-09
+-- Last update: 2007-03-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -29,30 +29,30 @@ ENTITY cpld IS
       -- clock and reset
       clk                    : IN  std_logic;
       rst_n                  : IN  std_logic;
-      -- active serial eprom lines
-      datao                  : IN  std_logic_vector(8 DOWNTO 0);      -- Active Serial Input
+      -- active serial eprom lines: A - H = 1 - 8 (SERDES FPGAs), M = 0 (Master)
+      datao                  : IN  std_logic_vector(8 DOWNTO 0);  -- Active Serial Input
       -- dclk, ncs, asdi        : IN  std_logic_vector(8 DOWNTO 0);  -- Active Serial Outputs
-      dclk, ncs, asdi        : OUT std_logic_vector(8 DOWNTO 0);      -- Active Serial Outputs
+      dclk, ncs, asdi        : OUT std_logic_vector(8 DOWNTO 0);  -- Active Serial Outputs
       -- JTAG lines
-      tck_fp, tms_fp, tdi_fp : IN  std_logic;                         -- JTAG Ouputs
-      tdo_fp                 : IN  std_logic;                         -- JTAG Input
+      tck_fp, tms_fp, tdi_fp : IN  std_logic;  -- JTAG Ouputs
+      tdo_fp                 : IN  std_logic;  -- JTAG Input
       -- buses to micro and master FPGA
-      cpld                   : OUT std_logic_vector(9 DOWNTO 0);      -- CPLD/FPGA bus
-      uc_cpld                : IN  std_logic_vector(10 DOWNTO 1);     -- CPLD/Micro bus
-      uc_cpld0               : OUT std_logic;                         -- CPLD/Micro bus
+      cpld                   : OUT std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus
+      uc_cpld                : IN  std_logic_vector(10 DOWNTO 1);  -- CPLD/Micro bus
+      uc_cpld0               : OUT std_logic;  -- CPLD/Micro bus
       -- switch, button and LEDs
-      cpld_sw                : IN  std_logic_vector(3 DOWNTO 0);      -- switch
-      cpld_led               : OUT std_logic_vector(3 DOWNTO 0);      -- LEDs
-      aux_butn_n             : IN  std_logic;                         -- button
+      cpld_sw                : IN  std_logic_vector(3 DOWNTO 0);  -- switch
+      cpld_led               : OUT std_logic_vector(3 DOWNTO 0);  -- LEDs
+      aux_butn_n             : IN  std_logic;  -- button
       -- PLD configuration pins
-      nce, nconfig           : OUT std_logic;                         -- PLD configuration pins
-      conf_done, nstatus     : IN  std_logic;                         -- PLD configuration pins
-      nce_2, nconfig_2       : OUT std_logic;                         -- PLD configuration pins
-      conf_done_2, nstatus_2 : IN  std_logic;                         -- PLD configuration pins
+      nce, nconfig           : OUT std_logic;  -- PLD configuration pins
+      conf_done, nstatus     : IN  std_logic;  -- PLD configuration pins
+      nce_2, nconfig_2       : OUT std_logic;  -- PLD configuration pins
+      conf_done_2, nstatus_2 : IN  std_logic;  -- PLD configuration pins
       -- test pins
       tp                     : IN  std_logic_vector(135 DOWNTO 113);  -- testpoints
       tpu                    : IN  std_logic_vector(173 DOWNTO 169);  -- testpoints
-      tph                    : IN  std_logic_vector(317 DOWNTO 315)   -- testpoints
+      tph                    : IN  std_logic_vector(317 DOWNTO 315)  -- testpoints
       );
 END cpld;
 
@@ -65,21 +65,24 @@ ARCHITECTURE a OF cpld IS
   SIGNAL uc_ncs      : std_logic;
   SIGNAL uc_nce      : std_logic;
   SIGNAL uc_nconfig  : std_logic;
-  SIGNAL as_select   : std_logic_vector (2 DOWNTO 0);
   SIGNAL as_enable   : std_logic;
-  SIGNAL s_dclk      : std_logic_vector (7 DOWNTO 0);
-  SIGNAL s_ncs       : std_logic_vector (7 DOWNTO 0);
-  SIGNAL s_asdi      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_dclk      : std_logic_vector (8 DOWNTO 0);
+  SIGNAL s_ncs       : std_logic_vector (8 DOWNTO 0);
+  SIGNAL s_asdi      : std_logic_vector (8 DOWNTO 0);
   SIGNAL s_nce       : std_logic;
   SIGNAL s_nce_2     : std_logic;
   SIGNAL s_nconfig   : std_logic;
   SIGNAL s_nconfig_2 : std_logic;
+  SIGNAL s_ctrClk    : std_logic;
+  SIGNAL s_ctrRst    : std_logic;
+  SIGNAL count       : integer RANGE 0 TO 8;
   
 BEGIN
-  -- route bottom 4 micro signals to LEDs
-  -- cpld_led         <= uc_cpld(3 DOWNTO 0);
-  -- cpld_led         <= cpld_sw;
-  cpld_led         <= "0101";           -- arbitrary pattern
+
+  -- cpld_led         <= uc_cpld(3 DOWNTO 0); -- route bottom 4 micro signals
+  -- cpld_led         <= cpld_sw; -- show the switch position
+  -- cpld_led         <= "0101";           -- arbitrary pattern
+  cpld_led         <= int2slv(count, 4);  -- show the currently selected FPGA
   cpld(3 DOWNTO 0) <= cpld_sw;
   cpld(9 DOWNTO 4) <= (OTHERS => '0');
 
@@ -90,39 +93,41 @@ BEGIN
   uc_nce     <= uc_cpld(4);
   uc_nconfig <= uc_cpld(5);
   as_enable  <= uc_cpld(6);
-  as_select  <= uc_cpld(10 DOWNTO 8);
+  s_ctrClk   <= uc_cpld(8);
+  s_ctrRst   <= uc_cpld(9);
 
 
-  gen1 : FOR i IN 0 TO 7 GENERATE
-    s_dclk(i) <= uc_dclk WHEN slv2int(as_select) = i ELSE '0';
-    s_ncs(i)  <= uc_ncs  WHEN slv2int(as_select) = i ELSE '1';
-    s_asdi(i) <= uc_asdi WHEN slv2int(as_select) = i ELSE '0';
+  selCounter : PROCESS (s_ctrClk, s_ctrRst) IS
+  BEGIN  -- PROCESS selCounter
+    IF s_ctrRst = '1' THEN              -- asynchronous reset (active high)
+      count <= 0;
+    ELSIF s_ctrClk'event AND s_ctrClk = '1' THEN  -- rising clock edge
+      count <= count + 1;
+    END IF;
+  END PROCESS selCounter;
+
+  gen1 : FOR i IN 0 TO 8 GENERATE
+    s_dclk(i) <= uc_dclk WHEN count = i ELSE '0';
+    s_ncs(i)  <= uc_ncs  WHEN count = i ELSE '1';
+    s_asdi(i) <= uc_asdi WHEN count = i ELSE '0';
   END GENERATE gen1;
 
-  uc_data <=    datao(0) WHEN slv2int(as_select) = 0 ELSE
-                datao(1) WHEN slv2int(as_select) = 1 ELSE
-                datao(2) WHEN slv2int(as_select) = 2 ELSE
-                datao(3) WHEN slv2int(as_select) = 3 ELSE
-                datao(4) WHEN slv2int(as_select) = 4 ELSE
-                datao(5) WHEN slv2int(as_select) = 5 ELSE
-                datao(6) WHEN slv2int(as_select) = 6 ELSE
-                datao(7);
+  uc_data <= datao(count);
 
-  s_nce       <= uc_nce     WHEN as_select(2) = '0' ELSE '0';
-  s_nconfig   <= uc_nconfig WHEN as_select(2) = '0' ELSE '1';
-  s_nce_2     <= uc_nce     WHEN as_select(2) = '1' ELSE '0';
-  s_nconfig_2 <= uc_nconfig WHEN as_select(2) = '1' ELSE '1';
+  -- SERDES FPGAs A,B,C,D (1,2,3,4) are on nce and nconfig
+  -- SERDES FPGAs E,F,G,H (5,6,7,8) are on nce_2 and nconfig_2
+  -- Master FPGA M (0)is on nce and nconfig with A,B,C,D
+  s_nce       <= uc_nce     WHEN count < 5 ELSE '0';
+  s_nconfig   <= uc_nconfig WHEN count < 5 ELSE '1';
+  s_nce_2     <= uc_nce     WHEN count > 4 ELSE '0';
+  s_nconfig_2 <= uc_nconfig WHEN count > 4 ELSE '1';
 
-  dclk(7 DOWNTO 0) <= s_dclk      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
-  ncs(7 DOWNTO 0)  <= s_ncs       WHEN as_enable = '1' ELSE (OTHERS => 'Z');
-  asdi(7 DOWNTO 0) <= s_asdi      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
-  nce              <= s_nce       WHEN as_enable = '1' ELSE 'Z';
-  nconfig          <= s_nconfig   WHEN as_enable = '1' ELSE 'Z';
-  nce_2            <= s_nce_2     WHEN as_enable = '1' ELSE 'Z';
-  nconfig_2        <= s_nconfig_2 WHEN as_enable = '1' ELSE 'Z';
+  dclk      <= s_dclk      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
+  ncs       <= s_ncs       WHEN as_enable = '1' ELSE (OTHERS => 'Z');
+  asdi      <= s_asdi      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
+  nce       <= s_nce       WHEN as_enable = '1' ELSE 'Z';
+  nconfig   <= s_nconfig   WHEN as_enable = '1' ELSE 'Z';
+  nce_2     <= s_nce_2     WHEN as_enable = '1' ELSE 'Z';
+  nconfig_2 <= s_nconfig_2 WHEN as_enable = '1' ELSE 'Z';
 
-  dclk(8) <= 'Z';
-  ncs(8)  <= 'Z';
-  asdi(8) <= 'Z';
-  
 END a;
