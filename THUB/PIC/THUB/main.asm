@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.8 2007-04-02 22:05:01 jschamba Exp $
+; $Id: main.asm,v 1.9 2007-04-03 20:37:02 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -38,6 +38,7 @@
 	#include <P18F4680.INC>		;processor specific variable definitions
 	#include "CANPrTx.inc"		;CAN functions
     #include "CANHLP.inc"       ; CAN HLP functions 
+    #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
 
 	EXTERN Init18F4680
@@ -150,6 +151,7 @@ MAIN_START	CODE
 Main:
 
 	call Init18F4680	;  Initialize all features / IO ports
+    mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
     setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
 
 ;; Here is where the CAN code starts
