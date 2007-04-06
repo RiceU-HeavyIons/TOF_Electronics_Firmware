@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.4 2007-04-06 20:17:04 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.5 2007-04-06 20:28:56 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -138,7 +138,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL local_aclr        : std_logic;
   SIGNAL err_aclr          : std_logic;
   SIGNAL clk20mhz          : std_logic;
-  SIGNAL div2out : std_logic;
+  SIGNAL div2out           : std_logic;
   SIGNAL serdes_clk        : std_logic;
   SIGNAL ctr_enable        : std_logic;
   SIGNAL s_rw_n            : std_logic;
@@ -164,8 +164,8 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_rxfifo_empty    : std_logic;
   SIGNAL s_errorctr        : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_error           : std_logic;
-  SIGNAL s_ctr_aclr : std_logic;
-  SIGNAL s_ch0_locked : std_logic;
+  SIGNAL s_ctr_aclr        : std_logic;
+  SIGNAL s_ch0_locked      : std_logic;
 
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
@@ -252,14 +252,9 @@ BEGIN
 --    END IF;
 --  END PROCESS dip_latch;
 
-  sync_dip <= NOT ch0_lock_n;           -- enable when locked
-
   -- SERDES utilities
-  -- local_aclr <= m_all(1);
-  -- local_aclr <= '0';
-  -- local_aclr <= ch0_lock_n;             -- clear when NOT locked
 
-  local_aclr <= (NOT s_ch0_locked)  OR s_error;  -- clear when NOT locked or receive error
+  local_aclr <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
 
   -- Counter as data input to channel 0 TX
   counter17b : lpm_counter GENERIC MAP (
@@ -272,8 +267,6 @@ BEGIN
       clk_en => '1',
       aclr   => s_ctr_aclr);
 
-  ctr_enable <= sync_dip AND (NOT s_error);
-
   -- LFSR as data generator (17 bit pseudo random numbers)
   datagen : LFSR
     PORT MAP (
@@ -285,19 +278,19 @@ BEGIN
   -- SERDES defaults
   -- serdes_data <= counter_q;
   serdes_data <= lsfr_d;
-  
+
   -- channel 0
-  ch0_den     <= m_all(2);                   -- tx enabled by dip switch 2
-  ch0_ren     <= m_all(2);                   -- rx enabled by dip switch 2
-  ch0_loc_le  <= '0';
-  ch0_line_le <= '0';
+  ch0_den              <= m_all(2);     -- tx enabled by dip switch 2
+  ch0_ren              <= m_all(2);     -- rx enabled by dip switch 2
+  ch0_loc_le           <= '0';
+  ch0_line_le          <= '0';
   ch0_txd(16 DOWNTO 0) <= serdes_data;
   ch0_txd(17)          <= s_ch0_locked;
-  led(0)      <= ch0_lock_n;
+  led(0)               <= ch0_lock_n;
 
   -- channel 1
-  ch1_den     <= m_all(2);                   -- tx enabled by dip switch 2
-  ch1_ren     <= m_all(2);                   -- rx enabled by dip switch 2
+  ch1_den              <= m_all(2);     -- tx enabled by dip switch 2
+  ch1_ren              <= m_all(2);     -- rx enabled by dip switch 2
   ch1_sync             <= '0';
   ch1_loc_le           <= '0';          -- local loopback disabled
   ch1_line_le          <= '0';          -- line loopback disabled
@@ -342,6 +335,7 @@ BEGIN
 
 
   -- latch tx data into a single clock 17bit fifo for later comparison
+
   -- s_txfifo_aclr <= local_aclr;
   -- s_rxfifo_aclr <= local_aclr;
 
@@ -420,7 +414,7 @@ BEGIN
   mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
   mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
   mt(31)           <= s_ch0_locked;
-  
+
   -- create a latch signal that has half the frequency of ch0_rclk
   -- reset, when there is nothing being sent (ch0valid = 0)
   ch0_latch : TFF PORT MAP (
@@ -456,7 +450,7 @@ BEGIN
       
     END IF;
   END PROCESS shiftreg1;
-  -- mt_clk <= ch0_rclk;
+
   mt_clk <= serdes_clk;
   -- mt     <= s_shiftout;                 -- to mictor for display
 
@@ -514,13 +508,13 @@ BEGIN
       
     ELSIF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
 
-      ch0_tpwdn_n <= '0';               -- tx powered down
-      ch0_rpwdn_n <= '0';               -- rx powered down
-      ch0_sync    <= '0';
-      s_ch0_locked <= '0';
+      ch0_tpwdn_n   <= '0';             -- tx powered down
+      ch0_rpwdn_n   <= '0';             -- rx powered down
+      ch0_sync      <= '0';
+      s_ch0_locked  <= '0';
       s_txfifo_aclr <= '1';
       s_rxfifo_aclr <= '1';
-      
+
       CASE poweron0_present IS
         WHEN PO_INIT =>
           s_ctr_aclr <= '1';
@@ -531,7 +525,7 @@ BEGIN
           ch0_tpwdn_n <= '1';           -- tx powered on
           ch0_rpwdn_n <= '1';           -- rx powered on
           ch0_sync    <= '1';           -- sync turned on
-          s_ctr_aclr <= '0';
+          s_ctr_aclr  <= '0';
           IF counter_q(16) = '1' THEN
             poweron0_next := PO_SYNC;
           END IF;
@@ -545,12 +539,12 @@ BEGIN
             poweron0_next := PO_LOCKED;
           END IF;
         WHEN PO_LOCKED =>
-          ch0_tpwdn_n <= '1';           -- tx powered on
-          ch0_rpwdn_n <= '1';           -- rx powered on
-          s_ch0_locked <= '1';
+          ch0_tpwdn_n   <= '1';         -- tx powered on
+          ch0_rpwdn_n   <= '1';         -- rx powered on
+          s_ch0_locked  <= '1';
           s_txfifo_aclr <= '0';
           s_rxfifo_aclr <= '0';
-          
+
           IF ((ch0_lock_n = '1') OR (ch1_lock_n = '1')) THEN
             poweron0_next := PO_INIT;
           END IF;
@@ -593,8 +587,8 @@ BEGIN
             poweron1_next := PO_WAIT;
           END IF;
         WHEN PO_WAIT =>
-             poweron1_next := PO_SYNC;
-       WHEN PO_SYNC =>
+          poweron1_next := PO_SYNC;
+        WHEN PO_SYNC =>
           ch1_rpwdn_n <= '1';           -- rx powered on
 
           IF ch1_lock_n = '0' THEN
