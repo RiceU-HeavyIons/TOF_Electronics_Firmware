@@ -471,6 +471,66 @@ set_global_assignment -name REMOVE_DUPLICATE_REGISTERS OFF
 #set_instance_assignment -name TOGGLE_RATE "0 MHz" -to sra_d[1]
 set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch0_rclk
+set_instance_assignment -name CLOCK_SETTINGS ch0_rclk -to ch0_rclk
+set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER OFF
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name GENERATE_RBF_FILE ON
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name INCREMENTAL_COMPILATION FULL_INCREMENTAL_COMPILATION
+set_instance_assignment -name PARTITION_HIERARCHY no_file_for_top_partition -to | -section_id Top
+set_global_assignment -name PARTITION_NETLIST_TYPE POST_FIT -section_id Top
+set_global_assignment -name ENABLE_SIGNALTAP ON
+set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
+set_global_assignment -name SLD_INCR_NODE_CREATOR_ID 110 -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_ENTITY_NAME sld_signaltap -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_clk -to ch0_rclk -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[1] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[2] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[3] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[4] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[5] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[6] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[7] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[8] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[9] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[10] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[11] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[12] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[13] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[14] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[15] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[16] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[17] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[9]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[18] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[19] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[20] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[21] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[22] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[23] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[24] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[25] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[26] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[27] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[28] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[29] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[30] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[31] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[32] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[33] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[34] -to "scfifo:txfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[9]" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_DATA_BITS=35" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_INFO=671116800" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_POWER_UP_TRIGGER=0" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_DATA_BIT_CNTR_BITS=6" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_LEVEL=1" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_IN_ENABLED=0" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_ADVANCED_TRIGGER_ENTITY=basic,1," -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_LEVEL_PIPELINE=1" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_ENABLE_ADVANCED_TRIGGER=0" -section_id auto_signaltap_0
+set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT -section_id Top
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[0] -to s_ch0_locked -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_data_in[0] -to s_ch0_locked -section_id auto_signaltap_0
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE zbt_ctrl_top.vhd
@@ -481,10 +541,29 @@ set_global_assignment -name VHDL_FILE pipe_stage.vhd
 set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
-set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch0_rclk
-set_instance_assignment -name CLOCK_SETTINGS ch0_rclk -to ch0_rclk
-set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER OFF
-set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
-set_global_assignment -name GENERATE_RBF_FILE ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name BDF_FILE LFSR.bdf
+set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_SAMPLE_DEPTH=2048" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_MEM_ADDRESS_BITS=11" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[1] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[0]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[2] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[10]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[3] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[11]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[4] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[12]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[5] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[13]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[6] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[14]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[7] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[15]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[8] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[16]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[9] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[1]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[10] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[2]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[11] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[3]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[12] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[4]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[13] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[5]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[14] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[6]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[15] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[7]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[16] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[8]" -section_id auto_signaltap_0
+set_instance_assignment -name CONNECT_TO_SLD_INCR_NODE_ENTITY_PORT acq_trigger_in[17] -to "scfifo:rxfifo|scfifo_h461:auto_generated|a_dpfifo_ggv:dpfifo|altsyncram_rtd1:FIFOram|altsyncram_mej1:altsyncram1|q_a[9]" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_TRIGGER_BITS=18" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK=00000000000000000000000000000000000000000000000000000000000000000000000000" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_INVERSION_MASK_LENGTH=74" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_LOWORD=6683" -section_id auto_signaltap_0
+set_global_assignment -name SLD_INCR_NODE_PARAMETER_ASSIGNMENT "SLD_NODE_CRC_HIWORD=49180" -section_id auto_signaltap_0
