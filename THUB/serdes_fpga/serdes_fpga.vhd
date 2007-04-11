@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.5 2007-04-06 20:28:56 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.6 2007-04-11 15:28:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-04-06
+-- Last update: 2007-04-10
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -161,6 +161,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_rxfifo_q        : std_logic_vector(16 DOWNTO 0);
   SIGNAL s_rxfifo_aclr     : std_logic;
   SIGNAL s_rxfifo_rdreq    : std_logic;
+  SIGNAL s_rxfifo_wrreq    : std_logic;
   SIGNAL s_rxfifo_empty    : std_logic;
   SIGNAL s_errorctr        : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_error           : std_logic;
@@ -276,12 +277,12 @@ BEGIN
 
 
   -- SERDES defaults
-  -- serdes_data <= counter_q;
-  serdes_data <= lsfr_d;
+  serdes_data <= counter_q;
+  -- serdes_data <= lsfr_d;
 
   -- channel 0
-  ch0_den              <= m_all(2);     -- tx enabled by dip switch 2
-  ch0_ren              <= m_all(2);     -- rx enabled by dip switch 2
+  ch0_den              <= m_all(0);     -- tx enabled by dip switch 0
+  ch0_ren              <= m_all(0);     -- rx enabled by dip switch 0
   ch0_loc_le           <= '0';
   ch0_line_le          <= '0';
   ch0_txd(16 DOWNTO 0) <= serdes_data;
@@ -289,8 +290,8 @@ BEGIN
   led(0)               <= ch0_lock_n;
 
   -- channel 1
-  ch1_den              <= m_all(2);     -- tx enabled by dip switch 2
-  ch1_ren              <= m_all(2);     -- rx enabled by dip switch 2
+  ch1_den              <= m_all(1);     -- tx enabled by dip switch 1
+  ch1_ren              <= m_all(1);     -- rx enabled by dip switch 1
   ch1_sync             <= '0';
   ch1_loc_le           <= '0';          -- local loopback disabled
   ch1_line_le          <= '0';          -- line loopback disabled
@@ -379,12 +380,14 @@ BEGIN
       rdreq => s_rxfifo_rdreq,
       aclr  => s_rxfifo_aclr,
       clock => ch0_rclk,
-      wrreq => ch0_rxd(17),
+      wrreq => s_rxfifo_wrreq,
       data  => ch0_rxd(16 DOWNTO 0),
       empty => s_rxfifo_empty,
       q     => s_rxfifo_q
       );
 
+  s_rxfifo_wrreq <= ch0_rxd(17) AND s_ch0_locked;
+  
   data_compare : PROCESS (serdes_clk, areset_n) IS
     VARIABLE b_ch0valid : boolean := false;
   BEGIN  -- PROCESS shiftreg1
@@ -523,7 +526,6 @@ BEGIN
           END IF;
         WHEN PO_WAIT =>
           ch0_tpwdn_n <= '1';           -- tx powered on
-          ch0_rpwdn_n <= '1';           -- rx powered on
           ch0_sync    <= '1';           -- sync turned on
           s_ctr_aclr  <= '0';
           IF counter_q(16) = '1' THEN
@@ -549,8 +551,10 @@ BEGIN
             poweron0_next := PO_INIT;
           END IF;
         WHEN OTHERS =>
-          ch0_tpwdn_n <= '1';           -- tx powered on
+          s_txfifo_aclr <= '0';
+          s_rxfifo_aclr <= '0';
           ch0_rpwdn_n <= '1';           -- rx powered on
+          ch0_tpwdn_n <= '1';           -- tx powered on
 
           poweron0_next := PO_LOCKED;
       END CASE;
@@ -587,6 +591,7 @@ BEGIN
             poweron1_next := PO_WAIT;
           END IF;
         WHEN PO_WAIT =>
+          ch1_rpwdn_n <= '1';           -- rx powered on
           poweron1_next := PO_SYNC;
         WHEN PO_SYNC =>
           ch1_rpwdn_n <= '1';           -- rx powered on
