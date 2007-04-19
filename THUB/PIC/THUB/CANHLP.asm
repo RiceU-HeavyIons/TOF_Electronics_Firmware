@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.2 2007-04-03 20:36:01 jschamba Exp $
+; $Id: CANHLP.asm,v 1.3 2007-04-19 21:32:15 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -19,6 +19,10 @@
     #include "THUB.def"         ; bit definitions
 
     EXTERN  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag
+
+    UDATA
+hlpCtr1 RES     01          ; temporary variable used as counter
+hlpCtr2 RES     01          ; temporary variable used as counter
 
 CANHLP CODE
 ;**************************************************************
@@ -145,7 +149,7 @@ TofProgramPLD:
     ;* RxData[0] = 0x20
     ;* RxData[1] = FPGA number to program (1 - 8 for SERDES FPGA,
     ;*                                     0 for Master FPGA
-    ;* Effect: call asStart, followed by asBulkErase
+    ;* Effect: call asSelect, then asStart, followed by asBulkErase
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x20
@@ -171,9 +175,9 @@ is_it_writeAddress:
     ;* RxData[2] = asAddress[15: 8]
     ;* RxData[3] = asAddress[ 7: 0]
     ;*
-    ;* Effect: set the EEPROM address to write to
+    ;* Effect: set the EEPROM address to write to (3 bytes)
+    ;           and reset FSR2H to beginning of "asDataBytes"
     ;**************************************************************
-    ;       and reset FSR1H to beginning of "asDataBytes"
     movf    RxData,W
     sublw   0x21
     bnz     is_it_writeDataByte
@@ -207,10 +211,7 @@ is_it_writeDataByte:
     movf    RxData,W
     sublw   0x22
     bnz     is_it_writePage
-    movlw   low(RxData+1)
-    movwf   FSR0L
-    movlw   high(RxData+1)
-    movwf   FSR0H
+    lfsr    FSR0, RxData+1
     movf    RxDtLngth,W
     decfsz  WREG,W
     bra     mainProgLoop1
@@ -241,32 +242,32 @@ is_it_writePage:
     ;* RxData[0] = 0x23
     ;* RxData[1..x] = DataByte[0..x-1] 
     ;*
-    ;* Effect: write data bytes to RAM pointed to by FSR1 and
+    ;* Effect: write data bytes to RAM pointed to by FSR2 and
     ;*          call asProgram256 afterwards, which writes this
     ;*          page to the EEPROM
     ;**************************************************************
     movf    RxData,W
     sublw   0x23
     bnz     is_it_endPLDProgram
-    movlw   low(RxData+1)
-    movwf   FSR0L
-    movlw   high(RxData+1)
-    movwf   FSR0H
+    lfsr    FSR0, RxData+1
     movf    RxDtLngth,W
     decfsz  WREG,W
     bra     mainProgLoop2
+    bra     program_it
+
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
+    ;movlw   0x03
+    ;movwf   RxMsgID
     ; byte 1 of RxMsgID should already contain 0x4, so no need to set it again
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
-    return
+    ;movlw   CAN_TX_STD_FRAME
+    ;movwf   RxFlag
+    ;mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    ;return
 mainProgLoop2:
     movff   POSTINC0, POSTINC2
     decfsz  WREG,W
     bra     mainProgLoop2
+program_it:
     call    asProgram256
     ; sendWriteResponse
     movlw   0x03
@@ -287,11 +288,7 @@ is_it_endPLDProgram:
     ;**************************************************************
     movf    RxData,W
     sublw   0x24
-    bz      TofEndPLDProgram
-    call    unknown_message
-    return
-
-TofEndPLDProgram:
+    bnz     is_it_reprogram64
     call    asDone
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
@@ -304,6 +301,147 @@ TofEndPLDProgram:
     mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
     return
 
+is_it_reprogram64:
+    ;**************************************************************
+    ;****** Reprogram 64 bytes of program memory ******************
+    ;* msgID = 0x402
+    ;* RxData[0] = 0x25
+    ;* RxData[1..x] = DataByte[0..x-1] 
+    ;*
+    ;* Effect: write data bytes to RAM pointed to by FSR2 and
+    ;*          erase 64 bytes of program memory pointed to by
+    ;*          asAddress, write 64 new bytes from asDataBytes
+    ;*          to this memory
+    ;**************************************************************
+    movf    RxData,W        ; WREG = RxData
+    sublw   0x25
+    bnz     is_it_resetToNewProgram
+    lfsr    FSR0, RxData+1
+    movf    RxDtLngth,W
+    decfsz  WREG,W
+    bra     reprogram_loop
+    bra     programMCU
+reprogram_loop:
+    movff   POSTINC0, POSTINC2
+    decfsz  WREG,W
+    bra     reprogram_loop
+programMCU:
+    call    handle_reprogram64
+    ; send WriteResponse packet
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    return
+
+is_it_resetToNewProgram:
+    ;**************************************************************
+    ;****** Set EEPROM and Reset **********************************
+    ;* msgID = 0x402
+    ;* RxData[0] = 0x26
+    ;*
+    ;* Effect: set last location of EEPROM data to 0 and reset
+    ;**************************************************************
+    movf    RxData,W        ; WREG = RxData
+    sublw   0x26
+    bz      resetToNewProgram
+    call    unknown_message
+    return
+
+resetToNewProgram:
+    setf    EEADR           ; Point to the last byte in EEPROM
+    setf    EEADRH
+    movff   RxData+1,EEDATA ; Boot mode control byte = RxData[1]
+    movlw   b'00000100'     ; Setup for EEData
+    movwf   EECON1
+    movlw   0x55            ; Unlock
+    movwf   EECON2
+    movlw   0xAA
+    movwf   EECON2
+    bsf     EECON1, WR      ; Start the write
+    nop
+    btfsc   EECON1, WR      ; Wait
+    bra     $ - 2
+    ; EEPROM is written, send a CAN writeResponse
+    movlw   0x03
+    movwf   RxMsgID
+    movlw   CAN_TX_STD_FRAME
+    movwf   RxFlag
+    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    ; waste a little time
+    banksel hlpCtr1
+    movlw   0xff
+    movwf   hlpCtr1
+innerDelayLoop:
+    decfsz  hlpCtr1
+    bra     innerDelayLoop
+    nop    
+    ; and reset
+    RESET
+
+
+    ;**************************************************************
+    ;****** Reprogram 256 bytes of program memory *****************
+    ;**************************************************************
+handle_reprogram64:
+    ; move 3 bytes of program memory address to TBLPTR
+    movff   asAddress, TBLPTRL
+    movff   asAddress+1, TBLPTRH
+    movff   asAddress+2, TBLPTRU
+    ; initialize FSR0 with asDataBytes address
+    lfsr    FSR0, asDataBytes
+
+    ; the following procedure needs to be repeated 4 times
+    ; so that 4 * 64 = 256 bytes are programmed
+    ;movlw   4
+    ;movwf   hlpCtr2
+
+repeat64:
+    ; now follow erase procedure on page 100 of manual
+    bsf     EECON1, EEPGD       ; point to Flash program memory
+    bcf     EECON1, CFGS        ; access Flash program memory
+    bsf     EECON1, WREN        ; write enable
+    bsf     EECON1, FREE        ; enable Row Erase operation
+    bcf     INTCON, GIE         ; disable interrupts
+    movlw   55h
+    movwf   EECON2              ; write 55h
+    movlw   0AAh
+    movwf   EECON2              ; write 0AAh
+    bsf     EECON1, WR          ; start erase (CPU stall)
+    bsf     INTCON, GIE         ; re-enable interrupts
+    tblrd*-                     ; dummy read decrement
+
+    ; now copy 64 bytes of buffer data to holding registers
+    movlw   .64                 ; number of bytes in holding register
+    movwf   hlpCtr1
+WRITE_BYTE_TO_HREGS:
+    movf    POSTINC0, w         ; get next byte of buffer data
+    movwf   TABLAT              ; present data to table latch
+    tblwt+*                     ; write data, perform a short write
+                                ; to internal TBLWT holding register
+    decfsz  hlpCtr1             ; loop until buffers are full
+    bra     WRITE_BYTE_TO_HREGS
+
+    ; now follow write procedure on page 103 of manual    
+    bsf     EECON1, EEPGD       ; point to Flash program memory
+    bcf     EECON1, CFGS        ; access Flash program memory
+    bsf     EECON1, WREN        ; write enable
+    bcf     INTCON, GIE         ; disable interrupts
+    movlw   55h
+    movwf   EECON2              ; write 55h
+    movlw   0AAh
+    movwf   EECON2              ; write 0AAh
+    bsf     EECON1, WR          ; start erase (CPU stall)
+    bsf     INTCON, GIE         ; re-enable interrupts
+    bcf     EECON1, WREN        ; disable write
+
+    ; now TBLPTR and FSR0 should be advanced by 64, so repeat
+    ; until all 256 bytes are programed.
+    ;decfsz  hlpCtr2
+    ;bra     repeat64
+
+    return
 
 ;**************************************************************
 ;* CAN "Read" Commands
