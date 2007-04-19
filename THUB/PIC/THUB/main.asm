@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.9 2007-04-03 20:37:02 jschamba Exp $
+; $Id: main.asm,v 1.10 2007-04-19 21:30:17 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -113,8 +113,7 @@ QuietFlag       RES     01  ; Boolean for micro loop
 ; This code will start executing when a reset occurs.
 
 RESET_VECTOR	CODE	0x0000
-
-	goto    Main		    ; go to start of main code
+    goto    REDIR_RESET     ; go to the redirect code
 
 ;******************************************************************************
 ;High priority interrupt vector
@@ -122,30 +121,70 @@ RESET_VECTOR	CODE	0x0000
 ; when any interrupt occurs if interrupt priorities are not enabled.
 
 HI_INT_VECTOR	CODE	0x0008
-#ifndef CANIntLowPrior
-	call	CANISR          ; Call CAN Interrupt Service Routine
-#endif	
-	retfie	FAST		
+    goto    REDIR_HI_INT
 ;******************************************************************************
 ;Low priority interrupt vector and routine
 ; This code will start executing when a low priority interrupt occurs.
 ; This code can be removed if low priority interrupts are not used.
 
 LOW_INT_VECTOR	CODE	0x0018
-#ifdef  CANIntLowPrior
-	movwf   W_IL            ; Save W
-	movff   STATUS,STAT_IL  ; Save STATUS
-	movff   BSR,BSR_IL      ; Save BSR
-	call    CANISR          ; Call CAN Interrupt Service routine
-	movff   BSR_IL,BSR      ; Restore BSR
-	movff   STAT_IL,STATUS  ; Restore Status
-	movf    W_IL,W          ; Restore W reg
-#endif
-		retfie
+    goto    REDIR_LOW_INT   ; go to the redirect code
+;#ifdef  CANIntLowPrior
+;	movwf   W_IL            ; Save W
+;	movff   STATUS,STAT_IL  ; Save STATUS
+;	movff   BSR,BSR_IL      ; Save BSR
+;	call    CANISR          ; Call CAN Interrupt Service routine
+;	movff   BSR_IL,BSR      ; Restore BSR
+;	movff   STAT_IL,STATUS  ; Restore Status
+;	movf    W_IL,W          ; Restore W reg
+;#endif
+	retfie
+
+; in this code section we check the last EEPROM data location to see if it
+; contains 0xFF or a different value. In case of 0xFF we execute code
+; segments that are located in "lower" (< 0x4000) memory, otherwise
+; we go to code in the "upper" memory. This allows for new code to be loaded
+; above 0x4000 via CANbus (to be implemented later).
+
+REDIRECT CODE               
+                            
+                                
+REDIR_RESET:
+    clrf    EECON1
+    setf    EEADR           ; Point to last location of EEDATA
+    setf    EEADRH
+    bsf     EECON1, RD      ; Read control code
+    incfsz  EEDATA, W       ; if it is not 0xFF   
+    goto    NEW_RESET_VECT  ; go to new code section, otherwise ...
+    goto    Main
+
+REDIR_HI_INT:
+    clrf    EECON1
+    setf    EEADR           ; Point to last location of EEDATA
+    setf    EEADRH
+    bsf     EECON1, RD      ; Read control code
+    incfsz  EEDATA, W       ; if it is not 0xFF
+    goto    NEW_HI_INT_VECT ; go to new code section, otherwise ...
+#ifndef CANIntLowPrior
+	call	CANISR          ; Call CAN Interrupt Service Routine
+#endif	
+	retfie	FAST		
+
+REDIR_LOW_INT:
+    clrf    EECON1
+    setf    EEADR           ; Point to last location of EEDATA
+    setf    EEADRH
+    bsf     EECON1, RD      ; Read control code
+    incfsz  EEDATA, W       ; if it is not 0xFF   
+    goto    NEW_LOW_INT_VECT ; go to new code section, otherwise ...
+	retfie		
+
+
 
 ;******************************************************************************
-;Start of main program
+; Start of main program
 ; The main program code is placed here.
+;******************************************************************************
 
 MAIN_START	CODE
 Main:
@@ -348,5 +387,39 @@ sendPLDData:
 
 ;******************************************************************************
 ;End of program
+;******************************************************************************
+
+;******************************************************************************
+; This is a stub for the "new" ("upper") program to be executed. 
+; Currently, this just sets the last EEPROM location to 0xFF
+; and resets the MCU.
+; When a new code is to be programmed, delete this, but define the memory
+; locations. Then take care in the linker file to map those locations.
+;******************************************************************************
+NEW_CODE_R	CODE	0x4000
+    goto    Reset_EEPROM
+NEW_CODE_H	CODE	0x4008
+    goto    Reset_EEPROM
+;
+;NEW_RESET_VECT:
+;NEW_HI_INT_VECT:
+;NEW_LOW_INT_VECT:
+
+DEFAULT_RST CODE    0x4018
+Reset_EEPROM
+    setf    EEADR           ; Point to the last byte in EEPROM
+    setf    EEADRH
+    setf    EEDATA          ; Boot mode control byte
+    movlw   b'00000100'     ; Setup for EEData
+    movwf   EECON1
+    movlw   0x55            ; Unlock
+    movwf   EECON2
+    movlw   0xAA
+    movwf   EECON2
+    bsf     EECON1, WR      ; Start the write
+    nop
+    btfsc   EECON1, WR      ; Wait
+    bra     $ - 2
+    RESET
 
 	END
