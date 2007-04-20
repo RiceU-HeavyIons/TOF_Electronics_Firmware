@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.3 2007-04-19 21:32:15 jschamba Exp $
+; $Id: CANHLP.asm,v 1.4 2007-04-20 14:59:02 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -171,9 +171,9 @@ is_it_writeAddress:
     ;****** Write EEPROM Address **********************************
     ;* msgID = 0x402
     ;* RxData[0] = 0x21
-    ;* RxData[1] = asAddress[23:16] 
+    ;* RxData[1] = asAddress[ 7: 0]
     ;* RxData[2] = asAddress[15: 8]
-    ;* RxData[3] = asAddress[ 7: 0]
+    ;* RxData[3] = asAddress[23:16] 
     ;*
     ;* Effect: set the EEPROM address to write to (3 bytes)
     ;           and reset FSR2H to beginning of "asDataBytes"
@@ -184,10 +184,7 @@ is_it_writeAddress:
     movff   RxData+1, asAddress
     movff   RxData+2, asAddress+1
     movff   RxData+3, asAddress+2
-    movlw   low(asDataBytes)
-    movwf   FSR2L
-    movlw   high(asDataBytes)
-    movwf   FSR2H
+    lfsr    FSR2, asDataBytes
     ; sendWriteResponse
     movlw   0x03
     movwf   RxMsgID
@@ -452,10 +449,7 @@ WRITE_BYTE_TO_HREGS:
     ;**************************************************************
 TofReadReg:
     ;setup address pointer to CAN payload
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
+    lfsr    FSR0, CANDt1
 
     banksel PORTD
     movff   RxData, LATD    ; put first byte as register address on PORTD
