@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.5 2007-04-03 20:32:41 jschamba Exp $
+; $Id: SRunner.asm,v 1.6 2007-04-20 14:59:45 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -442,10 +442,7 @@ asCheckStatus1:
 asProgram256:
     GLOBAL  asProgram256
 
-    movlw   low(asAddress)
-    movwf   FSR0L
-    movlw   high(asAddress)
-    movwf   FSR0H
+    lfsr    FSR0, asAddress+2
 
     clr_NCS
     mAsProgramByteMSB   AS_WRITE_ENABLE
@@ -454,15 +451,12 @@ asProgram256:
     clr_NCS
     mAsProgramByteMSB   AS_PAGE_PROGRAM
     call    asProgramByteMSB_IF     ; bits 23 - 16 of address
-    incf    FSR0L, F   
+    decf    FSR0L, F   
     call    asProgramByteMSB_IF     ; bits 15 - 8 of address
-    incf    FSR0L, F   
+    decf    FSR0L, F   
     call    asProgramByteMSB_IF     ; bits 7 - 0 of address
 
-    movlw   low(asDataBytes)
-    movwf   FSR0L
-    movlw   high(asDataBytes)
-    movwf   FSR0H
+    lfsr    FSR0, asDataBytes
 
     clrf    __asTemp2        ; "0" = "256"
 asProgLoop5:
