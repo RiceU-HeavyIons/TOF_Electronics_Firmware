@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.6 2007-04-11 15:28:00 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.7 2007-04-23 22:37:29 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-04-10
+-- Last update: 2007-04-23
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -167,6 +167,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_error           : std_logic;
   SIGNAL s_ctr_aclr        : std_logic;
   SIGNAL s_ch0_locked      : std_logic;
+  SIGNAL s_send_data       : std_logic;
 
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
@@ -237,25 +238,26 @@ BEGIN
   srb_d <= (OTHERS => 'Z');
 
   -- counter to divide clock
---  counter25b : lpm_counter
---    GENERIC MAP (
---      LPM_WIDTH     => 25,
---      LPM_TYPE      => "LPM_COUNTER",
---      LPM_DIRECTION => "UP")
---    PORT MAP (
---      clock => globalclk,
---      q     => counter25b_q);
+  counter25b : lpm_counter
+    GENERIC MAP (
+      LPM_WIDTH     => 25,
+      LPM_TYPE      => "LPM_COUNTER",
+      LPM_DIRECTION => "UP")
+    PORT MAP (
+      clock => globalclk,
+      q     => counter25b_q);
 
---  dip_latch : PROCESS (counter25b_q(24)) IS
---  BEGIN  -- PROCESS dip_latch
---    IF (counter25b_q(24)'event AND (counter25b_q(24) = '1')) THEN
---      sync_dip <= m_all(0);
---    END IF;
---  END PROCESS dip_latch;
+  dip_latch : PROCESS (counter25b_q(24)) IS
+  BEGIN  -- PROCESS dip_latch
+    IF (counter25b_q(24)'event AND (counter25b_q(24) = '1')) THEN
+      sync_dip <= m_all(2);
+    END IF;
+  END PROCESS dip_latch;
 
   -- SERDES utilities
 
-  local_aclr <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
+  s_send_data <= s_ch0_locked AND sync_dip;  -- control sending of data with dip switch 2
+  local_aclr  <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
 
   -- Counter as data input to channel 0 TX
   counter17b : lpm_counter GENERIC MAP (
@@ -277,8 +279,8 @@ BEGIN
 
 
   -- SERDES defaults
-  serdes_data <= counter_q;
-  -- serdes_data <= lsfr_d;
+  -- serdes_data <= counter_q;
+  serdes_data <= lsfr_d;
 
   -- channel 0
   ch0_den              <= m_all(0);     -- tx enabled by dip switch 0
@@ -286,7 +288,7 @@ BEGIN
   ch0_loc_le           <= '0';
   ch0_line_le          <= '0';
   ch0_txd(16 DOWNTO 0) <= serdes_data;
-  ch0_txd(17)          <= s_ch0_locked;
+  ch0_txd(17)          <= s_send_data;
   led(0)               <= ch0_lock_n;
 
   -- channel 1
@@ -296,7 +298,7 @@ BEGIN
   ch1_loc_le           <= '0';          -- local loopback disabled
   ch1_line_le          <= '0';          -- line loopback disabled
   ch1_txd(16 DOWNTO 0) <= serdes_data;
-  ch1_txd(17)          <= s_ch0_locked;
+  ch1_txd(17)          <= s_send_data;
   led(1)               <= ch1_lock_n;
 
   -- channel 2
@@ -357,7 +359,7 @@ BEGIN
       rdreq => s_txfifo_rdreq,
       aclr  => s_txfifo_aclr,
       clock => ch0_rclk,                -- serdes_clk,
-      wrreq => s_ch0_locked,
+      wrreq => s_send_data,
       data  => serdes_data,
       empty => s_txfifo_empty,
       q     => s_txfifo_q
