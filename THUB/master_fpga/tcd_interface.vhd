@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.1 2006-09-06 19:43:28 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.2 2007-04-30 20:42:04 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2006-09-06
+-- Last update: 2007-04-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -27,16 +27,18 @@ LIBRARY lpm;
 USE lpm.lpm_components.all;
 LIBRARY altera_mf; 
 USE altera_mf.altera_mf_components.all; 
+LIBRARY altera;
+USE altera.altera_primitives_components.ALL;
 
 ENTITY tcd IS
   
   PORT (
-    rhic_strobe : IN  std_logic;
-    data_strobe : IN  std_logic;
-    data        : IN  std_logic_vector (3 DOWNTO 0);
-    aclr        : IN  std_logic;
-    trgword     : OUT std_logic_vector (19 DOWNTO 0);
-    trigger     : OUT std_logic);
+    rhic_strobe : IN  std_logic;        -- TCD RHIC strobe
+    data_strobe : IN  std_logic;        -- TCD data clock
+    data        : IN  std_logic_vector (3 DOWNTO 0);  -- TCD data
+    clock       : IN  std_logic;                        -- 40 MHz clock
+    trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
+    trigger     : OUT std_logic);       -- strobe signal sync'd to clock
 
 END ENTITY tcd;
 
@@ -50,15 +52,20 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_reg20_1       : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_reg20_2       : std_logic_vector (19 DOWNTO 0);
   SIGNAL inv_data_strobe : std_logic;
-  SIGNAL inv_rhic_strobe : std_logic;
   SIGNAL not_zero        : std_logic;
   SIGNAL s_fifo_empty    : std_logic;
+  SIGNAL s_trg_unsync    : std_logic;
+  SIGNAL s_stage1        : std_logic;
+  SIGNAL s_stage2        : std_logic;
+  SIGNAL s_stage3        : std_logic;
+  SIGNAL s_stage4        : std_logic;
   
 BEGIN  -- ARCHITECTURE a
 
   inv_data_strobe <= NOT data_strobe;
-  inv_rhic_strobe <= NOT rhic_strobe;
 
+  -- capture the trigger data in a cascade of 5 4-bit registers
+  -- with the tcd data clock on trailing clock edge.
   reg1 : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -119,6 +126,8 @@ BEGIN  -- ARCHITECTURE a
       q     => s_reg5
       );
 
+  -- On the rising edge of the RHIC strobe, latch the 5 4-bit registers into a
+  -- 20-bit register.
   reg20_1 : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -135,52 +144,57 @@ BEGIN  -- ARCHITECTURE a
       q                  => s_reg20_1
       );
 
-  not_zero <= '1' WHEN s_reg20_1(19 DOWNTO 16) /= "0000" ELSE '0';
+  -- use this as the trigger word output
+  trgword <= s_reg20_1;
+  
+  -- now check if there is a valid trigger command:
+  trg: PROCESS (s_reg20_1(19 DOWNTO 16)) IS
+  BEGIN  -- PROCESS trg
+    CASE s_reg20_1(19 DOWNTO 16) IS
+      WHEN "0100" => s_trg_unsync <= '1';
+      WHEN "0101" => s_trg_unsync <= '1';
+      WHEN "0110" => s_trg_unsync <= '1';
+      WHEN "0111" => s_trg_unsync <= '1';
+      WHEN OTHERS => s_trg_unsync <= '0';
+    END CASE;
+  END PROCESS trg;
 
---  reg20_2 : lpm_ff
---    GENERIC MAP (
---      lpm_fftype => "DFF",
---      lpm_type   => "LPM_FF",
---      lpm_width  => 20
---      )
---    PORT MAP (
---      clock  => inv_rhic_strobe,
---      data   => s_reg20_1,
---      enable => not_zero,
---      aclr   => aclr,
---      q      => trgword
---      );
-
-
-  -- use a FIFO here instead of a register as above
-
-  dcfifo_inst : dcfifo
-    GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_numwords => 256,
-      lpm_showahead => "ON",
-      lpm_type => "dcfifo",
-      lpm_width => 20,
-      lpm_widthu => 8,
-      overflow_checking => "ON",
-      rdsync_delaypipe => 4,
-      underflow_checking => "ON",
-      use_eab => "ON",
-      wrsync_delaypipe => 4
-      )
+  -- when a valid trigger command is found, synchronize the resulting trigger
+  -- to the 40MHz clock with a 4 stage DFF cascade and to make the signal
+  -- exactly 1 clock wide
+  stage1 : dff
     PORT MAP (
-      wrclk => inv_rhic_strobe,
-      rdreq => '1',
-      rdclk => aclr,
-      wrreq => not_zero,
-      data => s_reg20_1,
-      rdempty => s_fifo_empty,
-      q => s_reg20_2
-      );
+      d    => s_trg_unsync,
+      clk  => clock,
+      clrn => '1',
+      prn  => '1',
+      q    => s_stage1);
 
-  trgword <= (OTHERS => '0') WHEN (s_fifo_empty = '1') ELSE s_reg20_2;
+  stage2 : dff
+    PORT MAP (
+      d    => s_stage1,
+      clk  => clock,
+      clrn => '1',
+      prn  => '1',
+      q    => s_stage2);
+  
+  stage3 : dff
+    PORT MAP (
+      d    => s_stage2,
+      clk  => clock,
+      clrn => '1',
+      prn  => '1',
+      q    => s_stage3);
+  
+  stage4 : dff
+    PORT MAP (
+      d    => s_stage3,
+      clk  => clock,
+      clrn => '1',
+      prn  => '1',
+      q    => s_stage4);
 
-  -- not yet implemented:
-  trigger <= '0';
 
+  trigger <= s_stage3 AND (NOT s_stage4);
+  
 END ARCHITECTURE a;
