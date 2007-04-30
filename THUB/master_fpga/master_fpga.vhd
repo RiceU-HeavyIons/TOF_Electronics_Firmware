@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.5 2006-12-12 23:18:36 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.6 2007-04-30 20:43:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2006-12-12
+-- Last update: 2007-04-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -21,48 +21,50 @@
 -------------------------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
-LIBRARY altera;
-USE altera.maxplus2.ALL;
 LIBRARY lpm;
 USE lpm.lpm_components.ALL;
+LIBRARY altera_mf; 
+USE altera_mf.altera_mf_components.all; 
+LIBRARY altera;
+USE altera.altera_primitives_components.ALL;
 
 
 ENTITY master_fpga IS
   PORT
     (
-      clk            : IN    std_logic;                      -- Master clock
+      clk        : IN    std_logic;     -- Master clock
       -- Mictor outputs
-      mic            : OUT   std_logic_vector(64 DOWNTO 0);
+      mic        : OUT   std_logic_vector(64 DOWNTO 0);
       -- bus to serdes fpga's
-      ma             : OUT   std_logic_vector(35 DOWNTO 0);
-      mb, mc, md     : INOUT std_logic_vector(35 DOWNTO 0);
-      mf, mg, mh     : INOUT std_logic_vector(35 DOWNTO 0);
-      me             : INOUT std_logic_vector(35 DOWNTO 0);
-      m_all          : OUT   std_logic_vector(3 DOWNTO 0);
+      ma         : OUT   std_logic_vector(35 DOWNTO 0);
+      mb, mc, md : INOUT std_logic_vector(35 DOWNTO 0);
+      mf, mg, mh : INOUT std_logic_vector(35 DOWNTO 0);
+      me         : INOUT std_logic_vector(35 DOWNTO 0);
+      m_all      : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
-      cpld           : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
-      uc_fpga_hi     : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
-      uc_fpga_lo     : INOUT std_logic_vector(7 DOWNTO 0);   -- FPGA/Micro bus
+      cpld       : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
+      uc_fpga_hi : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
+      uc_fpga_lo : INOUT std_logic_vector(7 DOWNTO 0);   -- FPGA/Micro bus
       -- Buttons & LEDs
-      butn           : IN    std_logic_vector(2 DOWNTO 0);   -- buttons
-      led            : OUT   std_logic_vector(1 DOWNTO 0);   -- LEDs
+      butn       : IN    std_logic_vector(2 DOWNTO 0);   -- buttons
+      led        : OUT   std_logic_vector(1 DOWNTO 0);   -- LEDs
       -- TCD
-      tcd_d          : IN    std_logic_vector(3 DOWNTO 0);
-      tcd_busy_p     : OUT   std_logic;
-      tcd_strb       : IN    std_logic;                      -- RHIC strobe
-      tcd_clk        : IN    std_logic;                      -- RHIC Data Clock
+      tcd_d      : IN    std_logic_vector(3 DOWNTO 0);
+      tcd_busy_p : OUT   std_logic;
+      tcd_strb   : IN    std_logic;     -- RHIC strobe
+      tcd_clk    : IN    std_logic;     -- RHIC Data Clock
       -- SIU
-      fbctrl_n       : INOUT std_logic;                      -- INOUT std_logic;
-      fbten_n        : INOUT std_logic;                      -- INOUT std_logic;
-      fidir          : IN    std_logic;
-      fiben_n        : IN    std_logic;
-      filf_n         : IN    std_logic;
-      fobsy_n        : OUT   std_logic;
-      foclk          : OUT   std_logic;
-      fbd            : INOUT std_logic_vector(31 DOWNTO 0);  -- INOUT std_logic_vector(31 DOWNTO 0)
+      fbctrl_n   : INOUT std_logic;     -- INOUT std_logic;
+      fbten_n    : INOUT std_logic;     -- INOUT std_logic;
+      fidir      : IN    std_logic;
+      fiben_n    : IN    std_logic;
+      filf_n     : IN    std_logic;
+      fobsy_n    : OUT   std_logic;
+      foclk      : OUT   std_logic;
+      fbd        : INOUT std_logic_vector(31 DOWNTO 0);  -- INOUT std_logic_vector(31 DOWNTO 0)
       -- Resets
-      rstin          : IN    std_logic;
-      rstout         : OUT   std_logic
+      rstin      : IN    std_logic;
+      rstout     : OUT   std_logic
 
       );
 END master_fpga;
@@ -113,7 +115,7 @@ ARCHITECTURE a OF master_fpga IS
       rhic_strobe : IN  std_logic;
       data_strobe : IN  std_logic;
       data        : IN  std_logic_vector (3 DOWNTO 0);
-      aclr        : IN  std_logic;
+      clock       : IN  std_logic;
       trgword     : OUT std_logic_vector (19 DOWNTO 0);
       trigger     : OUT std_logic
       );
@@ -149,35 +151,39 @@ ARCHITECTURE a OF master_fpga IS
   -- ********************************************************************************
   SIGNAL s_fiD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (IN)
   SIGNAL s_foD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (OUT)
-  SIGNAL s_fiTEN_N  : std_logic;                       -- corresponds to ddl_fbten_N (IN)
-  SIGNAL s_foTEN_N  : std_logic;                       -- corresponds to ddl_fbten_N (OUT)
-  SIGNAL s_fiCTRL_N : std_logic;                       -- corresponds to ddl_fbctrl_N (IN)
-  SIGNAL s_foCTRL_N : std_logic;                       -- corresponds to ddl_fbctrl_N (OUT)
+  SIGNAL s_fiTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (IN)
+  SIGNAL s_foTEN_N  : std_logic;        -- corresponds to ddl_fbten_N (OUT)
+  SIGNAL s_fiCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (IN)
+  SIGNAL s_foCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (OUT)
 
   -- ********************************************************************************
   -- uc_fpga signals
   -- ********************************************************************************
-  SIGNAL s_ucDIR    : std_logic;
-  SIGNAL s_ucCTL    : std_logic;
-  SIGNAL s_ucDS     : std_logic;
-  SIGNAL s_uc_o     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_uc_i     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg_addr : std_logic_vector(2 DOWNTO 0);
-  SIGNAL s_reg_load : std_logic;
-  SIGNAL s_reg_clr  : std_logic;
-  SIGNAL s_reg1     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg2     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg3     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg4     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg5     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg6     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg7     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg8     : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_trigger  : std_logic;
-  SIGNAL s_runReset : std_logic;
-  SIGNAL ddl_data : std_logic_vector (31 DOWNTO 0);
-  SIGNAL ddlfifo_empty : std_logic;
-  SIGNAL rd_ddl_fifo : std_logic;
+  SIGNAL s_ucDIR         : std_logic;
+  SIGNAL s_ucCTL         : std_logic;
+  SIGNAL s_ucDS          : std_logic;
+  SIGNAL s_uc_o          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_uc_i          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg_addr      : std_logic_vector(2 DOWNTO 0);
+  SIGNAL s_reg_load      : std_logic;
+  SIGNAL s_reg_clr       : std_logic;
+  SIGNAL s_reg1          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg2          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg3          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg4          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg5          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg6          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg7          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg8          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_trigger       : std_logic;
+  SIGNAL s_runReset      : std_logic;
+  SIGNAL ddl_data        : std_logic_vector (31 DOWNTO 0);
+  SIGNAL ddlfifo_empty   : std_logic;
+  SIGNAL rd_ddl_fifo     : std_logic;
+  SIGNAL s_triggerword   : std_logic_vector(19 DOWNTO 0);
+  SIGNAL s_trgfifo_empty : std_logic;
+  SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
+  SIGNAL s_trg_mcu_word  : std_logic_vector (19 DOWNTO 0);
 
 BEGIN
 
@@ -196,12 +202,11 @@ BEGIN
   mf <= (OTHERS => 'Z');
   mg <= (OTHERS => 'Z');
   mh <= (OTHERS => 'Z');
-  
+
   -- bus to SERDES FPGA is driven by CPLD
   m_all <= cpld(3 DOWNTO 0);
 
   -- Mictor defaults
-
 
   -- mic(0) <= s_ucDIR;
   -- mic(1) <= s_ucCTL;
@@ -211,7 +216,7 @@ BEGIN
   -- mic(7 DOWNTO 5) <= s_reg_addr;
   -- mic(15 DOWNTO 8) <= s_uc_i;
   -- mic(15 DOWNTO 8) <= (OTHERS => '0');
-  
+
   -- this one for the TCD:
   -- mic( 3 DOWNTO  0) <= tcd_d;
   -- mic( 4)           <= tcd_clk;
@@ -219,26 +224,27 @@ BEGIN
   -- mic( 7 DOWNTO  6) <= s_fiD( 7 DOWNTO  6);
 
   -- and this one for the DDL:
-  mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
+--  mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
 
 --  mic(0)          <= tcd_strb;
 --  mic(1)          <= tcd_clk;
 --  mic(5 DOWNTO 2) <= tcd_d;
 --  mic(7 DOWNTO 6) <= "00";
 
-  mic(8)            <= '0';
-  mic(9)            <= s_fiTEN_N;
-  mic(10)           <= s_fiCTRL_N;
-  mic(11)           <= fiDIR;
-  mic(12)           <= fiBEN_N;
-  mic(14 DOWNTO 13) <= (OTHERS => '0');
-  mic(15)           <= globalclk;
-  -- mic(63 DOWNTO 16) <= (OTHERS => '0');
-  mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
-  mic(63 DOWNTO 48) <= (OTHERS => '0');
-  mic(31 DOWNTO 16) <= (OTHERS => '0');
+--  mic(8)            <= '0';
+--  mic(9)            <= s_fiTEN_N;
+--  mic(10)           <= s_fiCTRL_N;
+--  mic(11)           <= fiDIR;
+--  mic(12)           <= fiBEN_N;
+--  mic(14 DOWNTO 13) <= (OTHERS => '0');
+--  mic(15)           <= globalclk;
+-- mic(63 DOWNTO 16) <= (OTHERS => '0');
+--  mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
+--  mic(63 DOWNTO 48) <= (OTHERS => '0');
+--  mic(31 DOWNTO 16) <= (OTHERS => '0');
   -- mic(63 DOWNTO  0) <= (OTHERS => '0');
-  mic(64)           <= clk;
+
+  mic(64) <= clk;
 
   -- Other defaults
 
@@ -250,15 +256,10 @@ BEGIN
   -- ********************************************************************************
 
   -- detector data link interface signals
-  -- fobsy_n    <= '1';
   foclk      <= globalclk;
   s_fiTEN_N  <= fbten_n;
   s_fiCTRL_N <= fbctrl_n;
   s_fiD      <= fbd;
-
-  -- s_foTEN_N  <= '1';
-  -- s_foCTRL_N <= '1';
-  -- s_foD      <= (OTHERS => '0');
 
   ddlbus : PROCESS (fiben_n, fidir, s_foTEN_N, s_foCTRL_N, fbd, s_foD)
   BEGIN
@@ -274,7 +275,7 @@ BEGIN
   END PROCESS;
 
   -- unused for now:
-  ddl_data <= (OTHERS => '0');
+  ddl_data      <= (OTHERS => '0');
   ddlfifo_empty <= '1';
   
   ddl_inst : ddl PORT MAP (             -- DDL
@@ -291,7 +292,7 @@ BEGIN
     foTEN_N    => s_foTEN_N,
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
-    reset      => '0', -- reset,
+    reset      => '0',                  -- reset,
     fifo_q     => ddl_data,
     fifo_empty => ddlfifo_empty,
     fifo_rdreq => rd_ddl_fifo
@@ -348,20 +349,59 @@ BEGIN
       reg_clr     => s_reg_clr,
       uc_data_out => s_uc_o);
 
-
+  -- ********************************************************************************
+  -- TCD interface
+  -- ********************************************************************************
   tcd_inst : tcd
     PORT MAP (
-      rhic_strobe           => tcd_strb,
-      data_strobe           => tcd_clk,
-      data                  => tcd_d,
-      aclr                  => s_reg_clr,
-      trgword(19 DOWNTO 16) => s_reg8(3 DOWNTO 0),
-      trgword(15 DOWNTO 8)  => s_reg7,
-      trgword(7 DOWNTO 0)   => s_reg6,
-      trigger               => s_trigger);
+      rhic_strobe => tcd_strb,
+      data_strobe => tcd_clk,
+      data        => tcd_d,
+      clock       => globalclk,
+      trgword     => s_triggerword,
+      trigger     => s_trigger);
 
-  s_reg8(7 DOWNTO 4) <= "0000";
+  -- display trigger word on Mictor
+  mic(19 DOWNTO 0)  <= s_triggerword;
+  mic(20)           <= s_trigger;
+  mic(63 DOWNTO 21) <= (OTHERS => '0');
 
+  -- store the TCD info in a dual clock FIFO for later retrieval.
+  -- s_trigger is high when a valid trigger is received, so USE
+  -- it as the write request.
+  -- s_reg_clr advances the FIFO to the next word on the read port.
+  dcfifo_inst : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_numwords           => 256,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 20,
+      lpm_widthu             => 8,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      use_eab                => "ON",
+      wrsync_delaypipe       => 4
+      )
+    PORT MAP (
+      wrclk   => globalclk,
+      wrreq   => s_trigger,
+      rdclk   => s_reg_clr,
+      rdreq   => '1',
+      data    => s_triggerword,
+      rdempty => s_trgfifo_empty,
+      q       => s_trgfifo_q
+      );
+
+  s_trg_mcu_word <= (OTHERS => '0') WHEN (s_trgfifo_empty = '1') ELSE s_trgfifo_q;
+
+  s_reg8 (7 DOWNTO 4) <= "0000";
+  s_reg8 (3 DOWNTO 0) <= s_trg_mcu_word(19 DOWNTO 16);
+  s_reg7              <= s_trg_mcu_word(15 DOWNTO 8);
+  s_reg6              <= s_trg_mcu_word(7 DOWNTO 0);
+
+  -- registers 1 through 5 are presented to SERDES FPGA A:
   ma(7 DOWNTO 0)   <= s_reg1;
   ma(15 DOWNTO 8)  <= s_reg2;
   ma(23 DOWNTO 16) <= s_reg3;
