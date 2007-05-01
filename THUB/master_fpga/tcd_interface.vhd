@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.2 2007-04-30 20:42:04 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.3 2007-05-01 14:48:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -151,10 +151,18 @@ BEGIN  -- ARCHITECTURE a
   trg: PROCESS (s_reg20_1(19 DOWNTO 16)) IS
   BEGIN  -- PROCESS trg
     CASE s_reg20_1(19 DOWNTO 16) IS
-      WHEN "0100" => s_trg_unsync <= '1';
-      WHEN "0101" => s_trg_unsync <= '1';
-      WHEN "0110" => s_trg_unsync <= '1';
-      WHEN "0111" => s_trg_unsync <= '1';
+      WHEN "0100" => s_trg_unsync <= '1';  -- "4" (trigger0)
+      WHEN "0101" => s_trg_unsync <= '1';  -- "5" (trigger1)
+      WHEN "0110" => s_trg_unsync <= '1';  -- "6" (trigger2)
+      WHEN "0111" => s_trg_unsync <= '1';  -- "7" (trigger3)
+      WHEN "1000" => s_trg_unsync <= '1';  -- "8" (pulser0)
+      WHEN "1001" => s_trg_unsync <= '1';  -- "9" (pulser1)
+      WHEN "1010" => s_trg_unsync <= '1';  -- "10" (pulser2)
+      WHEN "1011" => s_trg_unsync <= '1';  -- "11" (pulser3)
+      WHEN "1100" => s_trg_unsync <= '1';  -- "12" (config)
+      WHEN "1101" => s_trg_unsync <= '1';  -- "13" (abort)
+      WHEN "1110" => s_trg_unsync <= '1';  -- "14" (L1accept)
+      WHEN "1111" => s_trg_unsync <= '1';  -- "15" (L2accept)
       WHEN OTHERS => s_trg_unsync <= '0';
     END CASE;
   END PROCESS trg;
