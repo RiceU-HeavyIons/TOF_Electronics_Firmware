@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.3 2007-05-01 14:48:06 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.4 2007-05-14 19:53:52 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2007-04-30
+-- Last update: 2007-05-01
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -24,9 +24,9 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 
 LIBRARY lpm;
-USE lpm.lpm_components.all;
-LIBRARY altera_mf; 
-USE altera_mf.altera_mf_components.all; 
+USE lpm.lpm_components.ALL;
+LIBRARY altera_mf;
+USE altera_mf.altera_mf_components.ALL;
 LIBRARY altera;
 USE altera.altera_primitives_components.ALL;
 
@@ -35,10 +35,12 @@ ENTITY tcd IS
   PORT (
     rhic_strobe : IN  std_logic;        -- TCD RHIC strobe
     data_strobe : IN  std_logic;        -- TCD data clock
-    data        : IN  std_logic_vector (3 DOWNTO 0);  -- TCD data
-    clock       : IN  std_logic;                        -- 40 MHz clock
+    data        : IN  std_logic_vector (3 DOWNTO 0);   -- TCD data
+    clock       : IN  std_logic;        -- 40 MHz clock
     trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
-    trigger     : OUT std_logic);       -- strobe signal sync'd to clock
+    trigger     : OUT std_logic;        -- strobe signal sync'd to clock
+    evt_trg     : OUT std_logic         -- this signal indicates an event
+    );
 
 END ENTITY tcd;
 
@@ -146,24 +148,50 @@ BEGIN  -- ARCHITECTURE a
 
   -- use this as the trigger word output
   trgword <= s_reg20_1;
-  
+
   -- now check if there is a valid trigger command:
-  trg: PROCESS (s_reg20_1(19 DOWNTO 16)) IS
+  trg : PROCESS (s_reg20_1(19 DOWNTO 16)) IS
   BEGIN  -- PROCESS trg
     CASE s_reg20_1(19 DOWNTO 16) IS
-      WHEN "0100" => s_trg_unsync <= '1';  -- "4" (trigger0)
-      WHEN "0101" => s_trg_unsync <= '1';  -- "5" (trigger1)
-      WHEN "0110" => s_trg_unsync <= '1';  -- "6" (trigger2)
-      WHEN "0111" => s_trg_unsync <= '1';  -- "7" (trigger3)
-      WHEN "1000" => s_trg_unsync <= '1';  -- "8" (pulser0)
-      WHEN "1001" => s_trg_unsync <= '1';  -- "9" (pulser1)
-      WHEN "1010" => s_trg_unsync <= '1';  -- "10" (pulser2)
-      WHEN "1011" => s_trg_unsync <= '1';  -- "11" (pulser3)
-      WHEN "1100" => s_trg_unsync <= '1';  -- "12" (config)
-      WHEN "1101" => s_trg_unsync <= '1';  -- "13" (abort)
-      WHEN "1110" => s_trg_unsync <= '1';  -- "14" (L1accept)
-      WHEN "1111" => s_trg_unsync <= '1';  -- "15" (L2accept)
-      WHEN OTHERS => s_trg_unsync <= '0';
+      WHEN "0100" =>                    -- "4" (trigger0)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "0101" =>                    -- "5" (trigger1)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "0110" =>                    -- "6" (trigger2)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "0111" =>                    -- "7" (trigger3)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1000" =>                    -- "8" (pulser0)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1001" =>                    -- "9" (pulser1)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1010" =>                    -- "10" (pulser2)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1011" =>                    -- "11" (pulser3)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1100" =>                    -- "12" (config)
+        s_trg_unsync <= '1';
+        evt_trg      <= '1';
+      WHEN "1101" =>                    -- "13" (abort)
+        s_trg_unsync <= '1';
+        evt_trg      <= '0';
+      WHEN "1110" =>                    -- "14" (L1accept)
+        s_trg_unsync <= '1';
+        evt_trg      <= '0';
+      WHEN "1111" =>                    -- "15" (L2accept)
+        s_trg_unsync <= '1';
+        evt_trg      <= '0';
+      WHEN OTHERS =>
+        s_trg_unsync <= '0';
+        evt_trg      <= '0';
     END CASE;
   END PROCESS trg;
 
@@ -185,7 +213,7 @@ BEGIN  -- ARCHITECTURE a
       clrn => '1',
       prn  => '1',
       q    => s_stage2);
-  
+
   stage3 : dff
     PORT MAP (
       d    => s_stage2,
@@ -193,7 +221,7 @@ BEGIN  -- ARCHITECTURE a
       clrn => '1',
       prn  => '1',
       q    => s_stage3);
-  
+
   stage4 : dff
     PORT MAP (
       d    => s_stage3,
