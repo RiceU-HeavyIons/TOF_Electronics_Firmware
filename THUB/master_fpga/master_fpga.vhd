@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.6 2007-04-30 20:43:00 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.7 2007-05-14 19:54:28 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-04-30
+-- Last update: 2007-05-01
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -117,7 +117,8 @@ ARCHITECTURE a OF master_fpga IS
       data        : IN  std_logic_vector (3 DOWNTO 0);
       clock       : IN  std_logic;
       trgword     : OUT std_logic_vector (19 DOWNTO 0);
-      trigger     : OUT std_logic
+      trigger     : OUT std_logic;
+      evt_trg     : OUT std_logic
       );
   END COMPONENT tcd;
 
@@ -176,6 +177,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg7          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg8          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_trigger       : std_logic;
+  SIGNAL s_evt_trg       : std_logic;
   SIGNAL s_runReset      : std_logic;
   SIGNAL ddl_data        : std_logic_vector (31 DOWNTO 0);
   SIGNAL ddlfifo_empty   : std_logic;
@@ -359,12 +361,14 @@ BEGIN
       data        => tcd_d,
       clock       => globalclk,
       trgword     => s_triggerword,
-      trigger     => s_trigger);
+      trigger     => s_trigger,
+      evt_trg     => s_evt_trg);
 
   -- display trigger word on Mictor
   mic(19 DOWNTO 0)  <= s_triggerword;
   mic(20)           <= s_trigger;
-  mic(63 DOWNTO 21) <= (OTHERS => '0');
+  mic(21)           <= s_evt_trg;
+  mic(63 DOWNTO 22) <= (OTHERS => '0');
 
   -- store the TCD info in a dual clock FIFO for later retrieval.
   -- s_trigger is high when a valid trigger is received, so USE
