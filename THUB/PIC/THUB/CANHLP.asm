@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.4 2007-04-20 14:59:02 jschamba Exp $
+; $Id: CANHLP.asm,v 1.5 2007-05-18 15:16:48 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -481,7 +481,7 @@ TofReadSiID:
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
 Msg9Agn:
-    mCANSendMsg  0x405,CANDt1,1,CAN_TX_XTD_FRAME
+    mCANSendMsg  0x405,CANDt1,1,CAN_TX_STD_FRAME
     addlw   0x00            ; Check for return value of 0 in W
     bz      Msg9Agn         ; Buffer Full, Try again
     return                  ; back to receiver loop
