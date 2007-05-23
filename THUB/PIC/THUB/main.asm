@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.12 2007-05-23 16:46:21 jschamba Exp $
+; $Id: main.asm,v 1.13 2007-05-23 18:16:29 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -290,15 +290,13 @@ is_it_read:
 ;* Get TCD Data from PLD and send it
 ;**************************************************************
 getPLDData:
-    ;setup address pointer to CAN payload
+    ; setup address pointer to CAN payload
 ;    banksel CANDt1
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
+    ; send TCD data with LSB in Rx[0], 0xa in Rx[3]
+    lfsr    FSR0, CANDt1+3
 
     movlw   0xa0
-    movwf   POSTINC0
+    movwf   POSTDEC0
 
     banksel PORTD
 
@@ -313,14 +311,14 @@ getPLDData:
     setf    TRISD           ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
 
 ;    banksel CANDt1
     ; test if trigger command not zero:
-    tstfsz  CANDt1+1,0      ; if (CANDt1[1] == 0)
+    tstfsz  CANDt1+2,0      ; if (CANDt1[2] == 0)
     bra     readToken       ; true: valid PLD Data read, read token and send it over CANbus
 
     ; now write to register 0x87 to advance the TCD FIFO
@@ -351,7 +349,7 @@ readToken:
     setf    TRISD           ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
@@ -366,7 +364,7 @@ readToken:
     setf    TRISD           ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
