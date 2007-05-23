@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.11 2007-05-22 20:32:05 jschamba Exp $
+; $Id: main.asm,v 1.12 2007-05-23 16:46:21 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -195,12 +195,12 @@ Main:
 
 ;; Here is where the CAN code starts
 	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1, with 20MHz clock results in 1Mbit/s 
-	;;mCANInit   1, 1, 5, 3, 1, CAN_CONFIG_ALL_VALID_MSG
+	mCANInit   1, 1, 5, 3, 1, CAN_CONFIG_ALL_VALID_MSG
     ;; Bill's Parameters:
 	;; SJW=2, BRP=1, PHSEG1=3, PHSEG2=3, PROPSEG2=3, with 20MHz clock results in 1Mbit/s 
 	;;mCANInit   2, 1, 3, 3, 3, CAN_CONFIG_ALL_VALID_MSG & CAN_CONFIG_SAMPLE_ONCE
 	;; SJW=1, BRP=1, PHSEG1=8, PHSEG2=8, PROPSEG2=3, with 20MHz clock results in 500kbit/s 
-	mCANInit   1, 1, 8, 8, 3, CAN_CONFIG_ALL_VALID_MSG ; 500kbit/s
+	;;mCANInit   1, 1, 8, 8, 3, CAN_CONFIG_ALL_VALID_MSG ; 500kbit/s
 
 ;Set Loop-back mode for testing in Stand alone mode
 ;    mCANSetOpMode     CAN_OP_MODE_LOOP        ;Loop back mode
