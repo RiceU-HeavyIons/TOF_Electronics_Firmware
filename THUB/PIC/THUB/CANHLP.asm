@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.5 2007-05-18 15:16:48 jschamba Exp $
+; $Id: CANHLP.asm,v 1.6 2007-05-23 16:45:45 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -337,8 +337,10 @@ is_it_resetToNewProgram:
     ;****** Set EEPROM and Reset **********************************
     ;* msgID = 0x402
     ;* RxData[0] = 0x26
+    ;* RxData[1] = EEPROM data byte
     ;*
-    ;* Effect: set last location of EEPROM data to 0 and reset
+    ;* Effect: set last location of EEPROM data to "EEPROM data 
+    ;*           byte" and reset
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x26
