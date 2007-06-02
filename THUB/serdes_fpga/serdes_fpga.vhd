@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.7 2007-04-23 22:37:29 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.8 2007-06-02 19:28:42 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-04-23
+-- Last update: 2007-05-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -79,6 +79,33 @@ END serdes_fpga;
 
 ARCHITECTURE a OF serdes_fpga IS
 
+  CONSTANT LOCK_PATTERN : std_logic_vector := "000001001000110100";
+
+  COMPONENT serdes_poweron IS
+    PORT (
+      clk         : IN  std_logic;      -- Master clock
+      tpwdn_n     : OUT std_logic;
+      rpwdn_n     : OUT std_logic;
+      sync        : OUT std_logic;
+      ch_lock_n   : IN  std_logic;
+      ch_ready    : OUT std_logic;
+      pll_locked  : IN  std_logic;
+      rxd         : IN  std_logic_vector (17 DOWNTO 0);
+      txd         : OUT std_logic_vector (17 DOWNTO 0);
+      serdes_data : IN  std_logic_vector (17 DOWNTO 0);
+      areset_n    : IN  std_logic);
+  END COMPONENT serdes_poweron;
+
+  COMPONENT smif IS
+    PORT (
+      clk40mhz   : IN  std_logic;
+      clk20mhz   : IN  std_logic;
+      datain     : IN  std_logic_vector(11 DOWNTO 0);
+      data_type  : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_out : OUT std_logic_vector(17 DOWNTO 0);
+      areset     : IN  std_logic);
+  END COMPONENT smif;
+
   COMPONENT pll
     PORT
       (
@@ -123,7 +150,10 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL pll_locked        : std_logic;
   SIGNAL counter_q         : std_logic_vector (16 DOWNTO 0);
   SIGNAL lsfr_d            : std_logic_vector (16 DOWNTO 0);
-  SIGNAL serdes_data       : std_logic_vector (16 DOWNTO 0);
+  SIGNAL serdes_data       : std_logic_vector (17 DOWNTO 0);
+  SIGNAL serdes_startup    : std_logic_vector (17 DOWNTO 0);
+  SIGNAL serdes_muxout     : std_logic_vector (17 DOWNTO 0);
+  SIGNAL s_serdes_tx_sel   : std_logic;
   SIGNAL txfifo_rdreq      : std_logic;
   SIGNAL txfifo_q          : std_logic_vector (17 DOWNTO 0);
   SIGNAL txfifo_full       : std_logic;
@@ -167,25 +197,29 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_error           : std_logic;
   SIGNAL s_ctr_aclr        : std_logic;
   SIGNAL s_ch0_locked      : std_logic;
+  SIGNAL s_ch1_locked      : std_logic;
   SIGNAL s_send_data       : std_logic;
+  SIGNAL s_smif_dataout    : std_logic_vector (15 DOWNTO 0);
+  SIGNAL s_smif_fifo_empty : std_logic;
+  SIGNAL s_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL s_smif_rdenable   : std_logic;
+  SIGNAL s_smif_datain     : std_logic_vector(11 DOWNTO 0);
+  SIGNAL s_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+  SIGNAL s_serdes_out      : std_logic_vector(17 DOWNTO 0);
+  SIGNAL s_ch1_txd         : std_logic_vector(17 DOWNTO 0);
+
 
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE poweron_state IS (
-    PO_INIT,
-    PO_WAIT,
-    PO_SYNC,
-    PO_LOCKED
-    );
-
 BEGIN
-
+  
+  -----------------------------------------------------------------------------
+  -- Clocks and resets
+  -----------------------------------------------------------------------------
   areset_n <= '1';  -- asynchronous global reset, active low
 
   global_clk_buffer : global PORT MAP (a_in => clk, a_out => globalclk);
-
-  ma <= (OTHERS => 'Z');                -- tri-state I/O to master FPGA
 
   -- create 20 MHz clock with TFF:
   div2 : TFF PORT MAP (
@@ -194,8 +228,10 @@ BEGIN
     clrn => '1',
     prn  => '1',
     q    => div2out);
-
   global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
+  serdes_clk <= clk20mhz;
+  -- serdes_clk <= '0';
+  -- serdes_clk <= globalclk;
 
   -- PLL
   pll_instance : pll PORT MAP (
@@ -205,19 +241,40 @@ BEGIN
     c1     => clkp_160mhz,
     locked => pll_locked);
 
-  serdes_clk <= clk20mhz;
-  -- serdes_clk <= '0';
-  -- serdes_clk <= globalclk;
+  -----------------------------------------------------------------------------
+  -- SERDES-MAIN FPGA interface
+  -----------------------------------------------------------------------------
+  -- ma <= (OTHERS => 'Z');                -- tri-state I/O to master FPGA
+  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state I/O to master FPGA
+  ma(15 DOWNTO 0)  <= s_smif_dataout;
+  ma(16)           <= s_smif_fifo_empty;
+  s_smif_select    <= ma(18 DOWNTO 17);
+  s_smif_rdenable  <= ma(19);
+  s_smif_datain    <= ma(31 DOWNTO 20);
+  s_smif_datatype  <= ma(35 DOWNTO 32);
 
-  -- LEDs
-  -- led <= "10"; -- used below to show lock status
+  s_smif_dataout    <= (OTHERS => '0');
+  s_smif_fifo_empty <= '1';
 
-  -- Mictor defaults
-  -- mt     <= (OTHERS => '0');
-  -- mt(30 DOWNTO 18) <= (OTHERS => '0');
-  -- mt_clk <= globalclk;
-  -- others are used for SERDES channel-1 display below
+  smif_inst : smif PORT MAP (
+    clk40mhz   => globalclk,
+    clk20mhz   => clk20mhz,
+    datain     => s_smif_datain,
+    data_type  => s_smif_datatype,
+    serdes_out => s_serdes_out,
+    areset     => '0');
 
+--  mt(17 DOWNTO 0)  <= s_serdes_out;
+--  mt(23 DOWNTO 18) <= s_txfifo_q(7 DOWNTO 2);
+  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
+  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
+  mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
+  mt(31)           <= s_ch0_locked;
+
+
+  -----------------------------------------------------------------------------
+  -- SRAM
+  -----------------------------------------------------------------------------
   -- SRAM defaults
   sra_addr <= (OTHERS => '0');
   srb_addr <= (OTHERS => '0');
@@ -237,6 +294,9 @@ BEGIN
   sra_d <= (OTHERS => 'Z');
   srb_d <= (OTHERS => 'Z');
 
+  -----------------------------------------------------------------------------
+  -- Utility Counters
+  -----------------------------------------------------------------------------
   -- counter to divide clock
   counter25b : lpm_counter
     GENERIC MAP (
@@ -254,8 +314,10 @@ BEGIN
     END IF;
   END PROCESS dip_latch;
 
+  -----------------------------------------------------------------------------
   -- SERDES utilities
-
+  -----------------------------------------------------------------------------
+  
   s_send_data <= s_ch0_locked AND sync_dip;  -- control sending of data with dip switch 2
   local_aclr  <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
 
@@ -277,29 +339,28 @@ BEGIN
       clock  => serdes_clk,
       d      => lsfr_d);
 
+  -- SERDES data:
+  -- serdes_data(16 DOWNTO 0) <= counter_q;
+  serdes_data(16 DOWNTO 0) <= lsfr_d;
+  serdes_data(17)          <= s_send_data;
 
   -- SERDES defaults
-  -- serdes_data <= counter_q;
-  serdes_data <= lsfr_d;
 
   -- channel 0
-  ch0_den              <= m_all(0);     -- tx enabled by dip switch 0
-  ch0_ren              <= m_all(0);     -- rx enabled by dip switch 0
-  ch0_loc_le           <= '0';
-  ch0_line_le          <= '0';
-  ch0_txd(16 DOWNTO 0) <= serdes_data;
-  ch0_txd(17)          <= s_send_data;
-  led(0)               <= ch0_lock_n;
+  ch0_den     <= m_all(0);              -- tx enabled by dip switch 0
+  ch0_ren     <= m_all(0);              -- rx enabled by dip switch 0
+  ch0_loc_le  <= '0';
+  ch0_line_le <= '0';
+  ch0_txd     <= serdes_muxout;
+  led(0)      <= ch0_lock_n;
 
   -- channel 1
-  ch1_den              <= m_all(1);     -- tx enabled by dip switch 1
-  ch1_ren              <= m_all(1);     -- rx enabled by dip switch 1
-  ch1_sync             <= '0';
-  ch1_loc_le           <= '0';          -- local loopback disabled
-  ch1_line_le          <= '0';          -- line loopback disabled
-  ch1_txd(16 DOWNTO 0) <= serdes_data;
-  ch1_txd(17)          <= s_send_data;
-  led(1)               <= ch1_lock_n;
+  ch1_den     <= m_all(1);              -- tx enabled by dip switch 1
+  ch1_ren     <= m_all(1);              -- rx enabled by dip switch 1
+  ch1_loc_le  <= '0';                   -- local loopback disabled
+  ch1_line_le <= '0';                   -- line loopback disabled
+  ch1_txd     <= serdes_muxout;
+  led(1)      <= ch1_lock_n;
 
   -- channel 2
   ch2_den     <= '0';
@@ -337,34 +398,32 @@ BEGIN
   ch3_refclk <= serdes_clk;
 
 
-  -- latch tx data into a single clock 17bit fifo for later comparison
-
-  -- s_txfifo_aclr <= local_aclr;
-  -- s_rxfifo_aclr <= local_aclr;
-
-  txfifo : scfifo
+  -- latch tx data into a dual clock 17bit fifo for later comparison
+  txfifo : dcfifo
     GENERIC MAP (
-      add_ram_output_register => "ON",
-      intended_device_family  => "Cyclone II",
-      lpm_numwords            => 256,
-      lpm_showahead           => "ON",
-      lpm_type                => "scfifo",
-      lpm_width               => 17,
-      lpm_widthu              => 8,
-      overflow_checking       => "ON",
-      underflow_checking      => "ON",
-      use_eab                 => "ON"
-      )
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 256,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 17,
+      lpm_widthu             => 8,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
     PORT MAP (
+      wrclk => serdes_clk,
       rdreq => s_txfifo_rdreq,
       aclr  => s_txfifo_aclr,
-      clock => ch0_rclk,                -- serdes_clk,
+      rdclk => ch0_rclk,                -- serdes_clk,
       wrreq => s_send_data,
-      data  => serdes_data,
-      empty => s_txfifo_empty,
+      data  => serdes_muxout(16 DOWNTO 0),
+      rdempty => s_txfifo_empty,
       q     => s_txfifo_q
       );
 
+  -- latch rx data into a single clock 17bit fifo for later comparison
   rxfifo : scfifo
     GENERIC MAP (
       add_ram_output_register => "ON",
@@ -389,10 +448,11 @@ BEGIN
       );
 
   s_rxfifo_wrreq <= ch0_rxd(17) AND s_ch0_locked;
-  
+
+  -- now compare
   data_compare : PROCESS (serdes_clk, areset_n) IS
     VARIABLE b_ch0valid : boolean := false;
-  BEGIN  -- PROCESS shiftreg1
+  BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
       s_errorctr     <= (OTHERS => '0');
       s_txfifo_rdreq <= '0';
@@ -411,14 +471,9 @@ BEGIN
         s_txfifo_rdreq <= '1';
         s_rxfifo_rdreq <= '1';
       END IF;
-      
     END IF;
   END PROCESS data_compare;
 
-  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
-  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
-  mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
-  mt(31)           <= s_ch0_locked;
 
   -- create a latch signal that has half the frequency of ch0_rclk
   -- reset, when there is nothing being sent (ch0valid = 0)
@@ -490,135 +545,42 @@ BEGIN
   s_ch0fifo_rdreq <= NOT s_ch0fifo_rdempty;
 
 
-  -- purpose: power on state machine for channel 0
-  -- type   : sequential
-  -- inputs : globalclk, areset
-  -- outputs: 
-  poweron_ch0 : PROCESS (globalclk, areset_n) IS
+  -- SERDES power on procedures:
+  
+  poweron_ch0 : serdes_poweron PORT MAP (
+    clk         => globalclk,
+    tpwdn_n     => ch0_tpwdn_n,
+    rpwdn_n     => ch0_rpwdn_n,
+    sync        => ch0_sync,
+    ch_lock_n   => ch0_lock_n,
+    ch_ready    => s_ch0_locked,
+    pll_locked  => pll_locked,
+    rxd         => ch0_rxd,
+    txd         => serdes_muxout,
+    serdes_data => serdes_data,
+    areset_n    => areset_n);
 
-    VARIABLE poweron0_present : poweron_state;
-    VARIABLE poweron0_next    : poweron_state;
-    
-  BEGIN  -- PROCESS poweron_ch0
-    IF areset_n = '0' THEN              -- asynchronous reset (active low)
+  s_txfifo_aclr <= NOT s_ch0_locked;
+  s_rxfifo_aclr <= NOT s_ch0_locked;
+  s_ctr_aclr    <= NOT s_ch0_locked;
 
-      poweron0_present := PO_INIT;
-      poweron0_next    := PO_INIT;
-      ch0_tpwdn_n      <= '0';          -- tx powered down
-      ch0_rpwdn_n      <= '0';          -- rx powered down
-      ch0_sync         <= '0';          -- sync turned off
-      s_ch0_locked     <= '0';
-      s_txfifo_aclr    <= '1';
-      s_rxfifo_aclr    <= '1';
-      
-    ELSIF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
+  poweron_ch1 : serdes_poweron PORT MAP (
+    clk         => globalclk,
+    tpwdn_n     => ch1_tpwdn_n,
+    rpwdn_n     => ch1_rpwdn_n,
+    sync        => ch1_sync,
+    ch_lock_n   => ch1_lock_n,
+    ch_ready    => s_ch1_locked,
+    pll_locked  => pll_locked,
+    rxd         => ch1_rxd,
+    txd         => s_ch1_txd,
+    serdes_data => serdes_data,
+    areset_n    => areset_n);
 
-      ch0_tpwdn_n   <= '0';             -- tx powered down
-      ch0_rpwdn_n   <= '0';             -- rx powered down
-      ch0_sync      <= '0';
-      s_ch0_locked  <= '0';
-      s_txfifo_aclr <= '1';
-      s_rxfifo_aclr <= '1';
-
-      CASE poweron0_present IS
-        WHEN PO_INIT =>
-          s_ctr_aclr <= '1';
-          IF pll_locked = '1' THEN
-            poweron0_next := PO_WAIT;
-          END IF;
-        WHEN PO_WAIT =>
-          ch0_tpwdn_n <= '1';           -- tx powered on
-          ch0_sync    <= '1';           -- sync turned on
-          s_ctr_aclr  <= '0';
-          IF counter_q(16) = '1' THEN
-            poweron0_next := PO_SYNC;
-          END IF;
-          
-        WHEN PO_SYNC =>
-          ch0_tpwdn_n <= '1';           -- tx powered on
-          ch0_rpwdn_n <= '1';           -- rx powered on
-          ch0_sync    <= '1';           -- sync turned on
-
-          IF ch0_lock_n = '0' THEN
-            poweron0_next := PO_LOCKED;
-          END IF;
-        WHEN PO_LOCKED =>
-          ch0_tpwdn_n   <= '1';         -- tx powered on
-          ch0_rpwdn_n   <= '1';         -- rx powered on
-          s_ch0_locked  <= '1';
-          s_txfifo_aclr <= '0';
-          s_rxfifo_aclr <= '0';
-
-          IF ((ch0_lock_n = '1') OR (ch1_lock_n = '1')) THEN
-            poweron0_next := PO_INIT;
-          END IF;
-        WHEN OTHERS =>
-          s_txfifo_aclr <= '0';
-          s_rxfifo_aclr <= '0';
-          ch0_rpwdn_n <= '1';           -- rx powered on
-          ch0_tpwdn_n <= '1';           -- tx powered on
-
-          poweron0_next := PO_LOCKED;
-      END CASE;
-      poweron0_present := poweron0_next;
-
-    END IF;
-  END PROCESS poweron_ch0;
-
-  -- purpose: power on state machine for channel 1 (emulate the TCPU)
-  -- type   : sequential
-  -- inputs : globalclk, areset
-  -- outputs: 
-  poweron_ch1 : PROCESS (globalclk, areset_n) IS
-
-    VARIABLE poweron1_present : poweron_state;
-    VARIABLE poweron1_next    : poweron_state;
-    
-  BEGIN  -- PROCESS poweron_ch1
-    IF areset_n = '0' THEN              -- asynchronous reset (active low)
-
-      poweron1_present := PO_INIT;
-      poweron1_next    := PO_INIT;
-      ch1_tpwdn_n      <= '0';          -- tx powered down
-      ch1_rpwdn_n      <= '0';          -- rx powered down
-      
-    ELSIF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
-
-      ch1_tpwdn_n <= '0';               -- tx powered down
-      ch1_rpwdn_n <= '0';               -- rx powered down
-
-      CASE poweron1_present IS
-        WHEN PO_INIT =>
-          IF pll_locked = '1' THEN
-            poweron1_next := PO_WAIT;
-          END IF;
-        WHEN PO_WAIT =>
-          ch1_rpwdn_n <= '1';           -- rx powered on
-          poweron1_next := PO_SYNC;
-        WHEN PO_SYNC =>
-          ch1_rpwdn_n <= '1';           -- rx powered on
-
-          IF ch1_lock_n = '0' THEN
-            poweron1_next := PO_LOCKED;
-          END IF;
-        WHEN PO_LOCKED =>
-          ch1_tpwdn_n <= '1';           -- tx powered on
-          ch1_rpwdn_n <= '1';           -- rx powered on
-
-          IF ch1_lock_n = '1' THEN
-            poweron1_next := PO_INIT;
-          END IF;
-        WHEN OTHERS =>
-          ch1_tpwdn_n <= '1';           -- tx powered on
-          ch1_rpwdn_n <= '1';           -- rx powered on
-
-          poweron1_next := PO_LOCKED;
-      END CASE;
-      poweron1_present := poweron1_next;
-      
-    END IF;
-  END PROCESS poweron_ch1;
-
+  -----------------------------------------------------------------------------
+  -- SRAM control
+  -----------------------------------------------------------------------------
+  
 --  zbt_ctrl_top_inst1 : zbt_ctrl_top
 --    PORT MAP (
 --      clk                   => clkp_160mhz,
