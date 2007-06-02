@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.7 2007-05-14 19:54:28 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.8 2007-06-02 19:06:04 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-05-01
+-- Last update: 2007-05-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -36,7 +36,7 @@ ENTITY master_fpga IS
       -- Mictor outputs
       mic        : OUT   std_logic_vector(64 DOWNTO 0);
       -- bus to serdes fpga's
-      ma         : OUT   std_logic_vector(35 DOWNTO 0);
+      ma         : INOUT std_logic_vector(35 DOWNTO 0);
       mb, mc, md : INOUT std_logic_vector(35 DOWNTO 0);
       mf, mg, mh : INOUT std_logic_vector(35 DOWNTO 0);
       me         : INOUT std_logic_vector(35 DOWNTO 0);
@@ -406,10 +406,12 @@ BEGIN
   s_reg6              <= s_trg_mcu_word(7 DOWNTO 0);
 
   -- registers 1 through 5 are presented to SERDES FPGA A:
-  ma(7 DOWNTO 0)   <= s_reg1;
-  ma(15 DOWNTO 8)  <= s_reg2;
-  ma(23 DOWNTO 16) <= s_reg3;
-  ma(31 DOWNTO 24) <= s_reg4;
-  ma(35 DOWNTO 32) <= s_reg5(3 DOWNTO 0);
+--  ma(7 DOWNTO 0)   <= s_reg1;
+--  ma(15 DOWNTO 8)  <= s_reg2;
+--  ma(23 DOWNTO 16) <= s_reg3;
+--  ma(31 DOWNTO 24) <= s_reg4;
+--  ma(35 DOWNTO 32) <= s_reg5(3 DOWNTO 0);
+
+  ma <= (OTHERS => 'Z');
 
 END a;
