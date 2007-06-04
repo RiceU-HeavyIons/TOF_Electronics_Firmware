@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.8 2007-06-02 19:06:04 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.9 2007-06-04 20:08:15 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-05-14
+-- Last update: 2007-06-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -71,6 +71,15 @@ END master_fpga;
 
 
 ARCHITECTURE a OF master_fpga IS
+
+  COMPONENT pll
+    PORT
+      (
+        inclk0 : IN  std_logic := '0';
+        c0     : OUT std_logic;
+        locked : OUT std_logic
+        );
+  END COMPONENT;
 
   COMPONENT control_registers IS
     PORT (
@@ -186,6 +195,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_trgfifo_empty : std_logic;
   SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trg_mcu_word  : std_logic_vector (19 DOWNTO 0);
+  SIGNAL counter25b_q    : std_logic_vector(24 DOWNTO 0);
+  SIGNAL clk_160mhz      : std_logic;
+  SIGNAL pll_locked      : std_logic;
 
 BEGIN
 
@@ -193,9 +205,29 @@ BEGIN
 
   arstn <= '1';                         -- no reset for now
 
-  -- LEDs
-  led <= "00";
+  -- PLL
+  pll_instance : pll PORT MAP (
+    inclk0 => clk,
+    c0     => clk_160mhz,
+    locked => pll_locked);
 
+
+  -- counter to divide clock
+  counter25b : lpm_counter
+    GENERIC MAP (
+      LPM_WIDTH     => 25,
+      LPM_TYPE      => "LPM_COUNTER",
+      LPM_DIRECTION => "UP")
+    PORT MAP (
+      clock  => globalclk,
+      clk_en => pll_locked,
+      q      => counter25b_q);
+
+  -- LEDs
+  -- led <= "00";
+  led(0) <= counter25b_q(24);           -- this should indicate if clock is present
+  led(1) <= '0';
+  
   -- SERDES FPGA interfaces:
   mb <= (OTHERS => 'Z');
   mc <= (OTHERS => 'Z');
