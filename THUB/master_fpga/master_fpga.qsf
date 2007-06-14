@@ -506,6 +506,7 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
 set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
 set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
