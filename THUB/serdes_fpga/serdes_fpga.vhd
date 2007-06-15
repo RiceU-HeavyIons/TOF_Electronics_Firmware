@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.8 2007-06-02 19:28:42 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.9 2007-06-15 15:20:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-05-24
+-- Last update: 2007-06-15
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -208,7 +208,6 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_serdes_out      : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_ch1_txd         : std_logic_vector(17 DOWNTO 0);
 
-
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
@@ -269,6 +268,9 @@ BEGIN
   mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
   mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
   mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
+  -- mt(28 DOWNTO 24) <= s_smbits0;
+  -- mt(29)           <= '0';
+  -- mt(30)           <= '0';
   mt(31)           <= s_ch0_locked;
 
 
@@ -315,36 +317,8 @@ BEGIN
   END PROCESS dip_latch;
 
   -----------------------------------------------------------------------------
-  -- SERDES utilities
-  -----------------------------------------------------------------------------
-  
-  s_send_data <= s_ch0_locked AND sync_dip;  -- control sending of data with dip switch 2
-  local_aclr  <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
-
-  -- Counter as data input to channel 0 TX
-  counter17b : lpm_counter GENERIC MAP (
-    LPM_WIDTH     => 17,
-    LPM_TYPE      => "LPM_COUNTER",
-    LPM_DIRECTION => "UP")
-    PORT MAP (
-      clock  => serdes_clk,
-      q      => counter_q,
-      clk_en => '1',
-      aclr   => s_ctr_aclr);
-
-  -- LFSR as data generator (17 bit pseudo random numbers)
-  datagen : LFSR
-    PORT MAP (
-      RESETn => '1',
-      clock  => serdes_clk,
-      d      => lsfr_d);
-
-  -- SERDES data:
-  -- serdes_data(16 DOWNTO 0) <= counter_q;
-  serdes_data(16 DOWNTO 0) <= lsfr_d;
-  serdes_data(17)          <= s_send_data;
-
   -- SERDES defaults
+  -----------------------------------------------------------------------------
 
   -- channel 0
   ch0_den     <= m_all(0);              -- tx enabled by dip switch 0
@@ -397,17 +371,47 @@ BEGIN
   ch2_refclk <= serdes_clk;
   ch3_refclk <= serdes_clk;
 
+  -----------------------------------------------------------------------------
+  -- SERDES utilities
+  -----------------------------------------------------------------------------
+  
+  s_send_data <= s_ch0_locked AND sync_dip;  -- control sending of data with dip switch 2
+  local_aclr  <= (NOT s_ch0_locked) OR s_error;  -- clear when NOT locked or receive error
+
+  -- Counter as data input to channel 0 TX
+  counter17b : lpm_counter GENERIC MAP (
+    LPM_WIDTH     => 17,
+    LPM_TYPE      => "LPM_COUNTER",
+    LPM_DIRECTION => "UP")
+    PORT MAP (
+      clock  => serdes_clk,
+      q      => counter_q,
+      clk_en => '1',
+      aclr   => s_ctr_aclr);
+
+  -- LFSR as data generator (17 bit pseudo random numbers)
+  datagen : LFSR
+    PORT MAP (
+      RESETn => '1',
+      clock  => serdes_clk,
+      d      => lsfr_d);
+
+  -- SERDES data:
+  -- serdes_data(16 DOWNTO 0) <= counter_q;
+  serdes_data(16 DOWNTO 0) <= lsfr_d;
+  serdes_data(17)          <= s_send_data;
+
 
   -- latch tx data into a dual clock 17bit fifo for later comparison
   txfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 256,
+      lpm_numwords           => 16,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 17,
-      lpm_widthu             => 8,
+      lpm_widthu             => 4,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -428,11 +432,11 @@ BEGIN
     GENERIC MAP (
       add_ram_output_register => "ON",
       intended_device_family  => "Cyclone II",
-      lpm_numwords            => 256,
+      lpm_numwords            => 16,
       lpm_showahead           => "ON",
       lpm_type                => "scfifo",
       lpm_width               => 17,
-      lpm_widthu              => 8,
+      lpm_widthu              => 4,
       overflow_checking       => "ON",
       underflow_checking      => "ON",
       use_eab                 => "ON"
@@ -558,7 +562,8 @@ BEGIN
     rxd         => ch0_rxd,
     txd         => serdes_muxout,
     serdes_data => serdes_data,
-    areset_n    => areset_n);
+    areset_n    => m_all(0));
+    -- areset_n    => areset_n);
 
   s_txfifo_aclr <= NOT s_ch0_locked;
   s_rxfifo_aclr <= NOT s_ch0_locked;
@@ -575,7 +580,7 @@ BEGIN
     rxd         => ch1_rxd,
     txd         => s_ch1_txd,
     serdes_data => serdes_data,
-    areset_n    => areset_n);
+    areset_n    => m_all(1));
 
   -----------------------------------------------------------------------------
   -- SRAM control
