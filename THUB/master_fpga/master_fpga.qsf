@@ -507,6 +507,7 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE pll.vhd
+set_global_assignment -name VHDL_FILE mux16x4.vhd
 set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
 set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
 set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
@@ -515,7 +516,9 @@ set_global_assignment -name VHDL_FILE ddl_registers.vhd
 set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
 set_global_assignment -name VHDL_FILE ddl_top.vhd
 set_global_assignment -name VHDL_FILE tcd_interface.vhd
+set_global_assignment -name VHDL_FILE smif.vhd
 set_global_assignment -name VHDL_FILE master_fpga.vhd
 set_global_assignment -name VHDL_FILE control_registers.vhd
+set_global_assignment -name VHDL_FILE serdes_registers.vhd
 set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
