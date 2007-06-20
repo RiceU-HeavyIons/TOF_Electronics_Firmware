@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.1 2007-06-02 19:23:44 jschamba Exp $
+-- $Id: smif.vhd,v 1.2 2007-06-20 20:30:04 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : serdes-master-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-14
--- Last update: 2007-05-24
+-- Last update: 2007-06-19
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ ENTITY smif IS
       datain       : IN    std_logic_vector(11 DOWNTO 0);
       data_type    : IN    std_logic_vector(3 DOWNTO 0);
       serdes_out   : OUT   std_logic_vector(17 DOWNTO 0);
+      serdes_reg   : OUT   std_logic_vector(7 DOWNTO 0);
       areset       : IN    std_logic
 
       );
@@ -47,9 +48,10 @@ END smif;
 ARCHITECTURE a OF smif IS
 
 
-  TYPE   State_type IS (State0, State1, State2, State3, State4, State5, State6);
+  TYPE   State_type IS (State0, State1, State2, State3, State4, State7);
   SIGNAL state : State_type;
   SIGNAL s_serdes_out : std_logic_vector(17 DOWNTO 0);
+  SIGNAL s_datain : std_logic_vector(11 DOWNTO 0);
 
 BEGIN
 
@@ -60,47 +62,44 @@ BEGIN
     IF areset = '1' THEN                -- asynchronous reset (active high)
       state <= State0;
       s_serdes_out <= (OTHERS => '0');
-    ELSIF clk40mhz'event AND clk40mhz = '0' THEN  -- trailing clock edge
+      serdes_reg <= (OTHERS => '0');
+    ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- leading clock edge
       CASE state IS
         WHEN State0 =>
           s_serdes_out <= (OTHERS => '0');
-          IF data_type(1) = '1' THEN    -- goto trigger data
+          s_datain <= datain;
+          IF data_type = "0011" THEN    -- goto trigger data
             state <= State1;
-          ELSIF data_type(2) = '1' THEN  -- goto control data
+          ELSIF data_type = "0101" THEN  -- goto bunch reset
+            state <= State2;
+          ELSIF data_type = "1001" THEN  -- goto "send reset"
+            state <= State3;
+          ELSIF data_type = "1010" THEN  -- goto load register
             state <= State4;
           END IF;
-          -- ************************************************
-        WHEN State1 =>                  -- here we clock in trigger data
-          s_serdes_out(11 DOWNTO 0) <= datain;  -- token
-          s_serdes_out(17 DOWNTO 12) <= (OTHERS => '0');
-          IF data_type(0) = '1' THEN    -- trigger
-            state <= State2;
-          ELSIF data_type(1) = '0' THEN
-            state <= State0;
-          END IF;
-        WHEN State2 =>
+          -- *************** trigger **********************************
+        WHEN State1 =>
+          s_serdes_out(11 DOWNTO 0) <= s_datain;  -- token
           s_serdes_out(12) <= clk20mhz;   -- clock phase
-          s_serdes_out(16) <= parity(s_serdes_out(11 DOWNTO 0));
+          s_serdes_out(16) <= parity(s_datain);
           s_serdes_out(17) <= '1';
-          state <= State3;
+          state <= State7;
+          -- *************** bunch reset ******************************
+        WHEN State2 =>
+          s_serdes_out <= (16 => '1', 13 => '1', OTHERS => '0');
+          state <= State7;
+          -- *************** reset ************************************
         WHEN State3 =>
+          s_serdes_out <= (16 => '1', 13 => '1', 12 => '1', OTHERS => '0');
+          state <= State7;
+          -- *************** load register ****************************
+        WHEN State4 =>
+          serdes_reg <= s_datain(7 DOWNTO 0);
+          state <= State7;
+          -- *************** wait state *******************************
+        WHEN State7 =>
           state <= State0;
-          -- ************************************************
-        WHEN State4 =>                  -- here we clock in control data
-          s_serdes_out(11 DOWNTO 0) <= datain;  -- control data
-          s_serdes_out(17 DOWNTO 12) <= (OTHERS => '0');
-          IF data_type(0) = '1' THEN    -- trigger
-            state <= State5;
-          ELSIF data_type(2) = '0' THEN
-            state <= State0;
-          END IF;
-        WHEN State5 =>
-          s_serdes_out(12) <= clk20mhz;   -- clock phase
-          s_serdes_out(16) <= '1';
-          state <= State6;
-        WHEN State6 =>
-          state <= State0;
-          -- ************************************************
+          -- **********************************************************
         WHEN OTHERS =>                  -- shouldn't happen
           state <= State0;
       END CASE;
