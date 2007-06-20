@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.9 2007-06-04 20:08:15 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.10 2007-06-20 19:36:17 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-06-04
+-- Last update: 2007-06-19
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -23,8 +23,8 @@ LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 LIBRARY lpm;
 USE lpm.lpm_components.ALL;
-LIBRARY altera_mf; 
-USE altera_mf.altera_mf_components.all; 
+LIBRARY altera_mf;
+USE altera_mf.altera_mf_components.ALL;
 LIBRARY altera;
 USE altera.altera_primitives_components.ALL;
 
@@ -36,10 +36,9 @@ ENTITY master_fpga IS
       -- Mictor outputs
       mic        : OUT   std_logic_vector(64 DOWNTO 0);
       -- bus to serdes fpga's
-      ma         : INOUT std_logic_vector(35 DOWNTO 0);
-      mb, mc, md : INOUT std_logic_vector(35 DOWNTO 0);
-      mf, mg, mh : INOUT std_logic_vector(35 DOWNTO 0);
-      me         : INOUT std_logic_vector(35 DOWNTO 0);
+      ma, mb, mc : INOUT std_logic_vector(35 DOWNTO 0);
+      md, me, mf : INOUT std_logic_vector(35 DOWNTO 0);
+      mg, mh     : INOUT std_logic_vector(35 DOWNTO 0);
       m_all      : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
       cpld       : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
@@ -81,6 +80,16 @@ ARCHITECTURE a OF master_fpga IS
         );
   END COMPONENT;
 
+  COMPONENT serdes_registers IS
+    PORT (
+      clock    : IN  std_logic;
+      arstn    : IN  std_logic;
+      reg_data : IN  std_logic_vector (7 DOWNTO 0);
+      reg_addr : IN  std_logic_vector (3 DOWNTO 0);
+      reg_load : IN  std_logic;
+      reg_out  : OUT std_logic_vector (7 DOWNTO 0));
+  END COMPONENT serdes_registers;
+
   COMPONENT control_registers IS
     PORT (
       clock    : IN  std_logic;
@@ -112,9 +121,12 @@ ARCHITECTURE a OF master_fpga IS
       reg6        : IN  std_logic_vector(7 DOWNTO 0);
       reg7        : IN  std_logic_vector(7 DOWNTO 0);
       reg8        : IN  std_logic_vector(7 DOWNTO 0);
+      serdes_reg  : IN  std_logic_vector(7 DOWNTO 0);
       reg_addr    : OUT std_logic_vector(2 DOWNTO 0);
-      reg_clr     : OUT std_logic;
+      sreg_addr   : OUT std_logic_vector(3 DOWNTO 0);
       reg_load    : OUT std_logic;
+      sreg_load   : OUT std_logic;
+      reg_clr     : OUT std_logic;
       uc_data_out : OUT std_logic_vector(7 DOWNTO 0)
       );
   END COMPONENT uc_fpga_interface;
@@ -153,6 +165,35 @@ ARCHITECTURE a OF master_fpga IS
       );
   END COMPONENT ddl;
 
+  COMPONENT smif IS
+    PORT (
+      clock       : IN  std_logic;
+      dataout_a   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_a : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_b   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_b : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_c   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_c : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_d   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_d : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_e   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_e : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_f   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_f : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_g   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_g : OUT std_logic_vector(3 DOWNTO 0);
+      dataout_h   : OUT std_logic_vector(11 DOWNTO 0);
+      data_type_h : OUT std_logic_vector(3 DOWNTO 0);
+      serdes_reg  : IN  std_logic_vector(7 DOWNTO 0);
+      sreg_addr   : IN  std_logic_vector(3 DOWNTO 0);
+      sreg_load   : IN  std_logic;
+      evt_trg     : IN  std_logic;
+      trgtoken    : IN  std_logic_vector(11 DOWNTO 0);
+      rstin       : IN  std_logic;
+      rstout      : OUT std_logic;
+      areset_n    : IN  std_logic);
+  END COMPONENT smif;
+
   SIGNAL globalclk : std_logic;
   SIGNAL arstn     : std_logic;
 
@@ -175,7 +216,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_uc_o          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_uc_i          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg_addr      : std_logic_vector(2 DOWNTO 0);
+  SIGNAL s_sreg_addr     : std_logic_vector(3 DOWNTO 0);
   SIGNAL s_reg_load      : std_logic;
+  SIGNAL s_sreg_load     : std_logic;
   SIGNAL s_reg_clr       : std_logic;
   SIGNAL s_reg1          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg2          : std_logic_vector(7 DOWNTO 0);
@@ -185,6 +228,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg6          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7          : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg8          : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_serdes_reg    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_trigger       : std_logic;
   SIGNAL s_evt_trg       : std_logic;
   SIGNAL s_runReset      : std_logic;
@@ -198,6 +242,62 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL counter25b_q    : std_logic_vector(24 DOWNTO 0);
   SIGNAL clk_160mhz      : std_logic;
   SIGNAL pll_locked      : std_logic;
+
+  SIGNAL sa_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sa_smif_fifo_empty : std_logic;
+  SIGNAL sa_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sa_smif_rdenable   : std_logic;
+  SIGNAL sa_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sa_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sb_smif_fifo_empty : std_logic;
+  SIGNAL sb_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sb_smif_rdenable   : std_logic;
+  SIGNAL sb_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sb_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sc_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sc_smif_fifo_empty : std_logic;
+  SIGNAL sc_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sc_smif_rdenable   : std_logic;
+  SIGNAL sc_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sc_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sd_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sd_smif_fifo_empty : std_logic;
+  SIGNAL sd_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sd_smif_rdenable   : std_logic;
+  SIGNAL sd_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sd_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL se_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL se_smif_fifo_empty : std_logic;
+  SIGNAL se_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL se_smif_rdenable   : std_logic;
+  SIGNAL se_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL se_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sf_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sf_smif_fifo_empty : std_logic;
+  SIGNAL sf_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sf_smif_rdenable   : std_logic;
+  SIGNAL sf_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sf_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sg_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sg_smif_fifo_empty : std_logic;
+  SIGNAL sg_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sg_smif_rdenable   : std_logic;
+  SIGNAL sg_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sg_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+
+  SIGNAL sh_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sh_smif_fifo_empty : std_logic;
+  SIGNAL sh_smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sh_smif_rdenable   : std_logic;
+  SIGNAL sh_smif_dataout    : std_logic_vector(11 DOWNTO 0);
+  SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
 BEGIN
 
@@ -225,22 +325,169 @@ BEGIN
 
   -- LEDs
   -- led <= "00";
-  led(0) <= counter25b_q(24);           -- this should indicate if clock is present
-  led(1) <= '0';
-  
-  -- SERDES FPGA interfaces:
-  mb <= (OTHERS => 'Z');
-  mc <= (OTHERS => 'Z');
-  md <= (OTHERS => 'Z');
-  me <= (OTHERS => 'Z');
-  mf <= (OTHERS => 'Z');
-  mg <= (OTHERS => 'Z');
-  mh <= (OTHERS => 'Z');
+  led(0) <= counter25b_q(24);  -- this should indicate if clock is present
+  -- led(1) <= '0';
+  led(1) <= rstin;
 
   -- bus to SERDES FPGA is driven by CPLD
   m_all <= cpld(3 DOWNTO 0);
 
+  -----------------------------------------------------------------------------
+  -- SERDES-MAIN FPGA interface
+  -----------------------------------------------------------------------------
+  ma(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mb(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mc(16 DOWNTO 0) <= (OTHERS => 'Z');
+  md(16 DOWNTO 0) <= (OTHERS => 'Z');
+  me(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mf(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mg(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mh(16 DOWNTO 0) <= (OTHERS => 'Z');
+
+
+  -- ***************** SERDES "A" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sa_smif_datain     <= ma(15 DOWNTO 0);   -- 16bit data from S to M
+  sa_smif_fifo_empty <= ma(16);         -- FIFO empty indicator from S to M
+  ma(18 DOWNTO 17)   <= sa_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  ma(19)             <= sa_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  ma(31 DOWNTO 20) <= sa_smif_dataout;  -- 12bit data from M to S 
+  ma(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sa_smif_select   <= "00";
+  sa_smif_rdenable <= '0';
+
+  -- ***************** SERDES "B" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sb_smif_datain     <= mb(15 DOWNTO 0);   -- 16bit data from S to M
+  sb_smif_fifo_empty <= mb(16);         -- FIFO empty indicator from S to M
+  mb(18 DOWNTO 17)   <= sb_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mb(19)             <= sb_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  mb(31 DOWNTO 20) <= sb_smif_dataout;  -- 12bit data from M to S 
+  mb(35 DOWNTO 32) <= sb_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sb_smif_select   <= "00";
+  sb_smif_rdenable <= '0';
+
+  -- ***************** SERDES "C" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sc_smif_datain     <= mc(15 DOWNTO 0);   -- 16bit data from S to M
+  sc_smif_fifo_empty <= mc(16);         -- FIFO empty indicator from S to M
+  mc(18 DOWNTO 17)   <= sc_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mc(19)             <= sc_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  mc(31 DOWNTO 20) <= sc_smif_dataout;  -- 12bit data from M to S 
+  mc(35 DOWNTO 32) <= sc_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sc_smif_select   <= "00";
+  sc_smif_rdenable <= '0';
+
+  -- ***************** SERDES "D" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sd_smif_datain     <= md(15 DOWNTO 0);   -- 16bit data from S to M
+  sd_smif_fifo_empty <= md(16);         -- FIFO empty indicator from S to M
+  md(18 DOWNTO 17)   <= sd_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  md(19)             <= sd_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  md(31 DOWNTO 20) <= sd_smif_dataout;  -- 12bit data from M to S 
+  md(35 DOWNTO 32) <= sd_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sd_smif_select   <= "00";
+  sd_smif_rdenable <= '0';
+
+  -- ***************** SERDES "E" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  se_smif_datain     <= me(15 DOWNTO 0);   -- 16bit data from S to M
+  se_smif_fifo_empty <= me(16);         -- FIFO empty indicator from S to M
+  me(18 DOWNTO 17)   <= se_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  me(19)             <= se_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  me(31 DOWNTO 20) <= se_smif_dataout;  -- 12bit data from M to S 
+  me(35 DOWNTO 32) <= se_smif_datatype;  -- 4bit data type indicator from M to S
+
+  se_smif_select   <= "00";
+  se_smif_rdenable <= '0';
+
+  -- ***************** SERDES "F" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sf_smif_datain     <= mf(15 DOWNTO 0);   -- 16bit data from S to M
+  sf_smif_fifo_empty <= mf(16);         -- FIFO empty indicator from S to M
+  mf(18 DOWNTO 17)   <= sf_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mf(19)             <= sf_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  mf(31 DOWNTO 20) <= sf_smif_dataout;  -- 12bit data from M to S 
+  mf(35 DOWNTO 32) <= sf_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sf_smif_select   <= "00";
+  sf_smif_rdenable <= '0';
+
+  -- ***************** SERDES "G" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sg_smif_datain     <= mg(15 DOWNTO 0);   -- 16bit data from S to M
+  sg_smif_fifo_empty <= mg(16);         -- FIFO empty indicator from S to M
+  mg(18 DOWNTO 17)   <= sg_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mg(19)             <= sg_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  mg(31 DOWNTO 20) <= sg_smif_dataout;  -- 12bit data from M to S 
+  mg(35 DOWNTO 32) <= sg_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sg_smif_select   <= "00";
+  sg_smif_rdenable <= '0';
+
+  -- ***************** SERDES "H" *************************************************** 
+  -- SERDES (S) to MASTER (M) interface
+  sh_smif_datain     <= mh(15 DOWNTO 0);   -- 16bit data from S to M
+  sh_smif_fifo_empty <= mh(16);         -- FIFO empty indicator from S to M
+  mh(18 DOWNTO 17)   <= sh_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mh(19)             <= sh_smif_rdenable;  -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  mh(31 DOWNTO 20) <= sh_smif_dataout;  -- 12bit data from M to S 
+  mh(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
+
+  sh_smif_select   <= "00";
+  sh_smif_rdenable <= '0';
+
+  smif_inst : smif
+    PORT MAP (
+      clock       => globalclk,
+      dataout_a   => sa_smif_dataout,
+      data_type_a => sa_smif_datatype,
+      dataout_b   => sb_smif_dataout,
+      data_type_b => sb_smif_datatype,
+      dataout_c   => sc_smif_dataout,
+      data_type_c => sc_smif_datatype,
+      dataout_d   => sd_smif_dataout,
+      data_type_d => sd_smif_datatype,
+      dataout_e   => se_smif_dataout,
+      data_type_e => se_smif_datatype,
+      dataout_f   => sf_smif_dataout,
+      data_type_f => sf_smif_datatype,
+      dataout_g   => sg_smif_dataout,
+      data_type_g => sg_smif_datatype,
+      dataout_h   => sh_smif_dataout,
+      data_type_h => sh_smif_datatype,
+      serdes_reg  => s_serdes_reg,
+      sreg_addr   => s_sreg_addr,
+      sreg_load   => s_sreg_load,
+      evt_trg     => (s_evt_trg AND s_trigger),
+      trgtoken    => s_triggerword(11 DOWNTO 0),
+      rstin       => rstin,
+      rstout      => rstout,
+      areset_n    => arstn);
+
+  -----------------------------------------------------------------------------
   -- Mictor defaults
+  -----------------------------------------------------------------------------
 
   -- mic(0) <= s_ucDIR;
   -- mic(1) <= s_ucCTL;
@@ -283,7 +530,7 @@ BEGIN
   -- Other defaults
 
   tcd_busy_p <= '0';
-  rstout     <= '0';
+  -- rstout     <= '0';
 
   -- ********************************************************************************
   -- ddl_interface defaults
@@ -349,6 +596,15 @@ BEGIN
     END IF;
   END PROCESS uc_bus;
 
+  serdes_reg_inst : serdes_registers
+    PORT MAP (
+      clock    => globalclk,
+      arstn    => arstn,
+      reg_data => s_uc_i,
+      reg_addr => s_sreg_addr,
+      reg_load => s_sreg_load,
+      reg_out  => s_serdes_reg);
+
   control_reg_inst : control_registers
     PORT MAP (
       clock    => globalclk,
@@ -378,8 +634,11 @@ BEGIN
       reg6        => s_reg6,
       reg7        => s_reg7,
       reg8        => s_reg8,
+      serdes_reg  => s_serdes_reg,
       reg_addr    => s_reg_addr,
+      sreg_addr   => s_sreg_addr,
       reg_load    => s_reg_load,
+      sreg_load   => s_sreg_load,
       reg_clr     => s_reg_clr,
       uc_data_out => s_uc_o);
 
@@ -437,13 +696,6 @@ BEGIN
   s_reg7              <= s_trg_mcu_word(15 DOWNTO 8);
   s_reg6              <= s_trg_mcu_word(7 DOWNTO 0);
 
-  -- registers 1 through 5 are presented to SERDES FPGA A:
---  ma(7 DOWNTO 0)   <= s_reg1;
---  ma(15 DOWNTO 8)  <= s_reg2;
---  ma(23 DOWNTO 16) <= s_reg3;
---  ma(31 DOWNTO 24) <= s_reg4;
---  ma(35 DOWNTO 32) <= s_reg5(3 DOWNTO 0);
 
-  ma <= (OTHERS => 'Z');
 
 END a;
