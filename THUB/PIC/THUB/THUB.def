@@ -1,4 +1,4 @@
-; $Id: THUB.def,v 1.4 2007-10-26 17:33:01 jschamba Exp $
+; $Id: THUB.def,v 1.5 2007-10-26 18:03:14 jschamba Exp $
 	#define uc_fpga_DIR			LATA,0x02
 	#define uc_fpga_CTL			LATA,0x01
 	#define uc_fpga_DS			LATA,0x00

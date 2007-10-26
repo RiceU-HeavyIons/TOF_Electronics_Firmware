@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.7 2007-10-26 17:34:02 jschamba Exp $
+; $Id: CANHLP.asm,v 1.8 2007-10-26 18:03:14 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -14,17 +14,126 @@
 
 	#include <P18F4680.INC>		;processor specific variable definitions
     #include "CANHLP.inc"
-	#include "CANPrTx.inc"		; CAN functions
     #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
+	#include "CANHLP.def"		; configuration bits for CAN
 
-    EXTERN  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+#define		_CAN_BRGCON1	((HLP_CAN_SJW - 1) << 6) | (HLP_CAN_PRESCALE-1)	; Data rate control
+#define		_CAN_BRGCON2	(HLP_CAN_SEG2PHTS << 7) | (HLP_CAN_SAM << 6) | ((HLP_CAN_SEG1PH - 1) << 3) | (HLP_CAN_PRSEG - 1)
+#define		_CAN_BRGCON3	(HLP_CAN_WAKFIL << 6) | (HLP_CAN_SEG2PH - 1) 
 
-    UDATA
+#define		_CAN_CIOCON		(HLP_CAN_ENDRHI << 5) | (HLP_CAN_CANCAP << 4)		; CAN IO control
+
+; Filters and masks
+#define		_CAN_RXF0SIDH	(HLP_CAN_RXF0 & 0x7F8)	>> 3	; RX filter 0
+#define		_CAN_RXF0SIDL	(HLP_CAN_RXF0 & 0x7) << 5
+#define		_CAN_RXF0EIDH	0
+#define		_CAN_RXF0EIDL	0
+
+#define		_CAN_RXF1SIDH	(HLP_CAN_RXF1 & 0x7F8)	>> 3	; RX filter 1
+#define		_CAN_RXF1SIDL	(HLP_CAN_RXF1 & 0x7) << 5
+#define		_CAN_RXF1EIDH	0
+#define		_CAN_RXF1EIDL	0
+
+#define		_CAN_RXM0SIDH	(HLP_CAN_RXM0 & 0x7F8)	>> 3	; RX mask 0
+#define		_CAN_RXM0SIDL	(HLP_CAN_RXM0 & 0x7) << 5
+#define		_CAN_RXM0EIDH	0
+#define		_CAN_RXM0EIDL	0
+
+#define		_CAN_TXB0SIDH	(HLP_CAN_NODEID & 0x7F) << 1	; SIDH for TX ID
+
+    EXTERN  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+
+    UDATA_ACS
 hlpCtr1 RES     01          ; temporary variable used as counter
 hlpCtr2 RES     01          ; temporary variable used as counter
 
 CANHLP CODE
+
+initCAN:
+	GLOBAL initCAN
+	
+    banksel CANCON
+	movlw 	B'10000000'		; set to Configuration Mode
+	movwf	CANCON
+    btfss   CANSTAT, 7      ; test if bit 7 (configuration mode) is set?
+    bra		$ - 2           ; if not, wait...
+; *****************************************************************************
+	movlw	_CAN_RXF0SIDH			; Set filter 0
+	movwf	RXF0SIDH
+	movlw	_CAN_RXF0SIDL
+	movwf	RXF0SIDL
+	movlw	_CAN_RXF0EIDH
+	movwf	RXF0EIDH
+	movlw	_CAN_RXF0EIDL
+	movwf	RXF0EIDL
+	
+	movlw	_CAN_RXF1SIDH			; Set filter 1
+	movwf	RXF1SIDH
+	movlw	_CAN_RXF1SIDL
+	movwf	RXF1SIDL
+	movlw	_CAN_RXF1EIDH
+	movwf	RXF1EIDH
+	movlw	_CAN_RXF1EIDL
+	movwf	RXF1EIDL
+	
+	movlw	_CAN_RXM0SIDH			; Set mask 0
+	movwf	RXM0SIDH
+	movlw	_CAN_RXM0SIDL
+	movwf	RXM0SIDL
+	movlw	_CAN_RXM0EIDH
+	movwf	RXM0EIDH
+	movlw	_CAN_RXM0EIDL
+	movwf	RXM0EIDL
+	
+	movlw	_CAN_BRGCON1			; Set baud rate
+	movwf	BRGCON1
+	movlw	_CAN_BRGCON2
+	movwf	BRGCON2
+	movlw	_CAN_BRGCON3
+	movwf	BRGCON3
+	
+	movlw	_CAN_CIOCON				; Set IO
+	movwf	CIOCON
+
+	movlw	_CAN_TXB0SIDH			; Setg TX SIDH
+	movwf	TXB0SIDH
+		
+	clrf	CANCON					; Enter Normal mode
+
+	return
+; *****************************************************************************
+
+HLPCopyRxData:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    lfsr    FSR1, TXB0D0
+    lfsr    FSR0, RXB0D0
+    movff   RxDtLngth, hlpCtr1
+HLPCopyRxDataLoop:
+	movff	POSTINC0, POSTINC1
+	decfsz	hlpCtr1
+	bra		HLPCopyRxDataLoop
+
+    return
+
+; *****************************************************************************
+HLPSendWriteResponseOK:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    movff   RXB0D0, TXB0D0          ; copy first byte to Tx buffer
+    movlw    0x00
+    movwf   TXB0D1                  ; second byte = 0
+    mCANSendWrResponse   2
+
+    return
+
+
+
 ;**************************************************************
 ;* Now handle HLP commands.
 ;* 
@@ -53,21 +162,23 @@ is_it_MCU_RDOUT_MODE:
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0A                ; if (RxData[0] == 0x0a)
-    bnz     is_it_CAN_TESTMSG_MODE    ; false: test next command
-    call    TofSetRDOUT_MODE    ; true: set MCU DATA Readout Mode
+    bnz     is_it_CAN_TESTMSG_MODE  ; false: test next command
+    call    TofSetRDOUT_MODE        ; true: set MCU DATA Readout Mode
+    call    HLPSendWriteResponseOK  ; send response    
     return
 is_it_CAN_TESTMSG_MODE:
     ;**************************************************************
     ;****** Set MCU CAN Test Message Mode: ************************
     ;* msgID = 0x402
-    ;* RxData[0] = 0xb
+    ;* RxData[0] = 0xB
     ;* RxData[1] != 0: send CAN test messages in a loop with RxData[1] delay
     ;*            = 0: Don't send CAN test messages
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0B                ; if (RxData[0] == 0x0b)
     bnz     is_it_programPLD    ; false: test next command
-    call    TofSetCANTestMsg_MODE    ; true: set CAN Test Msg Mode
+    call    TofSetCANTestMsg_MODE   ; true: set CAN Test Msg Mode
+    call    HLPSendWriteResponseOK  ; send response    
     return
 is_it_programPLD:
     movf    RxData,W            ; WREG = RxData
@@ -118,16 +229,9 @@ is_it_TofReadReg:
     ;**************************************************************
 unknown_message: 
     ; send an error message here (message ID=0x407)
-    movlw   0x07
-    movwf   RxMsgID
-    ; byte 1 should already contain 0x4, so no need to set it again)
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-unknownMsgAgn
-    nop
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
-    addlw   0x00            ; Check for return value of 0 in WREG
-    bz      unknownMsgAgn   ; Buffer Full, Try again
+    call    HLPCopyRxData
+    mCANSendAlert_IDL   RxDtLngth
+
     return
 
 ;**************************************************************
@@ -146,10 +250,10 @@ TofSetCANTestMsg_MODE:
     ;**************************************************************
     movff   RxData+1, CANTestDelay
     movlw   0xa0
-    movwf   CANDt1+3
-    clrf    CANDt1+2
-    clrf    CANDt1+1
-    clrf    CANDt1
+    movwf   TXB0D3
+    clrf    TXB0D2
+    clrf    TXB0D1
+    clrf    TXB0D0
     return
 
 TofWriteReg:
@@ -184,11 +288,10 @@ TofProgramPLD:
     call    asStart
     call    asBulkErase
     ; send WriteResponse packet
-    movlw   0x03
-    movwf   RxMsgID
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
+
     return
 
 is_it_writeAddress:
@@ -211,11 +314,8 @@ is_it_writeAddress:
     movff   RxData+3, asAddress+2
     lfsr    FSR2, asDataBytes
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     return
 
 is_it_writeDataByte:
@@ -238,23 +338,18 @@ is_it_writeDataByte:
     decfsz  WREG,W
     bra     mainProgLoop1
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
-    ; byte 1 of RxMsgID should already contain 0x4, so no need to set it again
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
+
     return
+
 mainProgLoop1:
     movff   POSTINC0, POSTINC2
     decfsz  WREG,W
     bra     mainProgLoop1
     ; sendWriteResponse
-;    movlw   0x03
-;    movwf   RxMsgID
-;    movlw   CAN_TX_STD_FRAME
-;    movwf   RxFlag
-;    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+;    call    HLPCopyRxData
+;    mCANSendWrResponse_IDL   RxDtLngth
     return   
 
 is_it_writePage:
@@ -278,12 +373,8 @@ is_it_writePage:
     bra     program_it
 
     ; sendWriteResponse
-    ;movlw   0x03
-    ;movwf   RxMsgID
-    ; byte 1 of RxMsgID should already contain 0x4, so no need to set it again
-    ;movlw   CAN_TX_STD_FRAME
-    ;movwf   RxFlag
-    ;mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+;    call    HLPCopyRxData
+;    mCANSendWrResponse_IDL   RxDtLngth
     ;return
 mainProgLoop2:
     movff   POSTINC0, POSTINC2
@@ -292,12 +383,8 @@ mainProgLoop2:
 program_it:
     call    asProgram256
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
-    ; byte 1 of RxMsgID should already contain 0x4, so no need to set it again
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     return
 
 is_it_endPLDProgram:
@@ -315,12 +402,8 @@ is_it_endPLDProgram:
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
     ; sendWriteResponse
-    movlw   0x03
-    movwf   RxMsgID
-    ; byte 1 of RxMsgID should already contain 0x4, so no need to set it again
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     return
 
 is_it_reprogram64:
@@ -350,11 +433,8 @@ reprogram_loop:
 programMCU:
     call    handle_reprogram64
     ; send WriteResponse packet
-    movlw   0x03
-    movwf   RxMsgID
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     return
 
 is_it_resetToNewProgram:
@@ -388,11 +468,8 @@ resetToNewProgram:
     btfsc   EECON1, WR      ; Wait
     bra     $ - 2
     ; EEPROM is written, send a CAN writeResponse
-    movlw   0x03
-    movwf   RxMsgID
-    movlw   CAN_TX_STD_FRAME
-    movwf   RxFlag
-    mCANSendMsg_IID_IDL_IF RxMsgID, RxData, RxDtLngth, RxFlag 
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     ; waste a little time
     banksel hlpCtr1
     movlw   0xff
@@ -476,7 +553,11 @@ WRITE_BYTE_TO_HREGS:
     ;**************************************************************
 TofReadReg:
     ;setup address pointer to CAN payload
-    lfsr    FSR0, CANDt1
+    lfsr    FSR0, TXB0D0
+
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
 
     banksel PORTD
     movff   RxData, LATD    ; put first byte as register address on PORTD
@@ -492,10 +573,8 @@ TofReadReg:
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
-MsgTofAgn:
-    mCANSendMsg  0x405,CANDt1,1,CAN_TX_STD_FRAME
-    addlw   0x00            ; Check for return value of 0 in W
-    bz      MsgTofAgn       ; Buffer Full, Try again
+
+    mCANSendRdResponse  1
     return                  ; back to receiver loop
 
     ;**************************************************************
@@ -504,13 +583,15 @@ MsgTofAgn:
 TofReadSiID:
     movf    RxData+1,W
     call    asSelect
-    mAsReadSiliconID    CANDt1
+
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    mAsReadSiliconID    TXB0D0
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
-Msg9Agn:
-    mCANSendMsg  0x405,CANDt1,1,CAN_TX_STD_FRAME
-    addlw   0x00            ; Check for return value of 0 in W
-    bz      Msg9Agn         ; Buffer Full, Try again
+    mCANSendRdResponse  1
     return                  ; back to receiver loop
 
 

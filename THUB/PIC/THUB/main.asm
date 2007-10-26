@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.14 2007-10-26 17:35:34 jschamba Exp $
+; $Id: main.asm,v 1.15 2007-10-26 18:03:14 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -36,16 +36,12 @@
 
 	LIST P=18F4680, F=INHX32	;directive to define processor, HEX file format
 	#include <P18F4680.INC>		;processor specific variable definitions
-	#include "CANPrTx.inc"		;CAN functions
     #include "CANHLP.inc"       ; CAN HLP functions 
     #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
 
 	EXTERN Init18F4680
 
-#define TX_TEST
-#define RX_TEST
-	
 ;******************************************************************************
 ;Configuration bits
 ;Microchip has changed the format for defining the configuration bits, please 
@@ -83,20 +79,20 @@
 ; More variables may be needed to store other special function registers used
 ; in the interrupt routines.
 
-		UDATA
-temp_1          RES     1
-temp_2          RES     1
+;		UDATA
+;temp_1          RES     1
+;temp_2          RES     1
 
 		UDATA_ACS           ; Access Bank
 
-CANDt1		    RES     08  ; CAN Tx Data
-RxMsgID         RES     04  ; CAN MsgID, starting from LSB
 RxData          RES     08  ; CAN Rx Data
 RxDtLngth       RES     01  ; CAN Message length
 RxFlag          RES     01  ; Receive flag
 QuietFlag       RES     01  ; Boolean for micro loop
 CANTestDelay    RES     01  ; Boolean and delay for sending CAN test messages in a loop
-        GLOBAL  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+temp_1          RES     1
+temp_2          RES     1
+        GLOBAL  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
 
 ;		UDATA_ACS
 ;
@@ -168,9 +164,8 @@ REDIR_HI_INT:
     bsf     EECON1, RD      ; Read control code
     incfsz  EEDATA, W       ; if it is not 0xFF
     goto    NEW_HI_INT_VECT ; go to new code section, otherwise ...
-#ifndef CANIntLowPrior
-	call	CANISR          ; Call CAN Interrupt Service Routine
-#endif	
+; here should be lower program memory interrupt routines
+;
 	retfie	FAST		
 
 REDIR_LOW_INT:
@@ -209,43 +204,15 @@ Main:
     call    delay_XCycles   ; wait another 100ms to make sure clock is stable
     
 
-;; Here is where the CAN code starts
-	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1, with 20MHz clock results in 1Mbit/s 
-	mCANInit   1, 1, 5, 3, 1, CAN_CONFIG_ALL_VALID_MSG
-    ;; Bill's Parameters:
-	;; SJW=2, BRP=1, PHSEG1=3, PHSEG2=3, PROPSEG2=3, with 20MHz clock results in 1Mbit/s 
-	;;mCANInit   2, 1, 3, 3, 3, CAN_CONFIG_ALL_VALID_MSG & CAN_CONFIG_SAMPLE_ONCE
-	;; SJW=1, BRP=1, PHSEG1=8, PHSEG2=8, PROPSEG2=3, with 20MHz clock results in 500kbit/s 
-	;;mCANInit   1, 1, 8, 8, 3, CAN_CONFIG_ALL_VALID_MSG ; 500kbit/s
-
-;Set Loop-back mode for testing in Stand alone mode
-;    mCANSetOpMode     CAN_OP_MODE_LOOP        ;Loop back mode
-
-;Set configuration mode
-	mCANSetOpMode     CAN_OP_MODE_CONFIG
-
-; NodeID of THUB = 64  -> 0x400
-;Following settings will ensure only following messages in Buf 0
-; 0x402 (Filter Hit 0, WRITE Command) 
-; 0x404 (Filter Hit 1, READ Command)
-
-;Set Mask B0 to 0xffffffff
-    mCANSetReg CAN_MASK_B0, 0xffffffff, CAN_CONFIG_STD_MSG
-;Set Filter 0 with 0x402
-    mCANSetReg CAN_FILTER_B0_F1, 0x402, CAN_CONFIG_STD_MSG
-;Set Filter 1 with 0x404
-    mCANSetReg CAN_FILTER_B0_F2, 0x404, CAN_CONFIG_STD_MSG
-
-; Restore to Normal mode.
-    mCANSetOpMode     CAN_OP_MODE_NORMAL
+	call	initCAN			; initialize CAN interface
 
 ;-------------------------------
-;Startup Message, Data ff,00,00,00,ID 0x407
-Msg1Agn:
-    movlw   low(CANDt1)
-    movwf   FSR0L
-    movlw   high(CANDt1)
-    movwf   FSR0H
+;Startup Message, Data ff,00,00,00, ID 0x407
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    lfsr    FSR0, TXB0D0
     movlw   0xFF
     movwf   POSTINC0
     movlw   0x00
@@ -253,14 +220,10 @@ Msg1Agn:
     movwf   POSTINC0
     movwf   POSTINC0
 ; Send ALERT message (command = 7, msgID = 0x407)
-    mCANSendMsg  0x407,CANDt1,4,CAN_TX_STD_FRAME
-    addlw   0x00            ; Check for return value of 0 in W
-    bz      Msg1Agn         ; Buffer Full, Try again
-;-------------------------------
+    mCANSendAlert  4
 
-;       mCANAbortAll         ; Use to abort transmission of all messages.
-;       mCANGetTxErrCnt      ; Get Tx Error count
-;       mCANGetRxErrCnt      ; Get Rx Error count
+	bcf		RXB0CON, RXFUL			; Clear the receive flag
+
 
 ;**************************************************************
 ;* Default Receive Loop
@@ -274,12 +237,29 @@ MicroLoop:
     call    getPLDData
 ; loop until we receive a CANbus message with the above filters
 QuietLoop:
-	mCANReadMsg  RxMsgID, RxData, RxDtLngth, RxFlag
-	xorlw   0x01
-	bnz     MicroLoop
 
+	btfss	RXB0CON, RXFUL		; Is there a message waiting?
+    bra     MicroLoop           ; If not, continue looping
+
+; A Message was received.
+; Copy message to local buffer:
+    lfsr    FSR0, RXB0D0
+	lfsr	FSR1, RxData
+	movf	RXB0DLC, W
+	andlw	0x7
+	movwf	RxDtLngth
+	movwf	temp_1
+CANMoveRxData:
+	movff	POSTINC0, POSTINC1
+	decfsz	temp_1
+	bra		CANMoveRxData
+
+	movff	RXB0CON, RxFlag			; save receive filter bits
+
+; Now the buffer is all copied, make it available for new messages
+	bcf		RXB0CON, RXFUL			; Clear the receive flag
+	
 ; Message Recd. Successfully 
-;       RxMsgID = 32 bit ID
 ;       RxData = Received Data Buffer
 ;       RxDtLngth = Length f Received data
 ;       RxFlag = Flag of CAN_RX_MSG_FLAGS type, Use it for Message
@@ -308,11 +288,14 @@ is_it_read:
 ;**************************************************************
 CanTxTestMsg:        
 ; send a DATA packet, command = 1, msgID = 0x401
-    mCANSendMsg  0x401,CANDt1,4,CAN_TX_STD_FRAME
-    addlw   0x00            ; Check for return value of 0 in W
-    bz      CanTxTestMsg    ; Buffer Full, Try again
-    infsnz  CANDt1          ; increment counter by 1
-    incf    CANDt1+1        ; increment second byte, if first byte rolls over
+	; banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    ; banksel TXB0D0
+	infsnz	TXB0D0, F	; increment counter by 1
+	incf	TXB0D1, F	; increment next byte by 1 when counter wraps
+    mCANSendData    4
     movff   CANTestDelay, temp_2 ; amount of xcycle delays
     call    delay_XCycles   ; delay some
     bra     QuietLoop       ; branch back to QuientLoop to continue
@@ -322,10 +305,14 @@ CanTxTestMsg:
 ;* Get TCD Data from PLD and send it
 ;**************************************************************
 getPLDData:
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
     ; setup address pointer to CAN payload
 ;    banksel CANDt1
     ; send TCD data with LSB in Rx[0], 0xa in Rx[3]
-    lfsr    FSR0, CANDt1+3
+    ;lfsr    FSR0, CANDt1+3
+    lfsr    FSR0, TXB0D3
 
     movlw   0xa0
     movwf   POSTDEC0
@@ -348,13 +335,13 @@ getPLDData:
     bsf     uc_fpga_DIR     ; DIR hi
     clrf    TRISD           ; PORT D as output again
 
-;    banksel CANDt1
+;    banksel TXB0D2
     ; test if trigger command not zero:
-    tstfsz  CANDt1+2,0      ; if (CANDt1[2] == 0)
+    tstfsz  TXB0D2,1      	; if (TXB0D2 == 0), use BSR
     bra     readToken       ; true: valid PLD Data read, read token and send it over CANbus
 
     ; now write to register 0x87 to advance the TCD FIFO
-    banksel PORTD
+    ; banksel PORTD
     movlw   0x87   
     movwf   LATD            ; put WREG as register address on PORTD
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -369,7 +356,7 @@ getPLDData:
 
 
 readToken:
-    banksel PORTD
+    ; banksel PORTD
 
     movlw   0x86            ; DAQ cmd, token[11:8]  
     movwf   LATD            ; put WREG as register address on PORTD
@@ -413,18 +400,19 @@ readToken:
     bcf     uc_fpga_DS      ; DS lo
 
 sendPLDData:
-; send a DATA packet, command = 1, msgID = 0x401
-    mCANSendMsg  0x401,CANDt1,4,CAN_TX_STD_FRAME
-    addlw   0x00            ; Check for return value of 0 in W
-    bz      sendPLDData     ; Buffer Full, Try again
+; send a DATA packet, command = 1, msgID = 0x401, Data Length = 4
+;    mCANSendMsg  0x401,CANDt1,4,CAN_TX_STD_FRAME
+;    addlw   0x00            ; Check for return value of 0 in W
+;    bz      sendPLDData     ; Buffer Full, Try again
 
+	mCANSendData 4
     return
 
 ;******************************************************************************
 ; temp_2 = 0x83 equals 100ms delay
 ;******************************************************************************
 delay_XCycles:
-    banksel temp_1
+    ;banksel temp_1
     movlw   0xFF
     movwf   temp_1
 ;    movlw   0x83
