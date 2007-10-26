@@ -1,7 +1,9 @@
-; $Id: THUB.def,v 1.3 2007-04-19 21:28:39 jschamba Exp $
+; $Id: THUB.def,v 1.4 2007-10-26 17:33:01 jschamba Exp $
 	#define uc_fpga_DIR			LATA,0x02
 	#define uc_fpga_CTL			LATA,0x01
 	#define uc_fpga_DS			LATA,0x00
+
+	#define PLL_CAL				LATE,0
 
 	#define	NEW_RESET_VECT		0x4000
 	#define	NEW_HI_INT_VECT		0x4008
