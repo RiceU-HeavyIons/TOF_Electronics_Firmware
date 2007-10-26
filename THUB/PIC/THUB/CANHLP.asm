@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.6 2007-05-23 16:45:45 jschamba Exp $
+; $Id: CANHLP.asm,v 1.7 2007-10-26 17:34:02 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -18,7 +18,7 @@
     #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
 
-    EXTERN  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag
+    EXTERN  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
 
     UDATA
 hlpCtr1 RES     01          ; temporary variable used as counter
@@ -53,8 +53,21 @@ is_it_MCU_RDOUT_MODE:
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0A                ; if (RxData[0] == 0x0a)
-    bnz     is_it_programPLD    ; false: test next command
+    bnz     is_it_CAN_TESTMSG_MODE    ; false: test next command
     call    TofSetRDOUT_MODE    ; true: set MCU DATA Readout Mode
+    return
+is_it_CAN_TESTMSG_MODE:
+    ;**************************************************************
+    ;****** Set MCU CAN Test Message Mode: ************************
+    ;* msgID = 0x402
+    ;* RxData[0] = 0xb
+    ;* RxData[1] != 0: send CAN test messages in a loop with RxData[1] delay
+    ;*            = 0: Don't send CAN test messages
+    ;**************************************************************
+    movf    RxData,W            ; WREG = RxData
+    sublw   0x0B                ; if (RxData[0] == 0x0b)
+    bnz     is_it_programPLD    ; false: test next command
+    call    TofSetCANTestMsg_MODE    ; true: set CAN Test Msg Mode
     return
 is_it_programPLD:
     movf    RxData,W            ; WREG = RxData
@@ -125,6 +138,18 @@ TofSetRDOUT_MODE:
     ;****** Set Readout Mode **************************************
     ;**************************************************************
     movff   RxData+1, QuietFlag
+    return
+
+TofSetCANTestMsg_MODE:
+    ;**************************************************************
+    ;****** Set CAN Test Msg Mode *********************************
+    ;**************************************************************
+    movff   RxData+1, CANTestDelay
+    movlw   0xa0
+    movwf   CANDt1+3
+    clrf    CANDt1+2
+    clrf    CANDt1+1
+    clrf    CANDt1
     return
 
 TofWriteReg:
