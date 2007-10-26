@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.13 2007-05-23 18:16:29 jschamba Exp $
+; $Id: main.asm,v 1.14 2007-10-26 17:35:34 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -83,7 +83,9 @@
 ; More variables may be needed to store other special function registers used
 ; in the interrupt routines.
 
-;		UDATA
+		UDATA
+temp_1          RES     1
+temp_2          RES     1
 
 		UDATA_ACS           ; Access Bank
 
@@ -93,7 +95,8 @@ RxData          RES     08  ; CAN Rx Data
 RxDtLngth       RES     01  ; CAN Message length
 RxFlag          RES     01  ; Receive flag
 QuietFlag       RES     01  ; Boolean for micro loop
-        GLOBAL  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag
+CANTestDelay    RES     01  ; Boolean and delay for sending CAN test messages in a loop
+        GLOBAL  CANDt1, RxData, RxMsgID, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
 
 ;		UDATA_ACS
 ;
@@ -192,6 +195,19 @@ Main:
 	call Init18F4680	;  Initialize all features / IO ports
     mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
     setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
+    clrf CANTestDelay,0 ;  Initially don't send CAN test messages (CANTestDelay = 0)
+
+;; calibrate the PLL:
+    bcf     PLL_CAL         ; make sure PLL_CAL is low first
+    bsf     PLL_CAL         ; set PLL_CAL hi
+    movlw   0x83
+    movwf   temp_2          ; should be about 100ms
+    call    delay_XCycles   ; at least 1 us, here: 100ms
+    bcf     PLL_CAL         ; set PLL_CAL low again to initiate PLL calibration
+    movlw   0x83
+    movwf   temp_2          ; should be about 100ms
+    call    delay_XCycles   ; wait another 100ms to make sure clock is stable
+    
 
 ;; Here is where the CAN code starts
 	;; SJW=1, BRP=1, PHSEG1=5, PHSEG2=3, PROPSEG2=1, with 20MHz clock results in 1Mbit/s 
@@ -250,6 +266,8 @@ Msg1Agn:
 ;* Default Receive Loop
 ;**************************************************************
 MicroLoop:
+    tstfsz  CANTestDelay,0  ; CANTestDelay in access bank
+    bra     CanTxTestMsg    ; send CAN test message in a loop
     tstfsz  QuietFlag,0 ; QuietFlag in access bank   
     bra     QuietLoop   ; if QuietFlag != 0, don't get PLD data
 ; get data from the PLD, if any, and send it over CANbus
@@ -284,8 +302,22 @@ is_it_read:
     bnz     MicroLoop               ; if not, back to receiver loop
     call    TofHandleRead           ; if yes, it is a "Read" HLP message
     bra     MicroLoop               ; back to receiver loop
-        
 
+;**************************************************************
+;* Send a CAN test message and then delay
+;**************************************************************
+CanTxTestMsg:        
+; send a DATA packet, command = 1, msgID = 0x401
+    mCANSendMsg  0x401,CANDt1,4,CAN_TX_STD_FRAME
+    addlw   0x00            ; Check for return value of 0 in W
+    bz      CanTxTestMsg    ; Buffer Full, Try again
+    infsnz  CANDt1          ; increment counter by 1
+    incf    CANDt1+1        ; increment second byte, if first byte rolls over
+    movff   CANTestDelay, temp_2 ; amount of xcycle delays
+    call    delay_XCycles   ; delay some
+    bra     QuietLoop       ; branch back to QuientLoop to continue
+    
+    
 ;**************************************************************
 ;* Get TCD Data from PLD and send it
 ;**************************************************************
@@ -386,6 +418,23 @@ sendPLDData:
     addlw   0x00            ; Check for return value of 0 in W
     bz      sendPLDData     ; Buffer Full, Try again
 
+    return
+
+;******************************************************************************
+; temp_2 = 0x83 equals 100ms delay
+;******************************************************************************
+delay_XCycles:
+    banksel temp_1
+    movlw   0xFF
+    movwf   temp_1
+;    movlw   0x83
+;    movwf   temp_2
+
+d100l1:
+    decfsz  temp_1,F
+    bra     d100l1
+    decfsz  temp_2,F
+    bra     d100l1
     return
 
 ;******************************************************************************
