@@ -24,8 +24,10 @@ file_003=no
 file_004=no
 file_005=no
 file_006=no
-file_007=yes
-file_008=yes
+file_007=no
+file_008=no
+file_009=yes
+file_010=yes
 [FILE_INFO]
 file_000=main.asm
 file_001=init_18F4680.asm
@@ -33,9 +35,11 @@ file_002=SRunner.asm
 file_003=CANHLP.asm
 file_004=SRunner.inc
 file_005=CANHLP.inc
-file_006=18f4680i.lkr
-file_007=THUB.def
-file_008=CANHLP.def
+file_006=C:\Program Files\Microchip\MPASM Suite\P18F4680.INC
+file_007=THUB_uc.inc
+file_008=18f4680i.lkr
+file_009=THUB.def
+file_010=CANHLP.def
 [SUITE_INFO]
 suite_guid={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 suite_state=
