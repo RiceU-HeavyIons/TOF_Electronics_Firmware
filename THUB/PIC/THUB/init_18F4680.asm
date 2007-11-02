@@ -1,4 +1,4 @@
-; $Id: init_18F4680.asm,v 1.4 2007-04-03 20:33:57 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.5 2007-11-02 16:13:26 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -11,14 +11,14 @@
 ;******************************************************************************
 ; Initialization Code for PIC18F4680
 
-#include "p18f4680.inc"
+#include "thub_uc.inc"
 	
 ;**Note 1: Release 1 does not check POR**
 
 InitLib	CODE
-Init18F4680:
+InitMicro:
 
-	GLOBAL Init18F4680
+	GLOBAL InitMicro
 	
 ; Feature=ResetErrorChecks - Check for reset errors
 
@@ -76,8 +76,9 @@ Init18F4680:
 
 ; Feature=CANIOPort - CAN I/O Control
 ; B5=ENDRHI B4=CANCAP
-	movlw 0x30	; Enable Tx drive high, CAN capture
-	movwf CIOCON 
+; this is done in the CAN driver, so don't do it here:
+;	movlw 0x30	; Enable Tx drive high, CAN capture
+;	movwf CIOCON 
 	
 ; Feature=IOPort - IO Ports configuration
 
@@ -86,9 +87,9 @@ Init18F4680:
 ; PORTA bit#:   0 : UC_FPGA8	(o) (DS)
 ;               1 : UC_FPGA9	(o) (CTL)
 ;               2 : UC_FPGA10	(o) (DIR)
-;               3 : UC_CPLD8	(o) (as_select(0))
-;               4 : UC_CPLD9	(o) (as_select(1))
-;               5 : UC_CPLD10	(o) (as_select(2))
+;               3 : UC_CPLD8	(o) (as_Clk)
+;               4 : UC_CPLD9	(o) (as_Rst)
+;               5 : UC_CPLD10	(o)
 ;               6 : CPLD_TDO	(i)
 
 ;	clrf  PORTA		; clear output data latches
