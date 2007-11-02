@@ -1,9 +1,28 @@
-; $Id: THUB.def,v 1.5 2007-10-26 18:03:14 jschamba Exp $
-	#define uc_fpga_DIR			LATA,0x02
-	#define uc_fpga_CTL			LATA,0x01
-	#define uc_fpga_DS			LATA,0x00
+; $Id: THUB.def,v 1.6 2007-11-02 16:09:42 jschamba Exp $
 
+; uc <-> FPGA bus definitions
+	#define uc_fpga_DIR			LATA,2
+	#define uc_fpga_CTL			LATA,1
+	#define uc_fpga_DS			LATA,0
+	#define uc_fpga_DATA		LATD
+	#define uc_fpga_DATADIR		TRISD
+
+; PLL lines definitions
 	#define PLL_CAL				LATE,0
+	#define PLL_LOL				LATE,1
+
+; uc <-> CPLD bus definitions
+	#define asPORT				PORTC
+	#define as_ASenable			LATC,6
+	#define as_NCONFIG			LATC,5
+	#define as_NCE				LATC,4
+	#define as_NCS				LATC,3
+	#define as_ASDI				LATC,2
+	#define as_DCLK				LATC,1
+	#define as_DATA				LATC,0
+
+	#define asRst				LATA,4
+	#define asClk				LATA,3
 
 	#define	NEW_RESET_VECT		0x4000
 	#define	NEW_HI_INT_VECT		0x4008
