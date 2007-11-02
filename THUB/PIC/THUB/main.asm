@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.15 2007-10-26 18:03:14 jschamba Exp $
+; $Id: main.asm,v 1.16 2007-11-02 16:18:22 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -34,19 +34,22 @@
 ;                                                                             *
 ;******************************************************************************
 
-	LIST P=18F4680, F=INHX32	;directive to define processor, HEX file format
-	#include <P18F4680.INC>		;processor specific variable definitions
+	LIST P=18F4680, F=INHX32	; directive to define processor, HEX file format
+	;;LIST P=18F8680, F=INHX32	; directive to define processor, HEX file format
+	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"       ; CAN HLP functions 
     #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions
 
-	EXTERN Init18F4680
+	EXTERN InitMicro
 
 ;******************************************************************************
-;Configuration bits
-;Microchip has changed the format for defining the configuration bits, please 
-;see the .inc file for futher details on notation.  Below are a few examples.
+; Configuration bits
+; Microchip has changed the format for defining the configuration bits, please 
+; see the .inc file for futher details on notation.  Below are a few examples.
 
+
+; These are the definitions for the 18F4680 micro:
 
 ;   Oscillator Selection:
 	CONFIG	OSC = ECIO, FCMEN = OFF, IESO = OFF
@@ -63,6 +66,18 @@
 	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
 	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
 
+; These are the definitions for the 18F8680 micro:
+
+;	CONFIG	OSC = ECIO, OSCS = OFF
+;	CONFIG	PWRT = ON, BOR = OFF, BORV = 20
+;	CONFIG	WDT = OFF, WDTPS = 32768
+;	CONFIG	MODE = MC, WAIT = OFF
+;	CONFIG	MCLRE = ON, ECCPMX = PORTE, CCP2MX = ON
+;	CONFIG	DEBUG = OFF
+;	CONFIG	LVP = OFF, STVR = ON
+;	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CPB = OFF, CPD = OFF
+;	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
+;	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
 
     __idlocs _IDLOC0, 0x1 ;IDLOC register 0 will be programmed to 1.
     __idlocs _IDLOC1, 0x2 ;IDLOC register 1 will be programmed to 2.
@@ -187,7 +202,7 @@ REDIR_LOW_INT:
 MAIN_START	CODE
 Main:
 
-	call Init18F4680	;  Initialize all features / IO ports
+	call InitMicro  	;  Initialize all features / IO ports
     mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
     setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
     clrf CANTestDelay,0 ;  Initially don't send CAN test messages (CANTestDelay = 0)
@@ -231,8 +246,8 @@ Main:
 MicroLoop:
     tstfsz  CANTestDelay,0  ; CANTestDelay in access bank
     bra     CanTxTestMsg    ; send CAN test message in a loop
-    tstfsz  QuietFlag,0 ; QuietFlag in access bank   
-    bra     QuietLoop   ; if QuietFlag != 0, don't get PLD data
+    tstfsz  QuietFlag,0     ; QuietFlag in access bank   
+    bra     QuietLoop       ; if QuietFlag != 0, don't get PLD data
 ; get data from the PLD, if any, and send it over CANbus
     call    getPLDData
 ; loop until we receive a CANbus message with the above filters
@@ -309,9 +324,7 @@ getPLDData:
 	bra		$ - 2
 
     ; setup address pointer to CAN payload
-;    banksel CANDt1
     ; send TCD data with LSB in Rx[0], 0xa in Rx[3]
-    ;lfsr    FSR0, CANDt1+3
     lfsr    FSR0, TXB0D3
 
     movlw   0xa0
@@ -341,9 +354,9 @@ getPLDData:
     bra     readToken       ; true: valid PLD Data read, read token and send it over CANbus
 
     ; now write to register 0x87 to advance the TCD FIFO
-    ; banksel PORTD
+    ; banksel uc_fpga_DATA
     movlw   0x87   
-    movwf   LATD            ; put WREG as register address on PORTD
+    movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
@@ -356,10 +369,10 @@ getPLDData:
 
 
 readToken:
-    ; banksel PORTD
+    ; banksel uc_fpga_DATA
 
     movlw   0x86            ; DAQ cmd, token[11:8]  
-    movwf   LATD            ; put WREG as register address on PORTD
+    movwf   uc_fpga_DATA    ; put WREG as register address on data port
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
@@ -368,29 +381,29 @@ readToken:
     setf    TRISD           ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
+    movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
-    clrf    TRISD           ; PORT D as output again
+    clrf    uc_fpga_DATADIR ; Data PORT as output again
 
     movlw   0x85            ; token[7:0]
-    movwf   LATD            ; put WREG as register address on PORTD
+    movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
 
-    setf    TRISD           ; set PORT D as input
+    setf    uc_fpga_DATADIR ; set DATA PORT as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
+    movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
-    clrf    TRISD           ; PORT D as output again
+    clrf    uc_fpga_DATADIR ; PORT D as output again
 
     ; now write to register 0x87 to advance the TCD FIFO
     movlw   0x87   
-    movwf   LATD            ; put WREG as register address on PORTD
+    movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
@@ -399,12 +412,7 @@ readToken:
     bsf     uc_fpga_DS      ; DS hi
     bcf     uc_fpga_DS      ; DS lo
 
-sendPLDData:
-; send a DATA packet, command = 1, msgID = 0x401, Data Length = 4
-;    mCANSendMsg  0x401,CANDt1,4,CAN_TX_STD_FRAME
-;    addlw   0x00            ; Check for return value of 0 in W
-;    bz      sendPLDData     ; Buffer Full, Try again
-
+    ; send a DATA packet, command = 1, msgID = 0x401, Data Length = 4
 	mCANSendData 4
     return
 
