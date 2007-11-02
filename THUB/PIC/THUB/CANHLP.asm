@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.8 2007-10-26 18:03:14 jschamba Exp $
+; $Id: CANHLP.asm,v 1.9 2007-11-02 16:11:34 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -12,7 +12,7 @@
 
 #define HLP_PRIOR_SOURCE
 
-	#include <P18F4680.INC>		;processor specific variable definitions
+	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"
     #include "SRunner.inc"      ; SRunner functions
     #include "THUB.def"         ; bit definitions

@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.6 2007-04-20 14:59:45 jschamba Exp $
+; $Id: SRunner.asm,v 1.7 2007-11-02 16:11:34 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -12,8 +12,10 @@
 
 #define AS_PRIOR_SOURCE
 
-	#include <P18F4680.INC>		;processor specific variable definitions
+	#include "THUB_uc.inc"		;processor specific variable definitions
     #include "SRunner.inc"
+    #include "THUB.def"         ; bit definitions
+    
 
         UDATA
 asOneByte   RES     01
@@ -32,61 +34,61 @@ asDataBytes RES     .256
 ;*****************************************************************
 ; macros to set or clear the Active Serial Configuration lines
 set_NCONFIG macro
-    bsf     PORTC, 5, 0
+    bsf     as_NCONFIG, A
     endm
 
 clr_NCONFIG macro
-    bcf     LATC, 5, 0
+    bcf     as_NCONFIG, A
     endm
 
 set_NCE macro
-    bsf     LATC, 4, 0
+    bsf     as_NCE, A
     endm
 
 clr_NCE macro
-    bcf     LATC, 4, 0
+    bcf     as_NCE, A
     endm
 
 set_NCS macro
-    bsf     LATC, 3, 0
+    bsf     as_NCS, A
     endm
 
 clr_NCS macro
-    bcf     LATC, 3, 0
+    bcf     as_NCS, A
     endm
 
 set_DCLK macro
-    bsf     LATC, 1, 0
+    bsf     as_DCLK, A
     endm
 
 clr_DCLK macro
-    bcf     LATC, 1, 0
+    bcf     as_DCLK, A
     endm
 
 set_ASDI macro
-    bsf     LATC, 2, 0
+    bsf     as_ASDI, A
     endm
 
 clr_ASDI macro
-    bcf     LATC, 2, 0
+    bcf     as_ASDI, A
     endm
 
 as_enable macro
-    bsf     LATC, 6, 0
+    bsf     as_ASenable, A
     endm
 
 as_disable macro
-    bcf     LATC, 6, 0
+    bcf     as_ASenable, A
     endm
 
 pulse_asClk macro
-    bsf     LATA, 3
-    bcf     LATA, 3
+    bsf     asClk, A
+    bcf     asClk, A
     endm
 
 pulse_asRst macro
-    bsf     LATA, 4
-    bcf     LATA, 4
+    bsf     asRst, A
+    bcf     asRst, A
     endm
 
 ; macro to choose the correct ASP Configuration device lines on the CPLD
@@ -128,9 +130,9 @@ SRunner CODE
 ;* Function:    asSelect
 ;*
 ;* Description: sets up the FPGA to talk to by first 
-;*              pulsing the asRst pin on PORTA (pin 4)
-;*              and then pulsing the asClk pin on 
-;*              PORTA (pin 3) WREG times
+;*              pulsing the asRst pin
+;*              and then pulsing the asClk pin 
+;*              WREG times
 ;*
 ;* Inputs:      WREG = number of FPGA to talk to
 ;*
@@ -141,7 +143,7 @@ asSelect:
     GLOBAL asSelect
 
     movwf   __asTemp1 
-    pulse_asRst     ; pulse asReset pin (PORTA:4)
+    pulse_asRst     ; pulse asReset pin
     sublw   0
     bnz     asSelectLoop
     return
@@ -337,7 +339,7 @@ asProgLoop3:
     clr_DCLK
     nop
     set_DCLK
-    movf    PORTC,W,0       ; read PORTC 
+    movf    asPORT,W,0      ; read asPORT
     rrcf    WREG            ; rotate bit 0 into carry
     rlcf    asOneByte, F    ; rotate carry bit into "asOneByte[0]" and shift left
     decfsz  __asTemp1, F
@@ -365,7 +367,7 @@ asProgLoop4:
     clr_DCLK
     nop
     set_DCLK
-    movf    PORTC,W         ; read PORTC 
+    movf    asPORT,W        ; read asPORT 
     rrcf    WREG            ; rotate bit 0 into carry
     rrcf    asOneByte, F    ; rotate carry bit into "asOneByte[7]" and shift right
     decfsz  __asTemp1, F
