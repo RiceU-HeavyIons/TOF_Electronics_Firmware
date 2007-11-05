@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.16 2007-11-02 16:18:22 jschamba Exp $
+; $Id: main.asm,v 1.17 2007-11-05 15:33:34 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -261,12 +261,12 @@ QuietLoop:
     lfsr    FSR0, RXB0D0
 	lfsr	FSR1, RxData
 	movf	RXB0DLC, W
-	andlw	0x7
-	movwf	RxDtLngth
-	movwf	temp_1
+	andlw	0xF
+	movwf	RxDtLngth,0
+	movwf	temp_1,0
 CANMoveRxData:
 	movff	POSTINC0, POSTINC1
-	decfsz	temp_1
+	decfsz	temp_1,1,0
 	bra		CANMoveRxData
 
 	movff	RXB0CON, RxFlag			; save receive filter bits
