@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.7 2007-11-02 16:11:34 jschamba Exp $
+; $Id: SRunner.asm,v 1.8 2007-11-05 15:32:04 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -17,7 +17,7 @@
     #include "THUB.def"         ; bit definitions
     
 
-        UDATA
+        UDATA_ACS
 asOneByte   RES     01
 __asTemp1   RES     01
 __asTemp2   RES     01
