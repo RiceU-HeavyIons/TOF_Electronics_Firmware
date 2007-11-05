@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.19 2007-11-05 20:54:43 jschamba Exp $
+; $Id: main.asm,v 1.20 2007-11-05 21:25:25 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -394,7 +394,7 @@ readToken:
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
 
-    setf    TRISD           ; set PORT D as input
+    setf    uc_fpga_DATADIR ; set PORT D as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
     movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
