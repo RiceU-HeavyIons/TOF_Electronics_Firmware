@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.9 2007-11-02 16:11:34 jschamba Exp $
+; $Id: CANHLP.asm,v 1.10 2007-11-05 16:27:22 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -196,6 +196,21 @@ TofHandleRead:
     GLOBAL TofHandleRead
 
     ;**************************************************************
+    ;****** Read MCU Firmware ID **********************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x1
+    ;*
+    ;* Effect: read Firmware ID of MCU and return as a
+    ;*          Read Response
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x1
+    bnz     is_it_TofReadSiID  
+    call    TofReadFirmwareID
+    return
+
+is_it_TofReadSiID:
+    ;**************************************************************
     ;****** Read Silicon ID ***************************************
     ;* msgID = 0x404
     ;* RxData[0] = 0x27
@@ -260,13 +275,13 @@ TofWriteReg:
     ;**************************************************************
     ;****** Write Register ****************************************
     ;**************************************************************
-    movff   RxData, PORTD   ; put first byte as register address on PORTD
+    movff   RxData, uc_fpga_DATA   ; put first byte as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
 
-    movff   RxData+1, PORTD ; second byte as register data on PORTD
+    movff   RxData+1, uc_fpga_DATA ; second byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
     return                  ; back to receiver loop
@@ -549,6 +564,15 @@ WRITE_BYTE_TO_HREGS:
 ;**************************************************************
 
     ;**************************************************************
+    ;****** Read Firmware ID***************************************
+    ;**************************************************************
+TofReadFirmwareID:
+    call    HLPCopyRxData
+    mCANSendAlert_IDL   RxDtLngth
+
+    return                  ; back to receiver loop
+
+    ;**************************************************************
     ;****** Read Register *****************************************
     ;**************************************************************
 TofReadReg:
@@ -559,20 +583,20 @@ TofReadReg:
 	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
 	bra		$ - 2
 
-    banksel PORTD
-    movff   RxData, LATD    ; put first byte as register address on PORTD
+    banksel uc_fpga_DATA
+    movff   RxData, uc_fpga_DATA    ; put first byte as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
     
-    setf    TRISD           ; set PORT D as input
+    setf    uc_fpga_DATADIR ; set DATA PORT as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTINC0 ; move PORT D data to CAN TX buffer
+    movff   uc_fpga_DATA, POSTINC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
-    clrf    TRISD           ; PORT D as output again
+    clrf    uc_fpga_DATADIR ; DATA PORT as output again
 
     mCANSendRdResponse  1
     return                  ; back to receiver loop

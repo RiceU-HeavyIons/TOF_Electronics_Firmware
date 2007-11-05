@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.17 2007-11-05 15:33:34 jschamba Exp $
+; $Id: main.asm,v 1.18 2007-11-05 16:27:22 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -330,23 +330,23 @@ getPLDData:
     movlw   0xa0
     movwf   POSTDEC0
 
-    banksel PORTD
+    banksel uc_fpga_DATA
 
     ; read register 0x87, contains the trigger command
     movlw   0x87   
-    movwf   LATD            ; put WREG as register address on PORTD
+    movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
     bcf     uc_fpga_CTL     ; CTL back low
 
-    setf    TRISD           ; set PORT D as input
+    setf    uc_fpga_DATADIR ; set DATA PORT as input
     bcf     uc_fpga_DIR     ; DIR low
     bsf     uc_fpga_DS      ; DS hi
-    movff   PORTD, POSTDEC0 ; move PORT D data to CAN TX buffer
+    movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
     bsf     uc_fpga_DIR     ; DIR hi
-    clrf    TRISD           ; PORT D as output again
+    clrf    uc_fpga_DATADIR ; DATA PORT as output again
 
 ;    banksel TXB0D2
     ; test if trigger command not zero:
