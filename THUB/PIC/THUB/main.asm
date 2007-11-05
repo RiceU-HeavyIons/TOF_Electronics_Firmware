@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.18 2007-11-05 16:27:22 jschamba Exp $
+; $Id: main.asm,v 1.19 2007-11-05 20:54:43 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -51,6 +51,7 @@
 
 ; These are the definitions for the 18F4680 micro:
 
+#ifndef THUB_is_upper
 ;   Oscillator Selection:
 	CONFIG	OSC = ECIO, FCMEN = OFF, IESO = OFF
 	CONFIG	PWRT = ON, BOREN = OFF, BORV = 0
@@ -87,6 +88,7 @@
     __idlocs _IDLOC5, 0x6 ;IDLOC register 5 will be programmed to 6.
     __idlocs _IDLOC6, 0x7 ;IDLOC register 6 will be programmed to 7.
     __idlocs _IDLOC7, 0x8 ;IDLOC register 7 will be programmed to 8.
+#endif
 
 ;******************************************************************************
 ;Variable definitions
@@ -121,6 +123,20 @@ temp_2          RES     1
 ;DATA_EEPROM	CODE	0xf00000
 ;
 ;		DE	"Test Data",0,1,2,3,4,5
+
+#ifdef THUB_is_upper
+;   upper memory code has redefined vector locations:
+NEW_RESET_VECT      CODE    0x4000                                
+    goto    Main
+
+NEW_HI_INT_VECT     CODE    0x4008
+	retfie	FAST		
+
+NEW_LOW_INT_VECT    CODE    0x4018
+	retfie		
+
+#else
+;   "lower memory" code needs to take care of redirection for upper memory code:
 
 ;******************************************************************************
 ;Reset vector
@@ -192,7 +208,7 @@ REDIR_LOW_INT:
     goto    NEW_LOW_INT_VECT ; go to new code section, otherwise ...
 	retfie		
 
-
+#endif
 
 ;******************************************************************************
 ; Start of main program
@@ -437,6 +453,7 @@ d100l1:
 ;End of program
 ;******************************************************************************
 
+#ifndef THUB_is_upper
 ;******************************************************************************
 ; This is a stub for the "new" ("upper") program to be executed. 
 ; Currently, this just sets the last EEPROM location to 0xFF
@@ -469,5 +486,6 @@ Reset_EEPROM
     btfsc   EECON1, WR      ; Wait
     bra     $ - 2
     RESET
+#endif
 
 	END
