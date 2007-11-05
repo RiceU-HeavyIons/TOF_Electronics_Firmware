@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.10 2007-11-05 16:27:22 jschamba Exp $
+; $Id: CANHLP.asm,v 1.11 2007-11-05 19:11:57 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -567,9 +567,33 @@ WRITE_BYTE_TO_HREGS:
     ;****** Read Firmware ID***************************************
     ;**************************************************************
 TofReadFirmwareID:
-    call    HLPCopyRxData
-    mCANSendAlert_IDL   RxDtLngth
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
 
+    lfsr    FSR0, TXB0D0
+
+    ;movlw   UPPER _IDLOC0)  ; point Table pointer to ID location 0
+    movlw   UPPER F_ID  ; point Table pointer to ID location 0
+    movwf   TBLPTRU
+    ;movlw   HIGH _IDLOC)
+    movlw   HIGH F_ID
+    movwf   TBLPTRH
+    ;movlw   LOW _IDLOC0)
+    movlw   LOW F_ID
+    movwf   TBLPTRL
+
+    movlw   8
+    movwf   hlpCtr1, 0
+    
+FirmwareLoop:
+    tblrd*+                 ; Read ID location and advance
+    movff   TABLAT, POSTINC0
+	decfsz	hlpCtr1
+	bra		FirmwareLoop
+
+    ; send read response with length 8
+    mCANSendRdResponse  8
     return                  ; back to receiver loop
 
     ;**************************************************************
@@ -618,5 +642,6 @@ TofReadSiID:
     mCANSendRdResponse  1
     return                  ; back to receiver loop
 
+#include "FirmwareID.inc"
 
     END
