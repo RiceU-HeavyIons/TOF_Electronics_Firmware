@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.2 2007-04-03 20:28:25 jschamba Exp $
+-- $Id: cpld.vhd,v 1.3 2007-11-09 19:22:15 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2007-03-30
+-- Last update: 2007-11-06
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ ENTITY cpld IS
       -- dclk, ncs, asdi        : IN  std_logic_vector(8 DOWNTO 0);  -- Active Serial Outputs
       dclk, ncs, asdi        : OUT std_logic_vector(8 DOWNTO 0);  -- Active Serial Outputs
       -- JTAG lines
-      tck_fp, tms_fp, tdi_fp : IN  std_logic;  -- JTAG Ouputs
+      tck_fp, tms_fp, tdi_fp : OUT std_logic;  -- JTAG Ouputs
       tdo_fp                 : IN  std_logic;  -- JTAG Input
       -- buses to micro and master FPGA
       cpld                   : OUT std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus
@@ -75,14 +75,17 @@ ARCHITECTURE a OF cpld IS
   SIGNAL s_nconfig_2 : std_logic;
   SIGNAL s_ctrClk    : std_logic;
   SIGNAL s_ctrRst    : std_logic;
-  SIGNAL count       : integer RANGE 0 TO 8;
+  SIGNAL uc_tck      : std_logic;
+  SIGNAL uc_tdi      : std_logic;
+  SIGNAL uc_tms      : std_logic;
+  SIGNAL count       : integer RANGE 0 TO 9;
   
 BEGIN
 
   -- cpld_led         <= uc_cpld(3 DOWNTO 0); -- route bottom 4 micro signals
   -- cpld_led         <= cpld_sw; -- show the switch position
   -- cpld_led         <= "0101";           -- arbitrary pattern
-  cpld_led         <= int2slv(count, 4);  -- show the currently selected FPGA
+  cpld_led         <= int2slv(15-count, 4);  -- show the currently selected FPGA
   cpld(3 DOWNTO 0) <= cpld_sw;
   cpld(9 DOWNTO 4) <= (OTHERS => '0');
 
@@ -95,6 +98,7 @@ BEGIN
   as_enable  <= uc_cpld(6);
   s_ctrClk   <= uc_cpld(8);
   s_ctrRst   <= uc_cpld(9);
+
 
 
   selCounter : PROCESS (s_ctrClk, s_ctrRst) IS
@@ -112,7 +116,12 @@ BEGIN
     s_asdi(i) <= uc_asdi WHEN count = i ELSE '0';
   END GENERATE gen1;
 
-  uc_data <= datao(count);
+  uc_tck <= uc_cpld(1) WHEN count = 9 ELSE '0';
+  uc_tdi <= uc_cpld(2) WHEN count = 9 ELSE '1';
+  uc_tms <= uc_cpld(3) WHEN count = 9 ELSE '1';
+
+  -- uc_data <= datao(count);
+  uc_data <= tdo_fp WHEN count = 9 ELSE datao(count);
 
   -- SERDES FPGAs A,B,C,D (1,2,3,4) are on nce and nconfig
   -- SERDES FPGAs E,F,G,H (5,6,7,8) are on nce_2 and nconfig_2
@@ -129,5 +138,9 @@ BEGIN
   nconfig   <= s_nconfig   WHEN as_enable = '1' ELSE 'Z';
   nce_2     <= s_nce_2     WHEN as_enable = '1' ELSE 'Z';
   nconfig_2 <= s_nconfig_2 WHEN as_enable = '1' ELSE 'Z';
+
+  tck_fp <= uc_tck WHEN as_enable = '1' ELSE 'Z';
+  tms_fp <= uc_tms WHEN as_enable = '1' ELSE 'Z';
+  tdi_fp <= uc_tdi WHEN as_enable = '1' ELSE 'Z';
 
 END a;
