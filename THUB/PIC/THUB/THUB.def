@@ -1,4 +1,4 @@
-; $Id: THUB.def,v 1.7 2007-11-05 20:54:43 jschamba Exp $
+; $Id: THUB.def,v 1.8 2007-11-09 19:26:26 jschamba Exp $
 
 ;;;; Define this, if compiling for the "upper" memory region
 ;	#define THUB_is_upper
@@ -26,6 +26,12 @@
 
 	#define asRst				LATA,4
 	#define asClk				LATA,3
+
+; JTAG definitions for uc <-> CPLD bus
+	#define fp_TDO				PORTC
+	#define fp_TMS				PORTC,3
+	#define fp_TDI				PORTC,2
+	#define fp_TCK				PORTC,1
 
 #ifndef THUB_is_upper
 	#define	NEW_RESET_VECT		0x4000

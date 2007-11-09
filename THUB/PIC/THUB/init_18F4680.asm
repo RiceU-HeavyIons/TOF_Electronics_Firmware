@@ -1,4 +1,4 @@
-; $Id: init_18F4680.asm,v 1.5 2007-11-02 16:13:26 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.6 2007-11-09 19:26:53 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -118,10 +118,10 @@ InitMicro:
 	movwf TRISB
 
 ; port C is 8 bits wide
-; PORTC bit#:   0 : UC_CPLD0	(i) (as_DATA)
-;               1 : UC_CPLD1	(o) (as_DCLK)
-;               2 : UC_CPLD2	(o) (as_ASDI)
-;               3 : UC_CPLD3	(o) (as_NCS)
+; PORTC bit#:   0 : UC_CPLD0	(i) (as_DATA or FP_TDO)
+;               1 : UC_CPLD1	(o) (as_DCLK or FP_TCK)
+;               2 : UC_CPLD2	(o) (as_ASDI or FP_TDI)
+;               3 : UC_CPLD3	(o) (as_NCS  or FP_TMS)
 ;               4 : UC_CPLD4	(o) (as_NCE)
 ;               5 : UC_CPLD5	(o) (as_NCONFIG)
 ;               6 : UC_CPLD6	(o) (as_enable)
