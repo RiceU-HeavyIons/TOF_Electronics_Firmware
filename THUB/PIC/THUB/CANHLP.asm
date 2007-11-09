@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.11 2007-11-05 19:11:57 jschamba Exp $
+; $Id: CANHLP.asm,v 1.12 2007-11-09 19:28:15 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -43,6 +43,8 @@
 #define		_CAN_TXB0SIDH	(HLP_CAN_NODEID & 0x7F) << 1	; SIDH for TX ID
 
     EXTERN  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+
+    EXTERN  jtGetIDCode, jtGetUserCode
 
     UDATA_ACS
 hlpCtr1 RES     01          ; temporary variable used as counter
@@ -205,8 +207,23 @@ TofHandleRead:
     ;**************************************************************
     movf    RxData,W
     sublw   0x1
-    bnz     is_it_TofReadSiID  
+    bnz     is_it_TofReadPLDFirmwareID  
     call    TofReadFirmwareID
+    return
+
+is_it_TofReadPLDFirmwareID
+    ;**************************************************************
+    ;****** Read PLD Firmware ID **********************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x2
+    ;*
+    ;* Effect: read Usercode of FPGA pointed to by RxData[1] 
+    ;*          and return as a Read Response
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x2
+    bnz     is_it_TofReadSiID  
+    call    TofReadPLDFirmwareID
     return
 
 is_it_TofReadSiID:
@@ -563,6 +580,22 @@ WRITE_BYTE_TO_HREGS:
 ;* CAN "Read" Commands
 ;**************************************************************
 
+    ;**************************************************************
+    ;****** Read Usercode from FPGA *******************************
+    ;**************************************************************
+TofReadPLDFirmwareID:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    ;; call    jtGetIDCode
+    call    jtGetUserCode
+
+    ; send read response with length 4
+	banksel	TXB0CON
+    mCANSendRdResponse  4
+    return                  ; back to receiver loop
+    
     ;**************************************************************
     ;****** Read Firmware ID***************************************
     ;**************************************************************
