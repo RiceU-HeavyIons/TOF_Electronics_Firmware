@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.10 2007-06-20 20:31:25 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.11 2007-11-12 19:52:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-06-20
+-- Last update: 2007-06-28
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -112,6 +112,7 @@ ARCHITECTURE a OF serdes_fpga IS
         inclk0 : IN  std_logic := '0';
         c0     : OUT std_logic;
         c1     : OUT std_logic;
+        c2     : OUT std_logic;
         locked : OUT std_logic
         );
   END COMPONENT;
@@ -151,10 +152,29 @@ ARCHITECTURE a OF serdes_fpga IS
       result : OUT std_logic_vector (17 DOWNTO 0));
   END COMPONENT mux18x2;
 
+  COMPONENT mux17x4 IS
+    PORT (
+      data0x : IN  std_logic_vector (16 DOWNTO 0);
+      data1x : IN  std_logic_vector (16 DOWNTO 0);
+      data2x : IN  std_logic_vector (16 DOWNTO 0);
+      data3x : IN  std_logic_vector (16 DOWNTO 0);
+      sel    : IN  std_logic_vector (1 DOWNTO 0);
+      result : OUT std_logic_vector (16 DOWNTO 0));
+  END COMPONENT mux17x4;
+
+  COMPONENT decoder IS
+    PORT (
+      input_sig : IN  std_logic;
+      adr       : IN  std_logic_vector(1 DOWNTO 0);
+      y         : OUT std_logic_vector(3 DOWNTO 0));
+  END COMPONENT decoder;
+
   SIGNAL areset_n          : std_logic;
   SIGNAL globalclk         : std_logic;
-  SIGNAL clk_160mhz        : std_logic;  -- PLL 4x output
-  SIGNAL clkp_160mhz       : std_logic;  -- PLL 4x output with phase shift
+  SIGNAL pll_20mhz         : std_logic;
+  SIGNAL pll_80mhz         : std_logic;
+  SIGNAL pll_160mhz        : std_logic;  -- PLL 4x output
+  SIGNAL pll_160mhz_p      : std_logic;  -- PLL 4x output with phase shift
   SIGNAL clk20mhz          : std_logic;
   SIGNAL div2out           : std_logic;
   SIGNAL serdes_clk        : std_logic;
@@ -186,7 +206,6 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_rxfifo_wrreq    : std_logic;
   SIGNAL s_rxfifo_empty    : std_logic;
   SIGNAL s_errorctr        : std_logic_vector(31 DOWNTO 0);
-  SIGNAL s_error           : std_logic;
   SIGNAL s_ctr_aclr        : std_logic;
   SIGNAL s_ch0_locked      : std_logic;
   SIGNAL s_ch1_locked      : std_logic;
@@ -206,6 +225,23 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch3_txd         : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_serdes_reg      : std_logic_vector(7 DOWNTO 0);
 
+  SIGNAL s_ch0fifo_rdreq : std_logic;
+  SIGNAL s_ch0fifo_aclr  : std_logic;
+  SIGNAL s_ch0fifo_empty : std_logic;
+  SIGNAL s_ch0fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch1fifo_rdreq : std_logic;
+  SIGNAL s_ch1fifo_aclr  : std_logic;
+  SIGNAL s_ch1fifo_empty : std_logic;
+  SIGNAL s_ch1fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch2fifo_rdreq : std_logic;
+  SIGNAL s_ch2fifo_aclr  : std_logic;
+  SIGNAL s_ch2fifo_empty : std_logic;
+  SIGNAL s_ch2fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch3fifo_rdreq : std_logic;
+  SIGNAL s_ch3fifo_aclr  : std_logic;
+  SIGNAL s_ch3fifo_empty : std_logic;
+  SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
+
   TYPE   State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
@@ -216,8 +252,6 @@ BEGIN
   -----------------------------------------------------------------------------
   areset_n <= '1';  -- asynchronous global reset, active low
 
-  global_clk_buffer : global PORT MAP (a_in => clk, a_out => globalclk);
-
   -- create 20 MHz clock with TFF:
   div2 : TFF PORT MAP (
     t    => '1',
@@ -225,18 +259,22 @@ BEGIN
     clrn => '1',
     prn  => '1',
     q    => div2out);
-  global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
-  serdes_clk <= clk20mhz;
-  -- serdes_clk <= '0';
-  -- serdes_clk <= globalclk;
 
   -- PLL
   pll_instance : pll PORT MAP (
     areset => '0',
     inclk0 => clk,
-    c0     => clk_160mhz,
-    c1     => clkp_160mhz,
+    c0     => pll_160mhz,
+    c1     => pll_160mhz_p,
+    c2     => pll_80mhz,
     locked => pll_locked);
+
+  global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
+  global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
+
+  serdes_clk <= clk20mhz;
+  -- serdes_clk <= '0';
+  -- serdes_clk <= globalclk;
 
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
@@ -253,8 +291,8 @@ BEGIN
   s_smif_datain   <= ma(31 DOWNTO 20);  -- 12bit data from M to S 
   s_smif_datatype <= ma(35 DOWNTO 32);  -- 4bit data type indicator from M to S
 
-  s_smif_dataout    <= (OTHERS => '0');
-  s_smif_fifo_empty <= '1';
+--  s_smif_dataout    <= (OTHERS => '0');
+--  s_smif_fifo_empty <= '1';
 
   smif_inst : smif PORT MAP (
     clk40mhz   => globalclk,
@@ -274,10 +312,10 @@ BEGIN
 -- mt(23 DOWNTO 18) <= s_txfifo_q(7 DOWNTO 2);
 -- mt(31 DOWNTO 24) <= s_serdes_reg;
 
-  mt(17 DOWNTO 0)  <= ch0_rxd;
-  mt(23 DOWNTO 18) <= s_txfifo_q(7 DOWNTO 2);
---  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
---  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
+--  mt(17 DOWNTO 0)  <= ch0_rxd;
+--  mt(23 DOWNTO 18) <= s_txfifo_q(7 DOWNTO 2);
+  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
+  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
   mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
   mt(31)           <= s_ch0_locked;
 
@@ -301,8 +339,8 @@ BEGIN
   srb_bw   <= (OTHERS => '0');
   sra_adv  <= '0';
   srb_adv  <= '0';
-  sra_clk  <= clk_160mhz;
-  srb_clk  <= clk_160mhz;
+  sra_clk  <= pll_160mhz;
+  srb_clk  <= pll_160mhz;
 
   sra_d <= (OTHERS => 'Z');
   srb_d <= (OTHERS => 'Z');
@@ -415,8 +453,8 @@ BEGIN
       rdreq   => s_txfifo_rdreq,
       aclr    => s_txfifo_aclr,
       rdclk   => ch0_rclk,
-      wrreq   => s_ch0_txd(17),
-      data    => s_ch0_txd(16 DOWNTO 0),
+      wrreq   => serdes_tst_data(17),
+      data    => serdes_tst_data(16 DOWNTO 0),
       rdempty => s_txfifo_empty,
       q       => s_txfifo_q
       );
@@ -446,6 +484,9 @@ BEGIN
       );
 
   s_rxfifo_wrreq <= ch0_rxd(17) AND s_ch0_locked;
+  s_txfifo_aclr  <= NOT s_ch0_locked;
+  s_rxfifo_aclr  <= NOT s_ch0_locked;
+--  s_ctr_aclr    <= NOT s_ch0_locked;
 
   -- now compare
   data_compare : PROCESS (serdes_clk, areset_n) IS
@@ -455,22 +496,148 @@ BEGIN
       s_errorctr     <= (OTHERS => '0');
       s_txfifo_rdreq <= '0';
       s_rxfifo_rdreq <= '0';
-      s_error        <= '0';
       
     ELSIF serdes_clk'event AND serdes_clk = '0' THEN  -- trailing clock edge
       s_txfifo_rdreq <= '0';
       s_rxfifo_rdreq <= '0';
-      s_error        <= '0';
       IF ((s_rxfifo_empty = '0') AND (s_txfifo_empty = '0')) THEN
         IF (s_rxfifo_q /= s_txfifo_q) THEN
           s_errorctr <= s_errorctr + 1;
-          s_error    <= '1';
         END IF;
         s_txfifo_rdreq <= '1';
         s_rxfifo_rdreq <= '1';
       END IF;
     END IF;
   END PROCESS data_compare;
+
+  -----------------------------------------------------------------------------
+  -- Rx FIFOs
+  -----------------------------------------------------------------------------
+  ch0fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 4096,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 16,
+      lpm_widthu             => 12,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
+    PORT MAP (
+      wrclk   => ch0_rclk,
+      rdreq   => s_ch0fifo_rdreq,
+      aclr    => s_ch0fifo_aclr,
+      rdclk   => pll_80mhz,
+      wrreq   => s_ch0_txd(17),
+      data    => s_ch0_txd(15 DOWNTO 0),
+      rdempty => s_ch0fifo_empty,
+      q       => s_ch0fifo_q
+      );
+
+  s_ch0fifo_aclr <= NOT s_ch0_locked;
+
+  ch1fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 4096,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 16,
+      lpm_widthu             => 12,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
+    PORT MAP (
+      wrclk   => ch1_rclk,
+      rdreq   => s_ch1fifo_rdreq,
+      aclr    => s_ch1fifo_aclr,
+      rdclk   => pll_80mhz,
+      wrreq   => s_ch1_txd(17),
+      data    => s_ch1_txd(15 DOWNTO 0),
+      rdempty => s_ch1fifo_empty,
+      q       => s_ch1fifo_q
+      );
+
+  s_ch1fifo_aclr <= NOT s_ch1_locked;
+
+  ch2fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 4096,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 16,
+      lpm_widthu             => 12,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
+    PORT MAP (
+      wrclk   => ch2_rclk,
+      rdreq   => s_ch2fifo_rdreq,
+      aclr    => s_ch2fifo_aclr,
+      rdclk   => pll_80mhz,
+      wrreq   => s_ch2_txd(17),
+      data    => s_ch2_txd(15 DOWNTO 0),
+      rdempty => s_ch2fifo_empty,
+      q       => s_ch2fifo_q
+      );
+
+  s_ch2fifo_aclr <= NOT s_ch2_locked;
+
+  ch3fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 4096,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 16,
+      lpm_widthu             => 12,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
+    PORT MAP (
+      wrclk   => ch3_rclk,
+      rdreq   => s_ch3fifo_rdreq,
+      aclr    => s_ch3fifo_aclr,
+      rdclk   => pll_80mhz,
+      wrreq   => s_ch3_txd(17),
+      data    => s_ch3_txd(15 DOWNTO 0),
+      rdempty => s_ch3fifo_empty,
+      q       => s_ch3fifo_q
+      );
+
+  s_ch3fifo_aclr <= NOT s_ch3_locked;
+
+  rdreq_decode : decoder PORT MAP (
+    input_sig => s_smif_rdenable,
+    adr       => s_smif_select,
+    y(0)      => s_ch0fifo_rdreq,
+    y(1)      => s_ch1fifo_rdreq,
+    y(2)      => s_ch2fifo_rdreq,
+    y(3)      => s_ch3fifo_rdreq);
+
+  rxmux_inst : mux17x4 PORT MAP (
+    data0x(15 DOWNTO 0) => s_ch0fifo_q,
+    data0x(16)          => s_ch0fifo_empty,
+    data1x(15 DOWNTO 0) => s_ch1fifo_q,
+    data1x(16)          => s_ch1fifo_empty,
+    data2x(15 DOWNTO 0) => s_ch2fifo_q,
+    data2x(16)          => s_ch2fifo_empty,
+    data3x(15 DOWNTO 0) => s_ch3fifo_q,
+    data3x(16)          => s_ch3fifo_empty,
+    sel                 => s_smif_select,
+    result(15 DOWNTO 0) => s_smif_dataout,
+    result(16)          => s_smif_fifo_empty);
+
 
   -----------------------------------------------------------------------------
   -- SERDES power on procedures
@@ -489,9 +656,6 @@ BEGIN
     txd         => s_ch0_txd,
     areset_n    => s_serdes_reg(0));
 
-  s_txfifo_aclr <= NOT s_ch0_locked;
-  s_rxfifo_aclr <= NOT s_ch0_locked;
---  s_ctr_aclr    <= NOT s_ch0_locked;
 
   poweron_ch1 : serdes_poweron PORT MAP (
     clk         => globalclk,
@@ -515,7 +679,7 @@ BEGIN
     ch_ready    => s_ch2_locked,
     pll_locked  => pll_locked,
     rxd         => ch2_rxd,
-    serdes_data => (OTHERS => '0'),
+    serdes_data => serdes_data,
     txd         => s_ch2_txd,
     areset_n    => s_serdes_reg(2));
 
@@ -528,7 +692,7 @@ BEGIN
     ch_ready    => s_ch3_locked,
     pll_locked  => pll_locked,
     rxd         => ch3_rxd,
-    serdes_data => (OTHERS => '0'),
+    serdes_data => serdes_data,
     txd         => s_ch3_txd,
     areset_n    => s_serdes_reg(3));
 
@@ -538,7 +702,7 @@ BEGIN
 
 --  zbt_ctrl_top_inst1 : zbt_ctrl_top
 --    PORT MAP (
---      clk                   => clkp_160mhz,
+--      clk                   => pll_160mhz_p,
 --      RESET_N               => pll_locked,
 ---- local bus interface
 --      ADDR(15 DOWNTO 0)     => ma(15 DOWNTO 0),
@@ -564,14 +728,14 @@ BEGIN
 
 --  mt(15 DOWNTO 0) <= s_sram_dataout(15 DOWNTO 0);
 
---  sram_sm : PROCESS (clkp_160mhz, pll_locked) IS
+--  sram_sm : PROCESS (pll_160mhz_p, pll_locked) IS
 --  BEGIN  -- PROCESS uc_fpga_sm
 --    IF pll_locked = '0' THEN                            -- asynchronous reset (active low)
 --      state           <= State0;
 --      s_dm            <= (OTHERS => '0');
 --      s_rw_n          <= '0';
 --      s_addr_adv_ld_n <= '1';
---    ELSIF clkp_160mhz'event AND clkp_160mhz = '1' THEN  -- rising clock edge
+--    ELSIF pll_160mhz_p'event AND pll_160mhz_p = '1' THEN  -- rising clock edge
 --      s_dm            <= (OTHERS => '0');
 --      s_rw_n          <= '0';
 --      s_addr_adv_ld_n <= '1';
