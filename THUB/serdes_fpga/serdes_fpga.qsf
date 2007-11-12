@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:57:31  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION 7.1
+set_global_assignment -name LAST_QUARTUS_VERSION 7.2
 
 # Pin & Location Assignments
 # ==========================
@@ -486,8 +486,18 @@ set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT -secti
 set_global_assignment -name POWER_PRESET_COOLING_SOLUTION "23 MM HEAT SINK WITH 200 LFPM AIRFLOW"
 set_global_assignment -name POWER_BOARD_THERMAL_MODEL "NONE (CONSERVATIVE)"
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM
+set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE BALANCED
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch1_rclk
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch2_rclk
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch3_rclk
+set_instance_assignment -name CLOCK_SETTINGS ch1_rclk -to ch1_rclk
+set_instance_assignment -name CLOCK_SETTINGS ch2_rclk -to ch2_rclk
+set_instance_assignment -name CLOCK_SETTINGS ch3_rclk -to ch3_rclk
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE decoder.vhd
+set_global_assignment -name VHDL_FILE mux17x4.vhd
 set_global_assignment -name VHDL_FILE mux18x2.vhd
 set_global_assignment -name VHDL_FILE serdes_poweron.vhd
 set_global_assignment -name VHDL_FILE smif.vhd
@@ -501,5 +511,5 @@ set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
 set_global_assignment -name BDF_FILE LFSR.bdf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL MAXIMUM
-set_global_assignment -name CYCLONEII_OPTIMIZATION_TECHNIQUE BALANCED
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
