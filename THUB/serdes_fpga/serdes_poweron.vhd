@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.1 2007-06-02 19:24:32 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.2 2007-11-12 23:38:58 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2007-05-24
+-- Last update: 2007-11-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -118,31 +118,33 @@ BEGIN
       CASE poweron_present IS
         WHEN PO_INIT =>
           s_ctr_aclr <= '1';
-          IF pll_locked = '1' THEN
+          IF pll_locked = '1' THEN      -- wait for clock lock
             poweron_next := PO_WAIT;
           END IF;
         WHEN PO_WAIT =>
           tpwdn_n    <= '1';            -- tx powered on
           rpwdn_n    <= '1';            -- rx powered on
           sync       <= '1';            -- sync turned on
-          s_ctr_aclr <= '0';
-          IF counter_q(16) = '1' THEN
+          s_ctr_aclr <= '0';            -- release timeout counter reset
+          IF counter_q(16) = '1' THEN   -- when long timeout
             poweron_next := PO_SYNC;
           END IF;
         WHEN PO_SYNC =>
+          s_ctr_aclr <= '1';            -- hold timeout ctr in reset
           tpwdn_n <= '1';               -- tx powered on
           rpwdn_n <= '1';               -- rx powered on
           sync    <= '1';               -- sync turned on
 
-          IF ch_lock_n = '0' THEN
+          IF ch_lock_n = '0' THEN       -- wait for SERDES lock
             poweron_next := PO_PATTERN;
           END IF;
         WHEN PO_PATTERN =>
+          s_ctr_aclr <= '0';            -- release timeout ctr reset
           tpwdn_n <= '1';               -- tx powered on
           rpwdn_n <= '1';               -- rx powered on
           IF rxd = LOCK_PATTERN THEN
             poweron_next := PO_LOCKED;
-          ELSE
+          ELSIF counter_q(4) = '1' THEN  -- timeout after 16 clocks
             poweron_next := PO_WAIT;
           END IF;
         WHEN PO_LOCKED =>
