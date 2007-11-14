@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.12 2007-11-09 19:28:15 jschamba Exp $
+; $Id: CANHLP.asm,v 1.13 2007-11-14 23:48:54 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -152,7 +152,8 @@ TofHandleWrite:
     ;**************************************************************
     btfss   RxData, 7           ; test if bit 7 in RxData[0] is set
     bra     is_it_MCU_RDOUT_MODE    ; false: test next command
-    call    TofWriteReg         ; true: write PLD register
+    call    TofWriteReg             ; true: write PLD register
+    call    HLPSendWriteResponseOK  ; send response    
     return
 is_it_MCU_RDOUT_MODE:
     ;**************************************************************
