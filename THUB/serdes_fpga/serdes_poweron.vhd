@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.2 2007-11-12 23:38:58 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.3 2007-11-14 16:52:11 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2007-11-12
+-- Last update: 2007-11-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,7 +50,8 @@ END serdes_poweron;
 
 
 ARCHITECTURE a OF serdes_poweron IS
-  CONSTANT LOCK_PATTERN : std_logic_vector := "000001001000110100";
+  CONSTANT LOCK_PATTERN_THUB : std_logic_vector := "000001001000110100";
+  CONSTANT LOCK_PATTERN_TCPU : std_logic_vector := "000100001100100001";
 
   COMPONENT mux18x2 IS
     PORT (
@@ -62,7 +63,6 @@ ARCHITECTURE a OF serdes_poweron IS
 
   TYPE poweron_state IS (
     PO_INIT,
-    PO_WAIT,
     PO_SYNC,
     PO_PATTERN,
     PO_LOCKED
@@ -85,7 +85,6 @@ BEGIN
       q      => counter_q,
       clk_en => '1',
       aclr   => s_ctr_aclr);
-  -- s_serdes_start <= '0' & counter_q;
 
   -- purpose: power on state machine for channel 0
   -- type   : sequential
@@ -113,48 +112,43 @@ BEGIN
       rpwdn_n         <= '0';           -- rx powered down
       sync            <= '0';
       ch_ready        <= '0';
-      s_serdes_tx_sel <= '1';
+      s_serdes_tx_sel <= '1';           -- default: lock pattern
 
       CASE poweron_present IS
         WHEN PO_INIT =>
           s_ctr_aclr <= '1';
           IF pll_locked = '1' THEN      -- wait for clock lock
-            poweron_next := PO_WAIT;
-          END IF;
-        WHEN PO_WAIT =>
-          tpwdn_n    <= '1';            -- tx powered on
-          rpwdn_n    <= '1';            -- rx powered on
-          sync       <= '1';            -- sync turned on
-          s_ctr_aclr <= '0';            -- release timeout counter reset
-          IF counter_q(16) = '1' THEN   -- when long timeout
             poweron_next := PO_SYNC;
           END IF;
         WHEN PO_SYNC =>
-          s_ctr_aclr <= '1';            -- hold timeout ctr in reset
-          tpwdn_n <= '1';               -- tx powered on
-          rpwdn_n <= '1';               -- rx powered on
-          sync    <= '1';               -- sync turned on
+          s_ctr_aclr <= '0';            -- hold timeout ctr in reset
+          tpwdn_n    <= '1';            -- tx powered on
+          rpwdn_n    <= '1';            -- rx powered on
+          sync       <= '1';            -- sync turned on
 
           IF ch_lock_n = '0' THEN       -- wait for SERDES lock
             poweron_next := PO_PATTERN;
+            s_ctr_aclr   <= '1';        -- reset timeout counter
+          ELSIF counter_q(16) = '1' THEN   -- long timeout
+            poweron_next := PO_INIT;
           END IF;
         WHEN PO_PATTERN =>
           s_ctr_aclr <= '0';            -- release timeout ctr reset
-          tpwdn_n <= '1';               -- tx powered on
-          rpwdn_n <= '1';               -- rx powered on
-          IF rxd = LOCK_PATTERN THEN
+          tpwdn_n    <= '1';            -- tx powered on
+          rpwdn_n    <= '1';            -- rx powered on
+          IF rxd = LOCK_PATTERN_TCPU THEN  -- look for pattern to be sent back
             poweron_next := PO_LOCKED;
-          ELSIF counter_q(4) = '1' THEN  -- timeout after 16 clocks
-            poweron_next := PO_WAIT;
+          ELSIF counter_q(4) = '1' THEN    -- timeout after 16 clocks
+            poweron_next := PO_INIT;
           END IF;
         WHEN PO_LOCKED =>
           tpwdn_n         <= '1';       -- tx powered on
           rpwdn_n         <= '1';       -- rx powered on
-          ch_ready        <= '1';
-          s_serdes_tx_sel <= '0';
+          ch_ready        <= '1';       -- signal that we are locked and  ready
+          s_serdes_tx_sel <= '0';       -- send "normal" data
 
-          IF (ch_lock_n = '1') THEN
-            poweron_next := PO_INIT;
+          IF (ch_lock_n = '1') THEN     -- if we ever loose lock
+            poweron_next := PO_INIT;    -- start all over
           END IF;
         WHEN OTHERS =>
           rpwdn_n <= '1';               -- rx powered on
@@ -170,7 +164,7 @@ BEGIN
   -- MUX for serdes TX
   mux_inst : mux18x2 PORT MAP (
     data0x => serdes_data,
-    data1x => LOCK_PATTERN,
+    data1x => LOCK_PATTERN_THUB,
     sel    => s_serdes_tx_sel,
     result => txd);
 
