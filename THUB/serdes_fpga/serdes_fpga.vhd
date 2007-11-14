@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.11 2007-11-12 19:52:50 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.12 2007-11-14 16:53:38 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-06-28
+-- Last update: 2007-11-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -242,7 +242,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch3fifo_empty : std_logic;
   SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
 
-  TYPE   State_type IS (State0, State1, State1a, State2, State3);
+  TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
 BEGIN
@@ -279,6 +279,21 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
   -----------------------------------------------------------------------------
+  -- Serdes <-> Master Interface is implemented as 36 lines that are assigned
+  -- as follows:
+  -- ma[15..0]  : 16 bit (Serdes FIFO) data from Serdes to Master (output)
+  -- ma[16]     : FIFO empty (output)
+  -- ma[18..17] : Select one of 4 Serdes FIFOs (input)
+  -- ma[19]     : Read Enable to FIFO (input)
+  --
+  -- ma[31..20] : 12 bit data from Master to Serdes (input)
+  -- ma[35..32] : 4 bit data type from Master (input)
+  --
+  -- Currently, there are 4 "data types" from Master to Serdes defined:
+  --    "trigger", "bunch reset", "reset", and "load register"
+  -- each action is triggered on leading edge of 40MHz clock and is followed
+  -- by on clock of wait state (defined in smif.vhd)
+
   ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
 
   -- SERDES (S) to MASTER (M) interface
@@ -290,9 +305,6 @@ BEGIN
   -- MASTER (M) to SERDES (S) interface
   s_smif_datain   <= ma(31 DOWNTO 20);  -- 12bit data from M to S 
   s_smif_datatype <= ma(35 DOWNTO 32);  -- 4bit data type indicator from M to S
-
---  s_smif_dataout    <= (OTHERS => '0');
---  s_smif_fifo_empty <= '1';
 
   smif_inst : smif PORT MAP (
     clk40mhz   => globalclk,
@@ -429,7 +441,8 @@ BEGIN
   s_send_data <= s_ch0_locked AND s_serdes_reg(6);  -- control sending of data with serdes register bit 6
 
 -- serdes_tst_data(16 DOWNTO 0) <= counter_q;
-  serdes_tst_data(16 DOWNTO 0) <= lsfr_d;
+  serdes_tst_data(15 DOWNTO 0) <= lsfr_d(15 DOWNTO 0);
+  serdes_tst_data(16)          <= lsfr_d(16) AND s_serdes_reg(6);
   serdes_tst_data(17)          <= s_send_data;
 
 
@@ -740,24 +753,24 @@ BEGIN
 --      s_rw_n          <= '0';
 --      s_addr_adv_ld_n <= '1';
 --      CASE state IS
---        WHEN State0 =>
+-- WHEN State0 =>
 --          IF ma(35) = '1' THEN
 --            state <= State1;
 --          END IF;
---        WHEN State1 =>
+-- WHEN State1 =>
 --          s_addr_adv_ld_n <= '0';
 --          s_rw_n          <= ma(34);
 --          s_dm            <= (OTHERS => '1');
 --          state           <= State1a;
---        WHEN State1a =>                                 -- this state is for testing of the waveforms only
+-- WHEN State1a =>                                 -- this state is for testing of the waveforms only
 --          s_addr_adv_ld_n <= '0';
 --          s_rw_n          <= ma(34);
 --          s_dm            <= (OTHERS => '1');
 --          state           <= State2;
---        WHEN State2 =>
+-- WHEN State2 =>
 --          s_addr_adv_ld_n <= '0';
 --          state           <= State3;
---        WHEN State3 =>
+-- WHEN State3 =>
 --          IF ma(35) = '0' THEN
 --            state <= State0;
 --          END IF;
