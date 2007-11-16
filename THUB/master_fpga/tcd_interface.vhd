@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.4 2007-05-14 19:53:52 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.5 2007-11-16 21:50:34 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2007-05-01
+-- Last update: 2007-11-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -46,112 +46,56 @@ END ENTITY tcd;
 
 ARCHITECTURE a OF tcd IS
 
-  SIGNAL s_reg1          : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg2          : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg3          : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg4          : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg5          : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg20_1       : std_logic_vector (19 DOWNTO 0);
-  SIGNAL s_reg20_2       : std_logic_vector (19 DOWNTO 0);
-  SIGNAL inv_data_strobe : std_logic;
-  SIGNAL not_zero        : std_logic;
-  SIGNAL s_fifo_empty    : std_logic;
-  SIGNAL s_trg_unsync    : std_logic;
-  SIGNAL s_stage1        : std_logic;
-  SIGNAL s_stage2        : std_logic;
-  SIGNAL s_stage3        : std_logic;
-  SIGNAL s_stage4        : std_logic;
+  SIGNAL s_reg1       : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg2       : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg3       : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg4       : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg5       : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg20_1    : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_trg_unsync : std_logic;
+  SIGNAL s_stage1     : std_logic;
+  SIGNAL s_stage2     : std_logic;
+  SIGNAL s_stage3     : std_logic;
+  SIGNAL s_stage4     : std_logic;
   
 BEGIN  -- ARCHITECTURE a
 
-  inv_data_strobe <= NOT data_strobe;
+  -- inv_data_strobe <= NOT data_strobe;
 
   -- capture the trigger data in a cascade of 5 4-bit registers
   -- with the tcd data clock on trailing clock edge.
-  reg1 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 4
-      )
-    PORT MAP (
-      clock => inv_data_strobe,
-      data  => data,
-      q     => s_reg1
-      );
 
-  reg2 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 4
-      )
-    PORT MAP (
-      clock => inv_data_strobe,
-      data  => s_reg1,
-      q     => s_reg2
-      );
-
-  reg3 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 4
-      )
-    PORT MAP (
-      clock => inv_data_strobe,
-      data  => s_reg2,
-      q     => s_reg3
-      );
-
-  reg4 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 4
-      )
-    PORT MAP (
-      clock => inv_data_strobe,
-      data  => s_reg3,
-      q     => s_reg4
-      );
-
-  reg5 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 4
-      )
-    PORT MAP (
-      clock => inv_data_strobe,
-      data  => s_reg4,
-      q     => s_reg5
-      );
+  dff_cascade : PROCESS (data_strobe) IS
+  BEGIN
+    IF data_strobe'event AND data_strobe = '0' THEN  -- falling clock edge
+      s_reg1 <= data;
+      s_reg2 <= s_reg1;
+      s_reg3 <= s_reg2;
+      s_reg4 <= s_reg3;
+      s_reg5 <= s_reg4;
+      
+    END IF;
+  END PROCESS dff_cascade;
 
   -- On the rising edge of the RHIC strobe, latch the 5 4-bit registers into a
   -- 20-bit register.
-  reg20_1 : lpm_ff
-    GENERIC MAP (
-      lpm_fftype => "DFF",
-      lpm_type   => "LPM_FF",
-      lpm_width  => 20
-      )
-    PORT MAP (
-      clock              => rhic_strobe,
-      data(19 DOWNTO 16) => s_reg5,
-      data(15 DOWNTO 12) => s_reg4,
-      data(11 DOWNTO 8)  => s_reg3,
-      data(7 DOWNTO 4)   => s_reg2,
-      data(3 DOWNTO 0)   => s_reg1,
-      q                  => s_reg20_1
-      );
+  reg20_1 : PROCESS (rhic_strobe) IS
+  BEGIN
+    IF rhic_strobe'event AND rhic_strobe = '1' THEN  -- rising clock edge
+      s_reg20_1 (19 DOWNTO 16) <= s_reg5;
+      s_reg20_1 (15 DOWNTO 12) <= s_reg4;
+      s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
+      s_reg20_1 (7 DOWNTO 4)   <= s_reg2;
+      s_reg20_1 (3 DOWNTO 0)   <= s_reg1;
+    END IF;
+  END PROCESS reg20_1;
 
   -- use this as the trigger word output
   trgword <= s_reg20_1;
 
   -- now check if there is a valid trigger command:
   trg : PROCESS (s_reg20_1(19 DOWNTO 16)) IS
-  BEGIN  -- PROCESS trg
+  BEGIN
     CASE s_reg20_1(19 DOWNTO 16) IS
       WHEN "0100" =>                    -- "4" (trigger0)
         s_trg_unsync <= '1';
@@ -198,38 +142,16 @@ BEGIN  -- ARCHITECTURE a
   -- when a valid trigger command is found, synchronize the resulting trigger
   -- to the 40MHz clock with a 4 stage DFF cascade and to make the signal
   -- exactly 1 clock wide
-  stage1 : dff
-    PORT MAP (
-      d    => s_trg_unsync,
-      clk  => clock,
-      clrn => '1',
-      prn  => '1',
-      q    => s_stage1);
 
-  stage2 : dff
-    PORT MAP (
-      d    => s_stage1,
-      clk  => clock,
-      clrn => '1',
-      prn  => '1',
-      q    => s_stage2);
-
-  stage3 : dff
-    PORT MAP (
-      d    => s_stage2,
-      clk  => clock,
-      clrn => '1',
-      prn  => '1',
-      q    => s_stage3);
-
-  stage4 : dff
-    PORT MAP (
-      d    => s_stage3,
-      clk  => clock,
-      clrn => '1',
-      prn  => '1',
-      q    => s_stage4);
-
+  syncit : PROCESS (clock) IS
+  BEGIN
+    IF clock'event AND clock = '1' THEN  -- rising clock edge
+      s_stage1 <= s_trg_unsync;
+      s_stage2 <= s_stage1;
+      s_stage3 <= s_stage2;
+      s_stage4 <= s_stage3;
+    END IF;
+  END PROCESS syncit;
 
   trigger <= s_stage3 AND (NOT s_stage4);
   
