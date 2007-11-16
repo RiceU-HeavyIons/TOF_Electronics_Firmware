@@ -1,4 +1,4 @@
-; $Id: THUB.def,v 1.8 2007-11-09 19:26:26 jschamba Exp $
+; $Id: THUB.def,v 1.9 2007-11-16 21:42:16 jschamba Exp $
 
 ;;;; Define this, if compiling for the "upper" memory region
 ;	#define THUB_is_upper
@@ -7,7 +7,7 @@
 	#define uc_fpga_DIR			LATA,2
 	#define uc_fpga_CTL			LATA,1
 	#define uc_fpga_DS			LATA,0
-	#define uc_fpga_DATA		LATD
+	#define uc_fpga_DATA		PORTD
 	#define uc_fpga_DATADIR		TRISD
 
 ; PLL lines definitions
