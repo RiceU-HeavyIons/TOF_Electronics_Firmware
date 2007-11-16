@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.1 2007-11-06 18:59:58 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.2 2007-11-16 19:33:44 jschamba Exp $
 --
 -- TCPU_B_TOP.vhd
 
@@ -160,7 +160,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  TYPE   SState_type IS (s1, s2, s3, s4);
+  TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
 
   COMPONENT pll
@@ -194,6 +194,25 @@ ARCHITECTURE a OF TCPU_B_TOP IS
       RESET      : IN  std_logic;
       OUT_HI     : OUT std_logic);
   END COMPONENT FIFO_RD2;
+
+  COMPONENT serdes_if IS
+    PORT (
+      clk        : IN  std_logic;
+      rxd        : IN  std_logic_vector (17 DOWNTO 0);
+      txd        : OUT std_logic_vector (17 DOWNTO 0);
+      den        : OUT std_logic;
+      ren        : OUT std_logic;
+      sync       : OUT std_logic;
+      tpwdn_n    : OUT std_logic;
+      rpwdn_n    : OUT std_logic;
+      lock_n     : IN  std_logic;
+      rclk       : IN  std_logic;
+      areset_n   : IN  std_logic;
+      ch_ready   : OUT std_logic;
+      pll_locked : IN  std_logic;
+      trigger    : OUT std_logic);
+  END COMPONENT serdes_if;
+
 
   SIGNAL clk_40mhz       : std_logic;
   SIGNAL clk_20mhz       : std_logic;
@@ -281,6 +300,11 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL finalFifo_empty : std_logic;
   SIGNAL finalFifo_full  : std_logic;
 
+  SIGNAL serdes_trigger  : std_logic;
+  SIGNAL trigger_pulse   : std_logic;
+  SIGNAL serdes_areset_n : std_logic;
+  SIGNAL serdes_ready    : std_logic;
+
 ----------------------------------------------------------
 
 BEGIN
@@ -328,18 +352,35 @@ BEGIN
 -- Control for serial THUB link
 --********************************************************************************** 
 
-  th_den      <= '0';
-  th_sync     <= '0';
-  th_ren      <= '0';
-  th_tpwdnb   <= '0';                   -- powered down for now
-  th_rpwdnb   <= '0';                   -- powered down for now
-  th_refclk   <= clk_20mhz;
+--  tx_d        <= (OTHERS => '0');
+--  th_den      <= '0';
+--  th_sync     <= '0';
+--  th_ren      <= '0';
+--  th_tpwdnb   <= '0';                   -- powered down for now
+--  th_rpwdnb   <= '0';                   -- powered down for now
   th_tclk     <= ser_rec_clk;           -- recovered receive clock
+  th_refclk   <= clk_20mhz;
   th_local_le <= '0';                   -- DISABLE LOCAL LOOPBACK
   th_line_le  <= '0';                   -- DISABLE LINE LOOPBACK
-  tx_d        <= (OTHERS => '0');
   -- th_lockb;
 
+  serdes_areset_n <= '1';               -- control this from CANbus?
+  
+  serdes_if_inst : serdes_if PORT MAP (
+    clk        => clk_40mhz,
+    rxd        => rx_d,
+    txd        => tx_d,
+    den        => th_den,
+    ren        => th_ren,
+    sync       => th_sync,
+    tpwdn_n    => th_tpwdnb,
+    rpwdn_n    => th_rpwdnb,
+    lock_n     => th_lockb,
+    rclk       => ser_rec_clk,
+    areset_n   => serdes_areset_n,
+    ch_ready   => serdes_ready,
+    pll_locked => pll_locked,
+    trigger    => serdes_trigger);
 
 ------------------------------------------------------------------------------------
 --      MCU INTERFACE : BIDIR BUFFER AND ADDRESS DECODE
@@ -495,13 +536,13 @@ BEGIN
     config1_data             WHEN x"1",
     config2_data             WHEN x"2",
     config3_data             WHEN x"3",
-    x"76"                    WHEN x"7",
+    x"76" WHEN x"7",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",
     mcu_fifo_q(23 DOWNTO 16) WHEN x"d",
     mcu_fifo_q(31 DOWNTO 24) WHEN x"e",
     mcu_fifo_status          WHEN x"f",
-    "00000000"               WHEN OTHERS;
+    "00000000" WHEN OTHERS;
 
   read_from_adr14 <= mcu_read AND addr_equ(14);
 
@@ -524,6 +565,9 @@ BEGIN
 --      SERIAL READOUT FROM TDCs
 --------------------------------------------------------------------------
 
+--------------------------------------------------------------------------
+--      Trigger signal derivation
+--------------------------------------------------------------------------
   -- internal pulser
   -- purpose: counter to generate internal pulser of selectable frequency
   -- type   : sequential
@@ -549,10 +593,11 @@ BEGIN
     test_pls_bits(13) WHEN "110",
     test_pls_bits(12) WHEN OTHERS;
 
+  -- MUX for trigger pulse
   WITH config14_data(3) SELECT
     test_pulse_raw <=
-    test_at_j9      WHEN '0',
-    internal_pulser WHEN OTHERS;
+    test_at_j9      WHEN '0',           -- J9 input
+    internal_pulser WHEN OTHERS;        -- internal pulser
 
   -- now sync and shorten with a chain of DFFs
   ff : PROCESS (clk_40mhz)
@@ -566,6 +611,11 @@ BEGIN
 
   test_pulse <= dff2_q AND (NOT dff3_q);
 
+  WITH config2_data(1) SELECT
+    trigger_pulse <=
+    test_pulse     WHEN '0',
+    serdes_trigger WHEN OTHERS;
+
   -- shift register to delay the trigger pulse phase relative to the 40MHz clock:
   trigger_shiftreg : lpm_shiftreg GENERIC MAP (
     lpm_direction => "RIGHT",
@@ -574,7 +624,7 @@ BEGIN
     PORT MAP (
       sclr    => sm_reset,
       clock   => pll_240mhz,
-      shiftin => test_pulse,
+      shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
 
