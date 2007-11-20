@@ -26,5 +26,5 @@
 # or
 #DEFAULT (echo ""; id; echo %{sVv}; date; cat) >> $CVSROOT/CVSROOT/commitlog
 #
-TCPU	/homes/jschamba/windowsrc/CVSROOT/log	-m jschamba@physics.utexas.edu -f /homes/jschamba/windowsrc/CVSROOT/commitlog %s
-TDIG	/homes/jschamba/windowsrc/CVSROOT/log	-m jschamba@physics.utexas.edu -f /homes/jschamba/windowsrc/CVSROOT/commitlog %s
+#TCPU	/homes/jschamba/windowsrc/CVSROOT/log	-m jschamba@physics.utexas.edu -f /homes/jschamba/windowsrc/CVSROOT/commitlog %s
+#TDIG	/homes/jschamba/windowsrc/CVSROOT/log	-m jschamba@physics.utexas.edu -f /homes/jschamba/windowsrc/CVSROOT/commitlog %s
