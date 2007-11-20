@@ -1,7 +1,24 @@
--- $Id: TCPU_B_TOP.vhd,v 1.2 2007-11-16 19:33:44 jschamba Exp $
---
--- TCPU_B_TOP.vhd
-
+-- $Id: TCPU_B_TOP.vhd,v 1.3 2007-11-20 23:34:46 jschamba Exp $
+-------------------------------------------------------------------------------
+-- Title      : TCPU B TOP
+-- Project    : 
+-------------------------------------------------------------------------------
+-- File       : TCPU_B_TOP.vhd
+-- Author     : 
+-- Company    : 
+-- Created    : 2007-11-20
+-- Last update: 2007-11-20
+-- Platform   : 
+-- Standard   : VHDL'93/02
+-------------------------------------------------------------------------------
+-- Description: Top Level code for TCPU Rev B
+-------------------------------------------------------------------------------
+-- Copyright (c) 2007 
+-------------------------------------------------------------------------------
+-- Revisions  :
+-- Date        Version  Author  Description
+-- 2007-11-20  1.0      jschamba	Created
+-------------------------------------------------------------------------------
 
 -- ********************************************************************
 -- LIBRARY DEFINITIONS
@@ -198,6 +215,7 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   COMPONENT serdes_if IS
     PORT (
       clk        : IN  std_logic;
+      serdata_in : IN  std_logic_vector (17 DOWNTO 0);
       rxd        : IN  std_logic_vector (17 DOWNTO 0);
       txd        : OUT std_logic_vector (17 DOWNTO 0);
       den        : OUT std_logic;
@@ -368,6 +386,7 @@ BEGIN
   
   serdes_if_inst : serdes_if PORT MAP (
     clk        => clk_40mhz,
+    serdata_in => "000000000000000000",
     rxd        => rx_d,
     txd        => tx_d,
     den        => th_den,
