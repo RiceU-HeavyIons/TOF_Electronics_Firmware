@@ -1,4 +1,4 @@
-# $Id: TCPU_B_TOP.qsf,v 1.2 2007-11-21 16:42:50 jschamba Exp $
+# $Id: TCPU_B_TOP.qsf,v 1.3 2007-11-21 16:48:25 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -33,8 +33,6 @@ set_global_assignment -name LAST_QUARTUS_VERSION 7.2
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 484
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
-set_global_assignment -name MIN_CORE_JUNCTION_TEMP 0
-set_global_assignment -name MAX_CORE_JUNCTION_TEMP 85
 set_location_assignment PIN_T3 -to c1_bunch_rst
 set_location_assignment PIN_U1 -to c1_clk_10mhz
 set_location_assignment PIN_T5 -to c1_dconfig_out
@@ -174,7 +172,7 @@ set_location_assignment PIN_W20 -to rx_d[17]
 set_location_assignment PIN_Y9 -to test11
 set_location_assignment PIN_AB19 -to test_at_J9
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
-set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS PROGRAMMING PIN"
+set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
 set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS4
 set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION ON
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
