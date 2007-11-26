@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.12 2007-11-14 16:53:38 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.13 2007-11-26 21:54:35 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-11-14
+-- Last update: 2007-11-26
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -333,7 +333,7 @@ BEGIN
 
 -- mt_clk <= globalclk;
 --  mt_clk <= serdes_clk;
-  mt_clk <= ch0_rclk;
+  mt_clk <= pll_80mhz;
 
   -----------------------------------------------------------------------------
   -- SRAM
@@ -544,8 +544,8 @@ BEGIN
       rdreq   => s_ch0fifo_rdreq,
       aclr    => s_ch0fifo_aclr,
       rdclk   => pll_80mhz,
-      wrreq   => s_ch0_txd(17),
-      data    => s_ch0_txd(15 DOWNTO 0),
+      wrreq   => ch0_rxd(17),
+      data    => ch0_rxd(15 DOWNTO 0),
       rdempty => s_ch0fifo_empty,
       q       => s_ch0fifo_q
       );
@@ -570,8 +570,8 @@ BEGIN
       rdreq   => s_ch1fifo_rdreq,
       aclr    => s_ch1fifo_aclr,
       rdclk   => pll_80mhz,
-      wrreq   => s_ch1_txd(17),
-      data    => s_ch1_txd(15 DOWNTO 0),
+      wrreq   => ch1_rxd(17),
+      data    => ch1_rxd(15 DOWNTO 0),
       rdempty => s_ch1fifo_empty,
       q       => s_ch1fifo_q
       );
@@ -596,8 +596,8 @@ BEGIN
       rdreq   => s_ch2fifo_rdreq,
       aclr    => s_ch2fifo_aclr,
       rdclk   => pll_80mhz,
-      wrreq   => s_ch2_txd(17),
-      data    => s_ch2_txd(15 DOWNTO 0),
+      wrreq   => ch2_rxd(17),
+      data    => ch2_rxd(15 DOWNTO 0),
       rdempty => s_ch2fifo_empty,
       q       => s_ch2fifo_q
       );
@@ -622,8 +622,8 @@ BEGIN
       rdreq   => s_ch3fifo_rdreq,
       aclr    => s_ch3fifo_aclr,
       rdclk   => pll_80mhz,
-      wrreq   => s_ch3_txd(17),
-      data    => s_ch3_txd(15 DOWNTO 0),
+      wrreq   => ch3_rxd(17),
+      data    => ch3_rxd(15 DOWNTO 0),
       rdempty => s_ch3fifo_empty,
       q       => s_ch3fifo_q
       );
