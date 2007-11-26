@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.1 2007-06-20 19:34:14 jschamba Exp $
+-- $Id: smif.vhd,v 1.2 2007-11-26 22:00:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : master-serdes-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-06-18
--- Last update: 2007-06-19
+-- Last update: 2007-11-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -99,18 +99,22 @@ ARCHITECTURE a OF smif IS
 
 BEGIN
 
-  s_dataout_reg <= "0000" & serdes_reg;
+  s_dataout_reg <= "0000" & serdes_reg;  -- extend SERDES register data to 12bit
 
   s_datatype_trig <= "0011" WHEN evt_trg = '1' ELSE
-                     "0000";
+                     "0000";            -- only valid when actual trigger occurs
 
+  -- bunch reset
   s_datatype_br <= "0101" WHEN is_bunch_reset = '1' ELSE
                    "0000";
+
+  -- SERDES register load only valid during reg_load
   s_datatype_reg <= "1010" WHEN is_regload = '1' ELSE
                     "0000";
 
-  s_datatype_rst <= "0000";
+  s_datatype_rst <= "0000";             -- data type 'reset' is not yet implemented
 
+  -- muxes for the "Master <-> Serdes" interface data: 12 bit data & 4 bit data type
   muxa_inst : mux16x4
     PORT MAP (
       data0x(15 DOWNTO 12) => s_datatype_trig,
@@ -223,11 +227,12 @@ BEGIN
       result(15 DOWNTO 12) => data_type_h,
       result(11 DOWNTO 0)  => dataout_h);
 
+  -- Process to control the "Serdes <-> Master" interface line Mux's
   smif_sm : PROCESS (clock, areset_n) IS
-  BEGIN  -- PROCESS smif_sm
+  BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
       state  <= State0;
-      sa_sel <= "00";
+      sa_sel <= "00";                   -- default is "trigger data"
       sb_sel <= "00";
       sc_sel <= "00";
       sd_sel <= "00";
@@ -242,7 +247,7 @@ BEGIN
       is_regload     <= '0';
       
     ELSIF clock'event AND clock = '1' THEN  -- leading clock edge
-      sa_sel <= "00";
+      sa_sel <= "00";                   -- default is "trigger data"
       sb_sel <= "00";
       sc_sel <= "00";
       sd_sel <= "00";
@@ -277,7 +282,7 @@ BEGIN
           END IF;
 
           state <= State1;
-        WHEN State1 =>
+        WHEN State1 =>                  -- Serdes register load for registers 1 - 8
           is_regload <= '1';
 
           IF sreg_addr = "0001" THEN sa_sel    <= "01";
@@ -291,7 +296,7 @@ BEGIN
           END IF;
 
           state <= State4;
-        WHEN State2 =>
+        WHEN State2 =>                  -- Bunch reset (register 9)
           is_bunch_reset <= '1';
 
           sa_sel <= "10";
@@ -306,15 +311,15 @@ BEGIN
           rstout <= '0';                -- active low
 
           state <= State3;
-        WHEN State3 =>
+        WHEN State3 =>                  -- Bunch reset (continued)
           rstout <= '0';                -- active low
 
           state <= State4;
-        WHEN State4 =>
+        WHEN State4 =>                  -- wait for load and reset to go back to default again
           IF (sreg_load = '0') AND (rstin = '1') THEN
             state <= State0;
           END IF;
-        WHEN OTHERS =>                  -- shouldn't happen
+        WHEN OTHERS =>                  -- shouldn't happen (invalid state)
           state <= State0;
       END CASE;
     END IF;

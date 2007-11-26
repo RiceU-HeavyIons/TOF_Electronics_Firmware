@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.4 2007-06-20 19:35:25 jschamba Exp $
+-- $Id: uc_fpga_interface.vhd,v 1.5 2007-11-26 22:01:02 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-06-27
--- Last update: 2007-06-15
+-- Last update: 2007-11-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -82,12 +82,12 @@ BEGIN  -- ARCHITECTURE SYN
         addr <= uc_data_in(4 DOWNTO 0);
       END IF;
 
-      IF is_data_w AND (addr(4) = '1') THEN
+      IF is_data_w AND (addr(4) = '1') THEN  -- Serdes register load
         sreg_load <= '1';
-      ELSIF is_data_w AND (addr = "00111") THEN
-        reg_clr <= '1';
-      ELSIF is_data_w AND (addr(4 DOWNTO 3) = "00") THEN
-        reg_load <= '1';
+      ELSIF is_data_w AND (addr = "00111") THEN  -- register clear
+        reg_clr <= '1';                 -- on address "0x87"
+      ELSIF is_data_w AND (addr(4 DOWNTO 3) = "00") THEN  -- "regular" register load
+        reg_load <= '1';                -- on addresses 0x80 - 0x87
       END IF;
 
     END IF;
