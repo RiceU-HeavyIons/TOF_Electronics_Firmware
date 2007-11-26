@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.10 2007-06-20 19:36:17 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.11 2007-11-26 22:19:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-06-19
+-- Last update: 2007-11-26
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -194,6 +194,18 @@ ARCHITECTURE a OF master_fpga IS
       areset_n    : IN  std_logic);
   END COMPONENT smif;
 
+  COMPONENT serdes_reader IS
+    PORT (
+      clk80mhz   : IN  std_logic;
+      areset_n   : IN  std_logic;
+      indata     : IN  std_logic_vector (15 DOWNTO 0);
+      fifo_empty : IN  std_logic;
+      rdsel_out  : OUT std_logic_vector (1 DOWNTO 0);
+      rdreq_out  : OUT std_logic;
+      wrreq_out  : OUT std_logic;
+      outdata    : OUT std_logic_vector (31 DOWNTO 0));
+  END COMPONENT serdes_reader;
+
   SIGNAL globalclk : std_logic;
   SIGNAL arstn     : std_logic;
 
@@ -240,7 +252,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trg_mcu_word  : std_logic_vector (19 DOWNTO 0);
   SIGNAL counter25b_q    : std_logic_vector(24 DOWNTO 0);
-  SIGNAL clk_160mhz      : std_logic;
+  SIGNAL clk_80mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
 
   SIGNAL sa_smif_datain     : std_logic_vector (15 DOWNTO 0);
@@ -249,6 +261,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sa_smif_rdenable   : std_logic;
   SIGNAL sa_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sa_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+  SIGNAL sAr_areset_n       : std_logic;
+  SIGNAL sAr_wrreq_out      : std_logic;
+  SIGNAL sAr_outdata        : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
   SIGNAL sb_smif_fifo_empty : std_logic;
@@ -299,6 +314,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sh_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
+  SIGNAL sArfifo_q : std_logic_vector(31 DOWNTO 0);
+  SIGNAL sArfifo_empty : std_logic;
+
 BEGIN
 
   global_clk_buffer : global PORT MAP (a_in => clk, a_out => globalclk);
@@ -308,7 +326,7 @@ BEGIN
   -- PLL
   pll_instance : pll PORT MAP (
     inclk0 => clk,
-    c0     => clk_160mhz,
+    c0     => clk_80mhz,
     locked => pll_locked);
 
 
@@ -336,7 +354,8 @@ BEGIN
   -- SERDES-MAIN FPGA interface
   -----------------------------------------------------------------------------
   ma(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mb(16 DOWNTO 0) <= (OTHERS => 'Z');
+  mb(0)           <= s_evt_trg AND s_trigger;  -- this is for testing only!!!!
+  mb(16 DOWNTO 1) <= (OTHERS => 'Z');
   mc(16 DOWNTO 0) <= (OTHERS => 'Z');
   md(16 DOWNTO 0) <= (OTHERS => 'Z');
   me(16 DOWNTO 0) <= (OTHERS => 'Z');
@@ -352,13 +371,25 @@ BEGIN
   ma(18 DOWNTO 17)   <= sa_smif_select;  -- select from M to S to select 1 of 4 FIFOs
   ma(19)             <= sa_smif_rdenable;  -- read enable from M to S for FIFO
 
+  serdesA_reader : serdes_reader PORT MAP (
+    clk80mhz   => clk_80mhz,
+    areset_n   => sAr_areset_n,
+    indata     => sa_smif_datain,
+    fifo_empty => sa_smif_fifo_empty,
+    rdsel_out  => sa_smif_select,
+    rdreq_out  => sa_smif_rdenable,
+    wrreq_out  => sAr_wrreq_out,
+    outdata    => sAr_outdata);
+  sAr_areset_n <= '1';
+
   -- MASTER (M) to SERDES (S) interface
   ma(31 DOWNTO 20) <= sa_smif_dataout;  -- 12bit data from M to S 
   ma(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sa_smif_select   <= "00";
-  sa_smif_rdenable <= '0';
+--  sa_smif_select   <= "00";
+--  sa_smif_rdenable <= '0';
 
+  
   -- ***************** SERDES "B" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
   sb_smif_datain     <= mb(15 DOWNTO 0);   -- 16bit data from S to M
@@ -485,47 +516,52 @@ BEGIN
       rstout      => rstout,
       areset_n    => arstn);
 
+  -- FIFO to store the data received from the Serdes FPGA.
+  -- This FIFO is then read by the DDL state machines to transfer 
+  -- over the DDL fibers
+  ddlfifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_numwords           => 256,
+      lpm_showahead          => "OFF",
+      lpm_type               => "dcfifo",
+      lpm_width              => 32,
+      lpm_widthu             => 8,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      use_eab                => "ON",
+      wrsync_delaypipe       => 4
+      )
+    PORT MAP (
+      wrclk   => NOT clk_80mhz,
+      wrreq   => sAr_wrreq_out,
+      rdclk   => NOT globalclk,
+      rdreq   => rd_ddl_fifo,
+      data    => sAr_outdata,
+      rdempty => ddlfifo_empty,
+      q       => ddl_data
+      );
+
+  -- (need a state machine to control what goes into this FIFO. This
+  -- needs to insert the 0xea word at the end of the data stream as well.
+  
   -----------------------------------------------------------------------------
   -- Mictor defaults
   -----------------------------------------------------------------------------
 
-  -- mic(0) <= s_ucDIR;
-  -- mic(1) <= s_ucCTL;
-  -- mic(2) <= s_ucDS;
-  -- mic(3) <= s_reg_load;
-  -- mic(4) <= s_reg_clr;
-  -- mic(7 DOWNTO 5) <= s_reg_addr;
-  -- mic(15 DOWNTO 8) <= s_uc_i;
-  -- mic(15 DOWNTO 8) <= (OTHERS => '0');
+-- mic(63 DOWNTO  0) <= (OTHERS => '0');
 
-  -- this one for the TCD:
-  -- mic( 3 DOWNTO  0) <= tcd_d;
-  -- mic( 4)           <= tcd_clk;
-  -- mic( 5)           <= tcd_strb;
-  -- mic( 7 DOWNTO  6) <= s_fiD( 7 DOWNTO  6);
+  -- display trigger word on Mictor
+  mic(19 DOWNTO 0)  <= s_triggerword;
+  mic(20)           <= s_trigger;
+  mic(21)           <= s_evt_trg;
+  mic(30 DOWNTO 22) <= (OTHERS => '0');
+  mic(63 DOWNTO 32) <= ddl_data;
+  mic(31)           <= ddlfifo_empty;
 
-  -- and this one for the DDL:
---  mic(7 DOWNTO 0) <= s_fiD(7 DOWNTO 0);
-
---  mic(0)          <= tcd_strb;
---  mic(1)          <= tcd_clk;
---  mic(5 DOWNTO 2) <= tcd_d;
---  mic(7 DOWNTO 6) <= "00";
-
---  mic(8)            <= '0';
---  mic(9)            <= s_fiTEN_N;
---  mic(10)           <= s_fiCTRL_N;
---  mic(11)           <= fiDIR;
---  mic(12)           <= fiBEN_N;
---  mic(14 DOWNTO 13) <= (OTHERS => '0');
---  mic(15)           <= globalclk;
--- mic(63 DOWNTO 16) <= (OTHERS => '0');
---  mic(47 DOWNTO 32) <= s_fiD(27 DOWNTO 12);
---  mic(63 DOWNTO 48) <= (OTHERS => '0');
---  mic(31 DOWNTO 16) <= (OTHERS => '0');
-  -- mic(63 DOWNTO  0) <= (OTHERS => '0');
-
-  mic(64) <= clk;
+  -- mictor clock
+  mic(64) <= clk_80mhz;
 
   -- Other defaults
 
@@ -542,6 +578,7 @@ BEGIN
   s_fiCTRL_N <= fbctrl_n;
   s_fiD      <= fbd;
 
+  -- bi-directional signals state machine
   ddlbus : PROCESS (fiben_n, fidir, s_foTEN_N, s_foCTRL_N, fbd, s_foD)
   BEGIN
     IF (fiben_n = '1') OR (fidir = '0') THEN
@@ -555,11 +592,7 @@ BEGIN
     END IF;
   END PROCESS;
 
-  -- unused for now:
-  ddl_data      <= (OTHERS => '0');
-  ddlfifo_empty <= '1';
-  
-  ddl_inst : ddl PORT MAP (             -- DDL
+  ddl_inst : ddl PORT MAP (             -- DDL state machines
     fiD        => s_fiD,
     foD        => s_foD,
     foBSY_N    => fobsy_n,
@@ -574,9 +607,9 @@ BEGIN
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
     reset      => '0',                  -- reset,
-    fifo_q     => ddl_data,
-    fifo_empty => ddlfifo_empty,
-    fifo_rdreq => rd_ddl_fifo
+    fifo_q     => ddl_data,             -- "data" from external FIFO with event data
+    fifo_empty => ddlfifo_empty,        -- "empty" from external FIFO
+    fifo_rdreq => rd_ddl_fifo           -- "rdreq" for external FIFO
     );
 
   -- ********************************************************************************
@@ -587,6 +620,7 @@ BEGIN
   s_ucDS  <= uc_fpga_hi(8);
   s_uc_i  <= uc_fpga_lo;
 
+  -- bi-directional signals
   uc_bus : PROCESS (s_ucDIR, s_uc_o) IS
   BEGIN  -- PROCESS uc_bus
     IF (s_ucDIR = '1') THEN
@@ -596,6 +630,7 @@ BEGIN
     END IF;
   END PROCESS uc_bus;
 
+  -- registers that interface with Serdes FPGAs
   serdes_reg_inst : serdes_registers
     PORT MAP (
       clock    => globalclk,
@@ -605,6 +640,7 @@ BEGIN
       reg_load => s_sreg_load,
       reg_out  => s_serdes_reg);
 
+  -- Master FPGA control registers (currently not used)
   control_reg_inst : control_registers
     PORT MAP (
       clock    => globalclk,
@@ -618,6 +654,7 @@ BEGIN
       reg4_out => s_reg4,
       reg5_out => s_reg5);
 
+  -- Micro - FPGA interface state machine
   uc_fpga_inst : uc_fpga_interface
     PORT MAP (
       clock       => globalclk,
@@ -655,12 +692,6 @@ BEGIN
       trigger     => s_trigger,
       evt_trg     => s_evt_trg);
 
-  -- display trigger word on Mictor
-  mic(19 DOWNTO 0)  <= s_triggerword;
-  mic(20)           <= s_trigger;
-  mic(21)           <= s_evt_trg;
-  mic(63 DOWNTO 22) <= (OTHERS => '0');
-
   -- store the TCD info in a dual clock FIFO for later retrieval.
   -- s_trigger is high when a valid trigger is received, so USE
   -- it as the write request.
@@ -689,6 +720,7 @@ BEGIN
       q       => s_trgfifo_q
       );
 
+  -- let the MCU read from this FIFO via registers 6,7, and 8
   s_trg_mcu_word <= (OTHERS => '0') WHEN (s_trgfifo_empty = '1') ELSE s_trgfifo_q;
 
   s_reg8 (7 DOWNTO 4) <= "0000";
