@@ -1,4 +1,4 @@
--- $Id: ddl_pattern_generator.vhd,v 1.1 2006-11-30 15:50:40 jschamba Exp $
+-- $Id: ddl_pattern_generator.vhd,v 1.2 2007-11-26 22:01:56 jschamba Exp $
 --*************************************************************************
 --*  ddl_pattern_generator.vhd : Pattern generator module.
 --*
@@ -126,6 +126,7 @@ BEGIN
 
     ELSIF (clock'event AND clock = '1') THEN
 
+      
       IF (is_fifo_out) THEN
         block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
       ELSE
@@ -278,7 +279,7 @@ BEGIN
         WHEN TXDATA =>
           datao <= ('0' & pgdata);
           IF (is_fifo_out) THEN
-            datao_valid <= NOT fifo_empty;
+            datao_valid <=  NOT (fifo_empty OR block_end);
           ELSE
             datao_valid <= '1';
           END IF;
