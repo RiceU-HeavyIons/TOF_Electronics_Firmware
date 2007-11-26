@@ -1,4 +1,4 @@
-; $Id: THUB.def,v 1.9 2007-11-16 21:42:16 jschamba Exp $
+; $Id: THUB.def,v 1.10 2007-11-26 23:16:18 jschamba Exp $
 
 ;;;; Define this, if compiling for the "upper" memory region
 ;	#define THUB_is_upper
@@ -12,7 +12,7 @@
 
 ; PLL lines definitions
 	#define PLL_CAL				LATE,0
-	#define PLL_LOL				LATE,1
+	#define PLL_LOL				PORTE,1
 
 ; uc <-> CPLD bus definitions
 	#define asPORT				PORTC
