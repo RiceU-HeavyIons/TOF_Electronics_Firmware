@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.1 2007-11-06 18:59:58 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.2 2007-11-27 21:09:50 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -27,7 +27,7 @@ END ser_rdo;
 -- Architecture body
 ARCHITECTURE a OF ser_rdo IS
   
-  TYPE   SState_type IS (s1, s2, s3, s4, s5, s6, s7, s8);
+  TYPE   SState_type IS (s1, s2, s3a, s3, s4, s5, s6, s7, s8);
   SIGNAL sState : SState_type;
 
   SIGNAL token_cap     : std_logic;
@@ -95,8 +95,8 @@ BEGIN
           rdoutCtr := rdoutCtr + 1;
           item_ctr := 0;
           token_in <= '1';
-          sState   <= s3;
-        WHEN s3 =>
+          sState   <= s3a;
+        WHEN s3a =>                     -- use this state to strobe geogr. word
           ser_ctr := 0;
 
           rdo_32b_data (31 DOWNTO 30) <= "11";
@@ -106,6 +106,15 @@ BEGIN
           IF (ser_out = '1') THEN
             item_ctr       := item_ctr + 1;
             rdo_data_valid <= '1';      -- strobe Geographical data word
+            sState         <= s4;
+          ELSIF (token_cap = '1') THEN
+            sState <= s7;
+          END IF;
+        WHEN s3 =>                      -- same state as 3, but w/out geogr. word
+          ser_ctr := 0;
+
+          IF (ser_out = '1') THEN
+            item_ctr       := item_ctr + 1;
             sState         <= s4;
           ELSIF (token_cap = '1') THEN
             sState <= s7;
