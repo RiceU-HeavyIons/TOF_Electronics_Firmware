@@ -494,8 +494,12 @@ set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ch3_rclk
 set_instance_assignment -name CLOCK_SETTINGS ch1_rclk -to ch1_rclk
 set_instance_assignment -name CLOCK_SETTINGS ch2_rclk -to ch2_rclk
 set_instance_assignment -name CLOCK_SETTINGS ch3_rclk -to ch3_rclk
+set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+set_global_assignment -name BLOCK_DESIGN_NAMING AUTO
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE LFSR.vhd
 set_global_assignment -name VHDL_FILE decoder.vhd
 set_global_assignment -name VHDL_FILE mux17x4.vhd
 set_global_assignment -name VHDL_FILE mux18x2.vhd
@@ -509,7 +513,4 @@ set_global_assignment -name VHDL_FILE pipe_stage.vhd
 set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
-set_global_assignment -name BDF_FILE LFSR.bdf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
-set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
