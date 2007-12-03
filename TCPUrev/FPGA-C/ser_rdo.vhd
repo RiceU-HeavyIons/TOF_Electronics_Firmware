@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.2 2007-11-27 21:09:50 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.3 2007-12-03 21:45:25 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -16,7 +16,7 @@ ENTITY ser_rdo IS PORT (
   token_out      : IN  std_logic;       -- token_out from TDC daisy chain
   ser_out        : IN  std_logic;       -- serial_out from TDC daisy chain
   rdout_en       : IN  std_logic;       -- readout rdout_en
-  SW             : IN  std_logic;  -- input from switch (now used as half-tray)
+  SW             : IN  std_logic;       -- input from switch (now used as half-tray)
   reset          : IN  std_logic;       -- state machine reset (active high)
   token_in       : OUT std_logic;       -- token_in to TDC daisy chain
   rdo_32b_data   : OUT std_logic_vector(31 DOWNTO 0);  -- parallel data from shift register 
@@ -71,6 +71,7 @@ BEGIN
       sState   <= s1;
       ser_ctr  := 0;
       rdoutCtr := 0;
+      
     ELSIF (strb_out'event AND strb_out = '1') THEN
       token_in                   <= '0';
       shift_en                   <= '0';
@@ -150,13 +151,14 @@ BEGIN
 
 
   -- latch the token coming back from the TDC
-  token_ff : DFF PORT MAP (
-    d    => token_out,
-    clk  => strb_out,
-    clrn => '1',
-    prn  => '1',
-    q    => token_cap);
-
+  dff_inst: PROCESS (strb_out, reset) IS
+  BEGIN
+    IF reset = '1' THEN                 -- asynchronous reset (active high)
+      token_cap <= '0';
+    ELSIF strb_out'event AND strb_out = '1' THEN  -- rising clock edge
+      token_cap <= token_out;
+    END IF;
+  END PROCESS dff_inst;
 
   -- shift register to shift in the serial TDC data
   rdo_shift : LPM_SHIFTREG
