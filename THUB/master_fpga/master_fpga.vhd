@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.11 2007-11-26 22:19:50 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.12 2007-12-03 21:42:39 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-11-26
+-- Last update: 2007-11-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -196,14 +196,15 @@ ARCHITECTURE a OF master_fpga IS
 
   COMPONENT serdes_reader IS
     PORT (
-      clk80mhz   : IN  std_logic;
-      areset_n   : IN  std_logic;
-      indata     : IN  std_logic_vector (15 DOWNTO 0);
-      fifo_empty : IN  std_logic;
-      rdsel_out  : OUT std_logic_vector (1 DOWNTO 0);
-      rdreq_out  : OUT std_logic;
-      wrreq_out  : OUT std_logic;
-      outdata    : OUT std_logic_vector (31 DOWNTO 0));
+      clk80mhz            : IN  std_logic;
+      areset_n            : IN  std_logic;
+      indata              : IN  std_logic_vector (15 DOWNTO 0);
+      fifo_empty          : IN  std_logic;
+      outfifo_almost_full : IN  boolean;
+      rdsel_out           : OUT std_logic_vector (1 DOWNTO 0);
+      rdreq_out           : OUT std_logic;
+      wrreq_out           : OUT std_logic;
+      outdata             : OUT std_logic_vector (31 DOWNTO 0));
   END COMPONENT serdes_reader;
 
   SIGNAL globalclk : std_logic;
@@ -222,31 +223,35 @@ ARCHITECTURE a OF master_fpga IS
   -- ********************************************************************************
   -- uc_fpga signals
   -- ********************************************************************************
-  SIGNAL s_ucDIR         : std_logic;
-  SIGNAL s_ucCTL         : std_logic;
-  SIGNAL s_ucDS          : std_logic;
-  SIGNAL s_uc_o          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_uc_i          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg_addr      : std_logic_vector(2 DOWNTO 0);
-  SIGNAL s_sreg_addr     : std_logic_vector(3 DOWNTO 0);
-  SIGNAL s_reg_load      : std_logic;
-  SIGNAL s_sreg_load     : std_logic;
-  SIGNAL s_reg_clr       : std_logic;
-  SIGNAL s_reg1          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg2          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg3          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg4          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg5          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg6          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg7          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg8          : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_serdes_reg    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_trigger       : std_logic;
-  SIGNAL s_evt_trg       : std_logic;
-  SIGNAL s_runReset      : std_logic;
-  SIGNAL ddl_data        : std_logic_vector (31 DOWNTO 0);
-  SIGNAL ddlfifo_empty   : std_logic;
-  SIGNAL rd_ddl_fifo     : std_logic;
+  SIGNAL s_ucDIR      : std_logic;
+  SIGNAL s_ucCTL      : std_logic;
+  SIGNAL s_ucDS       : std_logic;
+  SIGNAL s_uc_o       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_uc_i       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg_addr   : std_logic_vector(2 DOWNTO 0);
+  SIGNAL s_sreg_addr  : std_logic_vector(3 DOWNTO 0);
+  SIGNAL s_reg_load   : std_logic;
+  SIGNAL s_sreg_load  : std_logic;
+  SIGNAL s_reg_clr    : std_logic;
+  SIGNAL s_reg1       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg2       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg3       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg4       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg5       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg6       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg7       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg8       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_serdes_reg : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_trigger    : std_logic;
+  SIGNAL s_evt_trg    : std_logic;
+  SIGNAL s_runReset   : std_logic;
+
+  SIGNAL ddl_data            : std_logic_vector (31 DOWNTO 0);
+  SIGNAL ddlfifo_usedw       : std_logic_vector (12 DOWNTO 0);
+  SIGNAL ddlfifo_empty       : std_logic;
+  SIGNAL rd_ddl_fifo         : std_logic;
+  SIGNAL ddlfifo_almost_full : boolean;
+
   SIGNAL s_triggerword   : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trgfifo_empty : std_logic;
   SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
@@ -314,8 +319,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sh_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
-  SIGNAL sArfifo_q : std_logic_vector(31 DOWNTO 0);
+  SIGNAL sArfifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL sArfifo_empty : std_logic;
+
 
 BEGIN
 
@@ -372,14 +378,15 @@ BEGIN
   ma(19)             <= sa_smif_rdenable;  -- read enable from M to S for FIFO
 
   serdesA_reader : serdes_reader PORT MAP (
-    clk80mhz   => clk_80mhz,
-    areset_n   => sAr_areset_n,
-    indata     => sa_smif_datain,
-    fifo_empty => sa_smif_fifo_empty,
-    rdsel_out  => sa_smif_select,
-    rdreq_out  => sa_smif_rdenable,
-    wrreq_out  => sAr_wrreq_out,
-    outdata    => sAr_outdata);
+    clk80mhz            => clk_80mhz,
+    areset_n            => sAr_areset_n,
+    indata              => sa_smif_datain,
+    fifo_empty          => sa_smif_fifo_empty,
+    outfifo_almost_full => ddlfifo_almost_full,
+    rdsel_out           => sa_smif_select,
+    rdreq_out           => sa_smif_rdenable,
+    wrreq_out           => sAr_wrreq_out,
+    outdata             => sAr_outdata);
   sAr_areset_n <= '1';
 
   -- MASTER (M) to SERDES (S) interface
@@ -389,7 +396,7 @@ BEGIN
 --  sa_smif_select   <= "00";
 --  sa_smif_rdenable <= '0';
 
-  
+
   -- ***************** SERDES "B" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
   sb_smif_datain     <= mb(15 DOWNTO 0);   -- 16bit data from S to M
@@ -522,11 +529,11 @@ BEGIN
   ddlfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
-      lpm_numwords           => 256,
+      lpm_numwords           => 8192,
       lpm_showahead          => "OFF",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 8,
+      lpm_widthu             => 13,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -540,12 +547,16 @@ BEGIN
       rdreq   => rd_ddl_fifo,
       data    => sAr_outdata,
       rdempty => ddlfifo_empty,
+      wrusedw => ddlfifo_usedw,
       q       => ddl_data
       );
 
-  -- (need a state machine to control what goes into this FIFO. This
-  -- needs to insert the 0xea word at the end of the data stream as well.
-  
+  -- if there are less than 512 words left:
+  ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 9) = "1111");
+
+  -- (need a state machine to control what goes into this FIFO, i.e. switch
+  -- from Serdes to Serdes) 
+
   -----------------------------------------------------------------------------
   -- Mictor defaults
   -----------------------------------------------------------------------------
@@ -561,7 +572,7 @@ BEGIN
   mic(31)           <= ddlfifo_empty;
 
   -- mictor clock
-  mic(64) <= clk_80mhz;
+  mic(64) <= globalclk;
 
   -- Other defaults
 
@@ -607,7 +618,7 @@ BEGIN
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
     reset      => '0',                  -- reset,
-    fifo_q     => ddl_data,             -- "data" from external FIFO with event data
+    fifo_q     => ddl_data,       -- "data" from external FIFO with event data
     fifo_empty => ddlfifo_empty,        -- "empty" from external FIFO
     fifo_rdreq => rd_ddl_fifo           -- "rdreq" for external FIFO
     );
