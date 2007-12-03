@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.3 2007-11-20 23:34:46 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.4 2007-12-03 23:27:14 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2007-11-20
+-- Last update: 2007-12-03
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -17,7 +17,7 @@
 -------------------------------------------------------------------------------
 -- Revisions  :
 -- Date        Version  Author  Description
--- 2007-11-20  1.0      jschamba	Created
+-- 2007-11-20  1.0      jschamba        Created
 -------------------------------------------------------------------------------
 
 -- ********************************************************************
@@ -231,6 +231,15 @@ ARCHITECTURE a OF TCPU_B_TOP IS
       trigger    : OUT std_logic);
   END COMPONENT serdes_if;
 
+  COMPONENT serdes_serializer IS
+    PORT (
+      clk20mhz     : IN  std_logic;
+      areset_n     : IN  std_logic;
+      txfifo_empty : IN  std_logic;
+      txfifo_q     : IN  std_logic_vector (31 DOWNTO 0);
+      txfifo_rdreq : OUT std_logic;
+      serdes_data  : OUT std_logic_vector (17 DOWNTO 0));
+  END COMPONENT serdes_serializer;
 
   SIGNAL clk_40mhz       : std_logic;
   SIGNAL clk_20mhz       : std_logic;
@@ -314,14 +323,17 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL finalFifo_aclr  : std_logic;
   SIGNAL finalFifo_wrreq : std_logic;
   SIGNAL finalFifo_data  : std_logic_vector (31 DOWNTO 0);
-  SIGNAL finalFifo_q     : std_logic_vector (31 DOWNTO 0);
-  SIGNAL finalFifo_empty : std_logic;
-  SIGNAL finalFifo_full  : std_logic;
 
   SIGNAL serdes_trigger  : std_logic;
   SIGNAL trigger_pulse   : std_logic;
   SIGNAL serdes_areset_n : std_logic;
   SIGNAL serdes_ready    : std_logic;
+
+  SIGNAL serdesFifo_rdreq : std_logic;
+  SIGNAL serdesFifo_aclr  : std_logic;
+  SIGNAL serdesFifo_empty : std_logic;
+  SIGNAL serdesFifo_q     : std_logic_vector (31 DOWNTO 0);
+  SIGNAL s_serdes_data    : std_logic_vector(17 DOWNTO 0);
 
 ----------------------------------------------------------
 
@@ -370,23 +382,16 @@ BEGIN
 -- Control for serial THUB link
 --********************************************************************************** 
 
---  tx_d        <= (OTHERS => '0');
---  th_den      <= '0';
---  th_sync     <= '0';
---  th_ren      <= '0';
---  th_tpwdnb   <= '0';                   -- powered down for now
---  th_rpwdnb   <= '0';                   -- powered down for now
   th_tclk     <= ser_rec_clk;           -- recovered receive clock
   th_refclk   <= clk_20mhz;
   th_local_le <= '0';                   -- DISABLE LOCAL LOOPBACK
   th_line_le  <= '0';                   -- DISABLE LINE LOOPBACK
-  -- th_lockb;
 
   serdes_areset_n <= '1';               -- control this from CANbus?
   
   serdes_if_inst : serdes_if PORT MAP (
     clk        => clk_40mhz,
-    serdata_in => "000000000000000000",
+    serdata_in => s_serdes_data,
     rxd        => rx_d,
     txd        => tx_d,
     den        => th_den,
@@ -538,9 +543,10 @@ BEGIN
 --    c1_fifo_q WHEN '0',
 --    c2_fifo_q WHEN OTHERS;
 
-  mcu_fifo_q      <= finalFifo_q;
-  mcu_fifo_empty  <= finalFifo_empty;
-  mcu_fifo_full   <= finalFifo_full;
+--  finalFifo_rdreq <= mcu_fifo_rdreq;
+--  mcu_fifo_q      <= finalFifo_q;
+--  mcu_fifo_empty  <= finalFifo_empty;
+--  mcu_fifo_full   <= finalFifo_full;
   mcu_fifo_parity <= '0';
   mcu_fifo_level  <= (OTHERS => '0');
 
@@ -555,7 +561,7 @@ BEGIN
     config1_data             WHEN x"1",
     config2_data             WHEN x"2",
     config3_data             WHEN x"3",
-    x"76" WHEN x"7",
+    x"77" WHEN x"7",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",
     mcu_fifo_q(23 DOWNTO 16) WHEN x"d",
@@ -573,7 +579,6 @@ BEGIN
     reset      => sm_reset,
     out_hi     => mcu_fifo_rdreq);
 
-  finalFifo_rdreq <= mcu_fifo_rdreq;
 
 --  c1_fifo_rdreq <= mcu_fifo_rdreq AND (NOT config0_data(1));
 --  c2_fifo_rdreq <= mcu_fifo_rdreq AND config0_data(1);
@@ -593,8 +598,8 @@ BEGIN
   -- inputs : clk_40mhz, sm_reset
   -- outputs: test_pls_bits
   PROCESS (clk_40mhz, sm_reset) IS
-  BEGIN  -- PROCESS
-    IF sm_reset = '1' THEN              -- asynchronous reset (active low)
+  BEGIN
+    IF sm_reset = '1' THEN              -- asynchronous reset (active high)
       test_pls_bits <= (OTHERS => '0');
     ELSIF clk_40mhz'event AND clk_40mhz = '1' THEN  -- rising clock edge
       test_pls_bits <= test_pls_bits + 1;
@@ -696,11 +701,11 @@ BEGIN
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 1024,
+      lpm_numwords           => 256,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 10,
+      lpm_widthu             => 8,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -766,11 +771,11 @@ BEGIN
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 1024,
+      lpm_numwords           => 256,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 10,
+      lpm_widthu             => 8,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -792,29 +797,56 @@ BEGIN
 ---------------------------------------------------------------------------
   
   finalFifo_aclr <= buf_clr;
-  final_fifo : scfifo
+
+  mcu_fifo : scfifo
     GENERIC MAP (
       add_ram_output_register => "ON",
       intended_device_family  => "Cyclone II",
-      lpm_numwords            => 2048,
+      lpm_numwords            => 512,
       lpm_showahead           => "ON",
       lpm_type                => "scfifo",
       lpm_width               => 32,
-      lpm_widthu              => 11,
+      lpm_widthu              => 9,
       overflow_checking       => "ON",
       underflow_checking      => "ON",
       use_eab                 => "ON"
       )
     PORT MAP (
-      rdreq => finalFifo_rdreq,
+      rdreq => mcu_fifo_rdreq,
       aclr  => finalFifo_aclr,
       clock => clk_40mhz,
       wrreq => finalFifo_wrreq,
       data  => finalFifo_data,
-      empty => finalFifo_empty,
-      q     => finalFifo_q,
-      full  => finalFifo_full
+      empty => mcu_fifo_empty,
+      q     => mcu_fifo_q,
+      full  => mcu_fifo_full
       );
+
+  serdes_fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_numwords           => 512,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 32,
+      lpm_widthu             => 9,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
+    PORT MAP (
+      wrclk   => clk_40mhz,
+      rdreq   => serdesFifo_rdreq,
+      aclr    => serdesFifo_aclr,
+      rdclk   => ser_rec_clk,
+      wrreq   => finalFifo_wrreq,
+      data    => finalFifo_data,
+      rdempty => serdesFifo_empty,
+      q       => serdesFifo_q
+      );
+
+  serdesFifo_aclr <= NOT serdes_ready;
 
 
   -- Process to control data from c1 or c2 FIFO to Final FIFO
@@ -866,5 +898,14 @@ BEGIN
       END CASE;
     END IF;
   END PROCESS;
+
+  -- "Serialize" the data from the Serdes FIFO and send it over SerDes to THUB
+  serdes_ser_inst : serdes_serializer PORT MAP (
+    clk20mhz     => ser_rec_clk,
+    areset_n     => serdes_ready,
+    txfifo_empty => serdesFifo_empty,
+    txfifo_q     => serdesFifo_q,
+    txfifo_rdreq => serdesFifo_rdreq,
+    serdes_data  => s_serdes_data);
 
 END ARCHITECTURE a;
