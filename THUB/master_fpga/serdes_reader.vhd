@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.2 2007-11-30 14:58:08 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.3 2007-12-03 21:44:19 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -36,14 +36,15 @@ USE work.my_utilities.ALL;
 ENTITY serdes_reader IS
   
   PORT (
-    clk80mhz   : IN  std_logic;
-    areset_n   : IN  std_logic;
-    indata     : IN  std_logic_vector(15 DOWNTO 0);
-    fifo_empty : IN  std_logic;
-    rdsel_out  : OUT std_logic_vector(1 DOWNTO 0);
-    rdreq_out  : OUT std_logic;
-    wrreq_out  : OUT std_logic;         -- assuming FIFO clk is clk80mhz
-    outdata    : OUT std_logic_vector(31 DOWNTO 0)
+    clk80mhz            : IN  std_logic;
+    areset_n            : IN  std_logic;
+    indata              : IN  std_logic_vector(15 DOWNTO 0);
+    fifo_empty          : IN  std_logic;
+    outfifo_almost_full : IN  boolean;
+    rdsel_out           : OUT std_logic_vector(1 DOWNTO 0);
+    rdreq_out           : OUT std_logic;
+    wrreq_out           : OUT std_logic;  -- assuming FIFO clk is clk80mhz
+    outdata             : OUT std_logic_vector(31 DOWNTO 0)
     );
 
 
@@ -57,7 +58,8 @@ ARCHITECTURE a OF serdes_reader IS
   TYPE TState_type IS (
     State1,
     State2,
-    State3
+    State3,
+    State4
     );
   SIGNAL TState : TState_type;
   
@@ -95,7 +97,7 @@ BEGIN  -- ARCHITECTURE a
           IF indata(15 DOWNTO 8) = X"E0" THEN
             block_end := true;
           END IF;
-          
+
           IF fifo_empty = '0' THEN
             ctr                     := ctr + 1;
             s_outdata(15 DOWNTO 0)  <= indata;
@@ -112,20 +114,26 @@ BEGIN  -- ARCHITECTURE a
             ctr         := 0;
           END IF;
 
-        -- set up the "end" separator
+          -- set up the "end" separator
         WHEN State2 =>
           s_outdata(31 DOWNTO 24) <= X"EA";
           s_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
 
           TState <= State3;
-          
-        --  strobe this separator into the FIFO
+
+          --  strobe this separator into the FIFO
         WHEN State3 =>
           s_outdata(31 DOWNTO 24) <= X"EA";
           s_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
           s_wrreq_out             <= '1';
 
           TState <= State1;
+
+        -- only continue, if there is enough space in the upstream FIFO
+        WHEN State4 =>
+          IF (NOT outfifo_almost_full) THEN
+            TState <= State1;
+          END IF;
 
         WHEN OTHERS => NULL;
       END CASE;
