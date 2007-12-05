@@ -1,4 +1,4 @@
-; $Id: init_18F4680.asm,v 1.6 2007-11-09 19:26:53 jschamba Exp $
+; $Id: init_18F4680.asm,v 1.7 2007-12-05 22:48:20 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -103,8 +103,8 @@ InitMicro:
 ; port B is 8 bits wide
 ; PORTB bit#:   0 : CPLD_TCK	(i)
 ;               1 : CPLD_TDI	(i)
-;               2 : CAN_TX	(o)
-;               3 : CAN_RX	(i)
+;               2 : CAN_TX	    (o)
+;               3 : CAN_RX	    (i)
 ;               4 : NC
 ;               5 : PGM
 ;               6 : PGC
