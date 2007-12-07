@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.12 2007-12-03 21:42:39 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.13 2007-12-07 19:41:36 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-11-30
+-- Last update: 2007-12-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -34,7 +34,7 @@ ENTITY master_fpga IS
     (
       clk        : IN    std_logic;     -- Master clock
       -- Mictor outputs
-      mic        : OUT   std_logic_vector(64 DOWNTO 0);
+      mic        : OUT   std_logic_vector(28 DOWNTO 0);
       -- bus to serdes fpga's
       ma, mb, mc : INOUT std_logic_vector(35 DOWNTO 0);
       md, me, mf : INOUT std_logic_vector(35 DOWNTO 0);
@@ -45,7 +45,7 @@ ENTITY master_fpga IS
       uc_fpga_hi : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
       uc_fpga_lo : INOUT std_logic_vector(7 DOWNTO 0);   -- FPGA/Micro bus
       -- Buttons & LEDs
-      butn       : IN    std_logic_vector(2 DOWNTO 0);   -- buttons
+      butn       : IN    std_logic_vector(1 DOWNTO 0);   -- buttons
       led        : OUT   std_logic_vector(1 DOWNTO 0);   -- LEDs
       -- TCD
       tcd_d      : IN    std_logic_vector(3 DOWNTO 0);
@@ -61,6 +61,15 @@ ENTITY master_fpga IS
       fobsy_n    : OUT   std_logic;
       foclk      : OUT   std_logic;
       fbd        : INOUT std_logic_vector(31 DOWNTO 0);  -- INOUT std_logic_vector(31 DOWNTO 0)
+      -- Level-2 SIU
+      l2_fbctrl_n : INOUT std_logic;
+      l2_fbten_n  : INOUT std_logic;
+      l2_fidir    : IN    std_logic;
+      l2_fiben_n  : IN    std_logic;
+      l2_filf_n   : IN    std_logic;
+      l2_fobsy_n  : OUT   std_logic;
+      l2_foclk    : OUT   std_logic;
+      l2_fbd      : INOUT std_logic_vector(31 DOWNTO 0);
       -- Resets
       rstin      : IN    std_logic;
       rstout     : OUT   std_logic
@@ -567,17 +576,27 @@ BEGIN
   mic(19 DOWNTO 0)  <= s_triggerword;
   mic(20)           <= s_trigger;
   mic(21)           <= s_evt_trg;
-  mic(30 DOWNTO 22) <= (OTHERS => '0');
-  mic(63 DOWNTO 32) <= ddl_data;
-  mic(31)           <= ddlfifo_empty;
+--  mic(27 DOWNTO 22) <= (OTHERS => '0');
+--  mic(63 DOWNTO 32) <= ddl_data;
+--  mic(31)           <= ddlfifo_empty;
 
   -- mictor clock
-  mic(64) <= globalclk;
+  mic(28) <= globalclk;
 
   -- Other defaults
 
-  tcd_busy_p <= '0';
+  tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
+
+  -- ********************************************************************************
+  -- Level-2 ddl_interface defaults
+  -- ********************************************************************************
+  -- not yet implemented, set all to reasonable defaults
+  l2_fbten_n  <= 'Z';
+  l2_fbctrl_n <= 'Z';
+  l2_fbd      <= (OTHERS => 'Z');
+  l2_foclk    <= '0';
+  l2_fobsy_n  <= '0';
 
   -- ********************************************************************************
   -- ddl_interface defaults
