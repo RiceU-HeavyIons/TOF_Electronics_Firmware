@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.2 2007-11-26 22:00:48 jschamba Exp $
+-- $Id: smif.vhd,v 1.3 2007-12-07 19:43:38 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : master-serdes-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-06-18
--- Last update: 2007-11-12
+-- Last update: 2007-12-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -240,7 +240,7 @@ BEGIN
       sf_sel <= "00";
       sg_sel <= "00";
       sh_sel <= "00";
-      rstout <= '1';                    -- active low
+      rstout <= '0';                    -- active high
 
       is_bunch_reset <= '0';
       is_reset       <= '0';
@@ -255,7 +255,7 @@ BEGIN
       sf_sel <= "00";
       sg_sel <= "00";
       sh_sel <= "00";
-      rstout <= '1';                    -- active low
+      rstout <= '0';                    -- active high
 
       is_bunch_reset <= '0';
       is_reset       <= '0';
@@ -267,7 +267,7 @@ BEGIN
             state <= State2;
           ELSIF sreg_load = '1' THEN
             state <= State1a;
-          ELSIF rstin = '0' THEN        -- active low
+          ELSIF rstin = '1' THEN        -- active high
             state <= State2;
           END IF;
         WHEN State1a =>                 -- wait a little to let register settle
@@ -308,7 +308,7 @@ BEGIN
           sg_sel <= "10";
           sh_sel <= "10";
 
-          rstout <= '0';                -- active low
+          rstout <= '1';                -- active high
 
           state <= State3;
         WHEN State3 =>                  -- Bunch reset (continued)
@@ -316,7 +316,7 @@ BEGIN
 
           state <= State4;
         WHEN State4 =>                  -- wait for load and reset to go back to default again
-          IF (sreg_load = '0') AND (rstin = '1') THEN
+          IF (sreg_load = '0') AND (rstin = '0') THEN
             state <= State0;
           END IF;
         WHEN OTHERS =>                  -- shouldn't happen (invalid state)
