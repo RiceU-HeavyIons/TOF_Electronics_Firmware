@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.14 2007-12-07 21:22:59 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.15 2007-12-07 21:52:13 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -80,7 +80,7 @@ ARCHITECTURE a OF serdes_fpga IS
 
   COMPONENT serdes_poweron IS
     PORT (
-      clk         : IN  std_logic;      -- Master clock
+      clk         : IN  std_logic;
       tpwdn_n     : OUT std_logic;
       rpwdn_n     : OUT std_logic;
       sync        : OUT std_logic;
@@ -297,7 +297,7 @@ BEGIN
 
   -- SERDES (S) to MASTER (M) interface
   ma(15 DOWNTO 0) <= s_smif_dataout;    -- 16bit data from S to M
-  ma(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
+  ma(16)          <= s_smif_fifo_empty; -- FIFO empty indicator from S to M
   s_smif_select   <= ma(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
   s_smif_rdenable <= ma(19);            -- read enable from M to S for FIFO
 
@@ -325,14 +325,17 @@ BEGIN
 
 --  mt(17 DOWNTO 0)  <= ch0_rxd;
 --  mt(23 DOWNTO 18) <= s_txfifo_q(7 DOWNTO 2);
-  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
-  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
-  mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
-  mt(31)           <= s_ch0_locked;
+--  mt(15 DOWNTO 0)  <= s_rxfifo_q(15 DOWNTO 0);
+--  mt(23 DOWNTO 16) <= s_txfifo_q(7 DOWNTO 0);
+--  mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
+--  mt(31)           <= s_ch0_locked;
 
 -- mt_clk <= globalclk;
 --  mt_clk <= serdes_clk;
-  mt_clk <= pll_80mhz;
+--  mt_clk <= pll_80mhz;
+
+  mt     <= (OTHERS => '0');
+  mt_clk <= '0';
 
   -----------------------------------------------------------------------------
   -- SRAM
