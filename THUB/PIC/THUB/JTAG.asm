@@ -1,4 +1,4 @@
-; $Id: JTAG.asm,v 1.1 2007-11-09 19:29:19 jschamba Exp $
+; $Id: JTAG.asm,v 1.2 2007-12-07 19:34:56 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      JTAG.asm                                                  *
@@ -386,10 +386,10 @@ jtGetUserCode:
     movf    RxData+1, W     ; FPGA number
     tstfsz  RxData+1
     bra     $+4
-    movlw   .4              ; FPGA number 0 is the 4th FPGA
+    movlw   .9              ; FPGA number 0 is the 9th FPGA
     decf    WREG, W         ; FPGA number 1 is first in chain
     movwf   numPre
-    sublw   .3               ; a total of 4 FPGA's in current chain
+    sublw   .8               ; a total of 9 FPGA's in current chain
     movwf   numPost
 
 
