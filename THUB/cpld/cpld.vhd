@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.3 2007-11-09 19:22:15 jschamba Exp $
+-- $Id: cpld.vhd,v 1.4 2007-12-07 19:28:51 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2007-11-06
+-- Last update: 2007-11-26
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -46,13 +46,11 @@ ENTITY cpld IS
       aux_butn_n             : IN  std_logic;  -- button
       -- PLD configuration pins
       nce, nconfig           : OUT std_logic;  -- PLD configuration pins
-      conf_done, nstatus     : IN  std_logic;  -- PLD configuration pins
+      conf_done              : IN  std_logic_vector(8 DOWNTO 0);  -- PLD configuration pins
+      nstatus                : IN  std_logic;  -- PLD configuration pins
       nce_2, nconfig_2       : OUT std_logic;  -- PLD configuration pins
-      conf_done_2, nstatus_2 : IN  std_logic;  -- PLD configuration pins
-      -- test pins
-      tp                     : IN  std_logic_vector(135 DOWNTO 113);  -- testpoints
-      tpu                    : IN  std_logic_vector(173 DOWNTO 169);  -- testpoints
-      tph                    : IN  std_logic_vector(317 DOWNTO 315)  -- testpoints
+      nstatus_2              : IN  std_logic;  -- PLD configuration pins
+      crc_error              : IN  std_logic_vector(8 DOWNTO 0)
       );
 END cpld;
 
