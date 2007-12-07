@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.20 2007-11-05 21:25:25 jschamba Exp $
+; $Id: main.asm,v 1.21 2007-12-07 19:35:28 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -34,8 +34,8 @@
 ;                                                                             *
 ;******************************************************************************
 
-	LIST P=18F4680, F=INHX32	; directive to define processor, HEX file format
-	;;LIST P=18F8680, F=INHX32	; directive to define processor, HEX file format
+	;; LIST P=18F4680, F=INHX32	; directive to define processor, HEX file format
+	LIST P=18F8680, F=INHX32	; directive to define processor, HEX file format
 	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"       ; CAN HLP functions 
     #include "SRunner.inc"      ; SRunner functions
@@ -52,33 +52,33 @@
 ; These are the definitions for the 18F4680 micro:
 
 #ifndef THUB_is_upper
-;   Oscillator Selection:
-	CONFIG	OSC = ECIO, FCMEN = OFF, IESO = OFF
-	CONFIG	PWRT = ON, BOREN = OFF, BORV = 0
-	CONFIG	WDT = OFF, WDTPS = 32768
-	CONFIG	MCLRE = ON, LPT1OSC = OFF
-	CONFIG	PBADEN = OFF
-	CONFIG	DEBUG = OFF
-	CONFIG	XINST = OFF
-	CONFIG	BBSIZ = 1024
-	CONFIG	LVP = OFF
-	CONFIG	STVREN = ON
-	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CPB = OFF, CPD = OFF
-	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
-	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
-
-; These are the definitions for the 18F8680 micro:
-
-;	CONFIG	OSC = ECIO, OSCS = OFF
-;	CONFIG	PWRT = ON, BOR = OFF, BORV = 20
+; These are the definitions for the 18F4680 micro:
+;	CONFIG	OSC = ECIO, FCMEN = OFF, IESO = OFF
+;	CONFIG	PWRT = ON, BOREN = OFF, BORV = 0
 ;	CONFIG	WDT = OFF, WDTPS = 32768
-;	CONFIG	MODE = MC, WAIT = OFF
-;	CONFIG	MCLRE = ON, ECCPMX = PORTE, CCP2MX = ON
+;	CONFIG	MCLRE = ON, LPT1OSC = OFF
+;	CONFIG	PBADEN = OFF
 ;	CONFIG	DEBUG = OFF
-;	CONFIG	LVP = OFF, STVR = ON
+;	CONFIG	XINST = OFF
+;	CONFIG	BBSIZ = 1024
+;	CONFIG	LVP = OFF
+;	CONFIG	STVREN = ON
 ;	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CPB = OFF, CPD = OFF
 ;	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
 ;	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
+;
+; These are the definitions for the 18F8680 micro:
+
+	CONFIG	OSC = ECIO, OSCS = OFF
+	CONFIG	PWRT = ON, BOR = OFF, BORV = 20
+	CONFIG	WDT = OFF, WDTPS = 32768
+	CONFIG	MODE = MC, WAIT = OFF
+	CONFIG	MCLRE = ON, ECCPMX = PORTE, CCP2MX = ON
+	CONFIG	DEBUG = OFF
+	CONFIG	LVP = OFF, STVR = ON
+	CONFIG	CP0 = OFF, CP1 = OFF, CP2 = OFF, CP3 = OFF, CPB = OFF, CPD = OFF
+	CONFIG	WRT0 = OFF, WRT1 = OFF, WRT2 = OFF, WRT3 = OFF, WRTB = OFF, WRTC = OFF, WRTD = OFF
+	CONFIG	EBTR0 = OFF, EBTR1 = OFF, EBTR2 = OFF, EBTR3 = OFF, EBTRB = OFF
 
     __idlocs _IDLOC0, 0x1 ;IDLOC register 0 will be programmed to 1.
     __idlocs _IDLOC1, 0x2 ;IDLOC register 1 will be programmed to 2.
