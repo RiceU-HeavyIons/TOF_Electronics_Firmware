@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.13 2007-12-07 19:41:36 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.14 2007-12-14 14:59:21 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-12-07
+-- Last update: 2007-12-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -369,8 +369,7 @@ BEGIN
   -- SERDES-MAIN FPGA interface
   -----------------------------------------------------------------------------
   ma(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mb(0)           <= s_evt_trg AND s_trigger;  -- this is for testing only!!!!
-  mb(16 DOWNTO 1) <= (OTHERS => 'Z');
+  mb(16 DOWNTO 0) <= (OTHERS => 'Z');
   mc(16 DOWNTO 0) <= (OTHERS => 'Z');
   md(16 DOWNTO 0) <= (OTHERS => 'Z');
   me(16 DOWNTO 0) <= (OTHERS => 'Z');
