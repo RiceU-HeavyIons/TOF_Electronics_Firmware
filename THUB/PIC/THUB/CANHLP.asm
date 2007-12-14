@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.13 2007-11-14 23:48:54 jschamba Exp $
+; $Id: CANHLP.asm,v 1.14 2007-12-14 00:27:58 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -15,6 +15,7 @@
 	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"
     #include "SRunner.inc"      ; SRunner functions
+    #include "I2CMPol.inc"      ; This include all required files and variables.                
     #include "THUB.def"         ; bit definitions
 	#include "CANHLP.def"		; configuration bits for CAN
 
@@ -223,8 +224,23 @@ is_it_TofReadPLDFirmwareID
     ;**************************************************************
     movf    RxData,W
     sublw   0x2
-    bnz     is_it_TofReadSiID  
+    bnz     is_it_TofReadTemp  
     call    TofReadPLDFirmwareID
+    return
+
+is_it_TofReadTemp
+    ;**************************************************************
+    ;****** Read Temperature Sensor********************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x3
+    ;*
+    ;* Effect:  
+    ;*
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x3
+    bnz     is_it_TofReadSiID  
+    call    TofReadTemp
     return
 
 is_it_TofReadSiID:
@@ -381,6 +397,7 @@ mainProgLoop1:
     decfsz  WREG,W
     bra     mainProgLoop1
     ; sendWriteResponse
+;JS correct this later;;;;
 ;    call    HLPCopyRxData
 ;    mCANSendWrResponse_IDL   RxDtLngth
     return   
@@ -532,22 +549,32 @@ handle_reprogram64:
     ;movwf   hlpCtr2
 
 repeat64:
-    ; now follow erase procedure on page 100 of manual
+    ; now follow erase procedure on page 93 of 18F8680 manual
+    ; (only the erase and write part)
     bsf     EECON1, EEPGD       ; point to Flash program memory
     bcf     EECON1, CFGS        ; access Flash program memory
     bsf     EECON1, WREN        ; write enable
     bsf     EECON1, FREE        ; enable Row Erase operation
     bcf     INTCON, GIE         ; disable interrupts
+
+    ; required sequence:
     movlw   55h
     movwf   EECON2              ; write 55h
     movlw   0AAh
     movwf   EECON2              ; write 0AAh
     bsf     EECON1, WR          ; start erase (CPU stall)
+    nop
+
     bsf     INTCON, GIE         ; re-enable interrupts
     tblrd*-                     ; dummy read decrement
 
-    ; now copy 64 bytes of buffer data to holding registers
-    movlw   .64                 ; number of bytes in holding register
+    ; the next section needs to be repeated 8 times for a
+    ; total of 64 bytes:
+    movlw   .8
+    movwf   hlpCtr2
+    ; now copy 8 bytes of buffer data to holding registers
+MCU_PROGRAM_LOOP:
+    movlw   .8                 ; number of bytes in holding register
     movwf   hlpCtr1
 WRITE_BYTE_TO_HREGS:
     movf    POSTINC0, w         ; get next byte of buffer data
@@ -557,7 +584,7 @@ WRITE_BYTE_TO_HREGS:
     decfsz  hlpCtr1             ; loop until buffers are full
     bra     WRITE_BYTE_TO_HREGS
 
-    ; now follow write procedure on page 103 of manual    
+    ; required sequence:
     bsf     EECON1, EEPGD       ; point to Flash program memory
     bcf     EECON1, CFGS        ; access Flash program memory
     bsf     EECON1, WREN        ; write enable
@@ -567,13 +594,12 @@ WRITE_BYTE_TO_HREGS:
     movlw   0AAh
     movwf   EECON2              ; write 0AAh
     bsf     EECON1, WR          ; start erase (CPU stall)
-    bsf     INTCON, GIE         ; re-enable interrupts
-    bcf     EECON1, WREN        ; disable write
+    nop
 
-    ; now TBLPTR and FSR0 should be advanced by 64, so repeat
-    ; until all 256 bytes are programed.
-    ;decfsz  hlpCtr2
-    ;bra     repeat64
+    bsf     INTCON, GIE         ; re-enable interrupts
+    decfsz  hlpCtr2             ; loop until done
+    bra     MCU_PROGRAM_LOOP
+    bcf     EECON1, WREN        ; disable write
 
     return
 
@@ -595,6 +621,21 @@ TofReadPLDFirmwareID:
     ; send read response with length 4
 	banksel	TXB0CON
     mCANSendRdResponse  4
+    return                  ; back to receiver loop
+    
+    ;**************************************************************
+    ;****** Read Temperature Sensor via I2C************************
+    ;**************************************************************
+TofReadTemp:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    call    LM73_ReadTemp
+
+    ; send read response with length 2
+	; banksel	TXB0CON ; is this needed?
+    mCANSendRdResponse  2
     return                  ; back to receiver loop
     
     ;**************************************************************
