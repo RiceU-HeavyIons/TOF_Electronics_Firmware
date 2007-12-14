@@ -1,4 +1,4 @@
-; $Id: init_18F8680.asm,v 1.1 2007-12-07 19:36:03 jschamba Exp $
+; $Id: init_18F8680.asm,v 1.2 2007-12-14 00:26:25 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -108,7 +108,7 @@ InitMicro:
 ;               6 : PGC
 ;               7 : PGD 
 
-	clrf    PORTC	; clear output data latches
+	clrf    PORTB	; clear output data latches
 
     setf    TRISB   ; all inputs
 
@@ -116,15 +116,16 @@ InitMicro:
 ; PORTC bit#:   0 : TP359   	(i)
 ;               1 : TP358   	(i)
 ;               2 : TP353   	(i)
-;               3 : SCL_MON 	(i) correct later (I2C bus)
-;               4 : SDA_MON 	(i) correct later (I2C bus)
+;               3 : SCL_MON 	(i) I2C Clock
+;               4 : SDA_MON 	(i) I2C Data 
 ;               5 : TP350   	(i)
 ;               6 : TP360   	(i)
 ;               7 : TP361   	(i)
 
-	clrf    PORTC	; clear output data latches
+	movlw   0xFF    ; all high
+	movwf   PORTC	; set output data latches
 
-    setf    TRISC   ; all inputs
+	setf    TRISC   ; all inputs
 
 ; port D is 8 bits wide
 ; PORTD bit#:   0 : UC_CPLD0	(i) (as_DATA or FP_TDO)
