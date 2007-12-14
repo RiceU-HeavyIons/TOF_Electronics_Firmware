@@ -9,7 +9,7 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
@@ -21,7 +21,7 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
@@ -33,7 +33,7 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
@@ -45,7 +45,7 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
@@ -57,11 +57,23 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
 [File005]
+Location=F:\Jo\TOF\THUB\PIC\THUB\I2CMPol.o
+Folder=Intermediary
+DeviceName=PIC18F8680
+LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
+LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
+LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
+PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SuiteArgsString=
+ToolArgsString=
+TraceCmdString=
+[File006]
 Location=F:\Jo\TOF\THUB\PIC\THUB\main.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -69,11 +81,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
-[File006]
+[File007]
 Location=F:\Jo\TOF\THUB\PIC\THUB\SRunner.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -81,11 +93,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
-[File007]
+[File008]
 Location=F:\Jo\TOF\THUB\PIC\THUB\CANHLP.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -93,11 +105,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
-[File008]
+[File009]
 Location=F:\Jo\TOF\THUB\PIC\THUB\JTAG.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -105,11 +117,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
-[File009]
+[File010]
 Location=F:\Jo\TOF\THUB\PIC\THUB\init_18F8680.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -117,11 +129,23 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=
 TraceCmdString=
-[File010]
+[File011]
+Location=F:\Jo\TOF\THUB\PIC\THUB\I2CMPol.lst
+Folder=Output
+DeviceName=PIC18F8680
+LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
+LanguageToolID={49D3CA3F-D9A3-4518-9943-226A347E8CC7}
+LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPAsmWin.exe
+PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SuiteArgsString=
+ToolArgsString=
+TraceCmdString=
+[File012]
 Location=F:\Jo\TOF\THUB\PIC\THUB\thub.cof
 Folder=Output
 DeviceName=PIC18F8680
@@ -129,11 +153,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPLink.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=/o"$(TARGETBASE).cof" /M"$(BINDIR_)$(TARGETBASE).map"
 TraceCmdString=
-[File011]
+[File013]
 Location=F:\Jo\TOF\THUB\PIC\THUB\thub.cod
 Folder=Output
 DeviceName=PIC18F8680
@@ -141,11 +165,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPLink.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=/o"$(TARGETBASE).cof" /M"$(BINDIR_)$(TARGETBASE).map"
 TraceCmdString=
-[File012]
+[File014]
 Location=F:\Jo\TOF\THUB\PIC\THUB\thub.hex
 Folder=Output
 DeviceName=PIC18F8680
@@ -153,11 +177,11 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPLink.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=/o"$(TARGETBASE).cof" /M"$(BINDIR_)$(TARGETBASE).map"
 TraceCmdString=
-[File013]
+[File015]
 Location=F:\Jo\TOF\THUB\PIC\THUB\thub.lst
 Folder=Output
 DeviceName=PIC18F8680
@@ -165,7 +189,7 @@ LanguageToolSuiteID={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 LanguageToolID={96C98149-AA1B-4CF9-B967-FAE79CAB663C}
 LanguageToolLocation=C:\Program Files\Microchip\MPASM Suite\MPLink.exe
 PPAD=$(BINDIR)||$(TMPDIR)||$(AINDIR)||$(INCDIR)||$(LIBDIR)||$(LKRDIR)||
-SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
+SOLK=<src>|main.asm|SRunner.asm|CANHLP.asm|JTAG.asm|init_18F8680.asm|I2CMPol.asm||<obj>||<lib>||<lkr>|18f8680i.lkr||
 SuiteArgsString=
 ToolArgsString=/o"$(TARGETBASE).cof" /M"$(BINDIR_)$(TARGETBASE).map"
 TraceCmdString=
