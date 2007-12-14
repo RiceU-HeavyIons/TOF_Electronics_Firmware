@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.21 2007-12-07 19:35:28 jschamba Exp $
+; $Id: main.asm,v 1.22 2007-12-14 00:25:05 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -39,6 +39,8 @@
 	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"       ; CAN HLP functions 
     #include "SRunner.inc"      ; SRunner functions
+    #include "I2CMPol.inc"      ;This include all required files and variables.                
+
     #include "THUB.def"         ; bit definitions
 
 	EXTERN InitMicro
@@ -236,6 +238,8 @@ Main:
     
 
 	call	initCAN			; initialize CAN interface
+
+    call    I2CMPolInit     ; Initialise MSSP Module
 
 ;-------------------------------
 ;Startup Message, Data ff,00,00,00, ID 0x407
