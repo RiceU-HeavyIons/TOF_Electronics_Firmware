@@ -1,4 +1,4 @@
-; $Id: init_18F8680.asm,v 1.2 2007-12-14 00:26:25 jschamba Exp $
+; $Id: init_18F8680.asm,v 1.3 2007-12-21 15:26:08 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -151,9 +151,10 @@ InitMicro:
 ;               4 : BWBOOST     (o)
 ;               5 : PLL_CAL     (o)
 ;               6 : FXDELAY     (0)
-;               7 : PLL_BYPASS  (o)
+;               7 : PLL_BYPASS  (o) (1 = bypass, 0 = PLL)
 
-	clrf    PORTE	; clear output data latches
+    movlw   0x80    ; PLL_BYPASS = 1
+	movwf   PORTE	; PLL_BYPASS high, all others low
 
 	movlw   0x03    ; bits 0,1 inputs, others output
 	movwf   TRISE
