@@ -1,4 +1,4 @@
-; $Id: I2CMPol.asm,v 1.1 2007-12-14 00:29:08 jschamba Exp $
+; $Id: I2CMPol.asm,v 1.2 2007-12-21 21:34:37 jschamba Exp $
 ;*******************************************************************************;
 ;*                                                                              ;
 ;*  This implements a generic library functionality to support I2C Master       ;
@@ -71,6 +71,128 @@ _I2CMPOLCODE    CODE                                                    ;
 ; HIGH LEVEL CODE:                              ;
                                                 ;
 ;***********************************************************************;
+ispPAC_ReadADC:
+    GLOBAL ispPAC_ReadADC
+
+    ;;; 0. Store I2C slave address in RxData[7]
+    movlw   ispPAC_ADDR_U122                ; Default is address for U122
+    btfsc   RxData+1, 0                     ; If RxData[1] bit 0 = 1
+    movlw   ispPAC_ADDR_U123                ; Use address for U123
+    btfsc   RxData+1, 2                     ; If RxData[1] bit 2 = 1
+    movlw   ispPAC_ADDR_U124                ; Use address for U124
+    movwf   RxData+7                        ; put in RxData[7]
+
+    ;;; 1. Setup ADC_MUX Register
+
+    ; Initiate I2C interaction
+    mI2CMPolStart                           ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send Slave address
+    movf    RxData+7,w                      ; Slave address (with write bit)
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Send pointer register address
+    movlw   0x09                            ; Send PointerRegister Address;
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Send register data
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    movf    RxData+2, w                     ; Send PointerRegister Data
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStop                            ; Send I2C Stop
+
+
+    ;;; 2. Read ADC_VALUE_LOW and put in TxData[0]
+
+    ; Initiate I2C interaction, when bus is idle
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStart                           ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send Slave address
+    movf    RxData+7,w                      ; Slave address (with write bit)
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Send Pointer Register address 
+    movlw   0x07                            ; Send PointerRegister Data;
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Restart
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolReStart                         ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send Slave address
+    movf    RxData+7,w                      ; Slave address
+    iorlw   1                               ; Set Read bit
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Read byte
+    mI2CMPolEnableReceiver                  ; Enable the receiver
+    call    I2CMPolIsDataReady              ; Wait till Data is ready
+    call    I2CMPolGet                      ; Read received value in W
+    movwf   TXB0D0                          ; Move byte to CAN TXB0 byte 1
+    mI2CMPolNoAck                           ; Send NoAck
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStop                            ; Send I2C Stop
+
+    ;;; 3. Read ADC_VALUE_HIGH and put in TxData[1]
+
+    ; second byte of ID register
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStart                           ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send slave address
+    movf    RxData+7,w                      ; Slave address (with write bit)
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Send pointer register address
+    movlw   0x08                            ; Send PointerRegister Data;
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Restart
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolReStart                         ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send slave address
+    movf    RxData+7,w                      ; Slave address
+    iorlw   1                               ; Set Read bit
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
+
+    ; Read byte
+    mI2CMPolEnableReceiver                  ; Enable the receiver
+    call    I2CMPolIsDataReady              ; Wait till Data is ready
+    call    I2CMPolGet                      ; Read received value in W
+    movwf   TXB0D1                          ; Move byte to CAN TXB0 byte 1
+    mI2CMPolNoAck                           ; Send NoAck
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStop                            ; Send I2C Stop
+
+    return
+
+;***********************************************************************;
 LM73_ReadTemp:
     GLOBAL LM73_ReadTemp
 
@@ -107,46 +229,55 @@ LM73_ReadTemp:
 
     return
 
-#ifdef READ_ID_REGISTER
-        mI2CMPolStart                           ;Send Start
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
+;***********************************************************************;
+LM73_ReadIDRegister:
+    GLOBAL LM73_ReadIDRegister
 
-        movlw   0x9C                            ;SlaveAddress(with write bit)
-        call    I2CMPolPut                      ;
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
-        call    I2CMPolIsAckReceived            ;Check whether Ack received
+    mI2CMPolStart                           ; Send Start
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
 
-        movlw   0x07                            ;Send PointerRegister Data;
-        call    I2CMPolPut                      ;
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
-        call    I2CMPolIsAckReceived            ;Check whether Ack received
+    ; Send Slave address
+    movlw   0x9C                            ; SlaveAddress(with write bit)
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
 
-
-        mI2CMPolReStart                         ;Send ReStart
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
-
-        movlw   0x9D                            ;Send SlaveAddress(with read bit)
-        call    I2CMPolPut                      ;
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
-        call    I2CMPolIsAckReceived            ;Check whether Ack received
+    ; Send Pointer Register Address
+    movlw   0x07                            ; Send PointerRegister Address;
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
 
 
-        mI2CMPolEnableReceiver                  ;Enable the receiver
-        call    I2CMPolIsDataReady              ;Wait till Data is ready
-        call    I2CMPolGet                      ;Read received value in W
-        movwf   TXB0D0                          ;
-        mI2CMPolAck                             ;Send Ack
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
+    mI2CMPolReStart                         ; Send ReStart
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+    ; Send Slave Address
+    movlw   0x9D                            ; Send SlaveAddress(with read bit)
+    call    I2CMPolPut                      ;
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    call    I2CMPolIsAckReceived            ; Check whether Ack received
 
 
-        mI2CMPolEnableReceiver                  ;Enable the receiver
-        call    I2CMPolIsDataReady              ;Wait till Data is ready
-        call    I2CMPolGet                      ;Read received value in W
-        movwf   TXB0D1                          ;
-        mI2CMPolNoAck                           ; Send NoAck
-        call    I2CMPolIsIdle                   ;Wait till bus becomes Idle
-        mI2CMPolStop                            ;
-#endif
+    ; Read first byte of ID register
+    mI2CMPolEnableReceiver                  ; Enable the receiver
+    call    I2CMPolIsDataReady              ; Wait till Data is ready
+    call    I2CMPolGet                      ; Read received value in W
+    movwf   TXB0D0                          ;
+    mI2CMPolAck                             ; Send Ack
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+
+
+    ; Read second byte of ID register
+    mI2CMPolEnableReceiver                  ; Enable the receiver
+    call    I2CMPolIsDataReady              ; Wait till Data is ready
+    call    I2CMPolGet                      ; Read received value in W
+    movwf   TXB0D1                          ;
+    mI2CMPolNoAck                           ; Send NoAck
+    call    I2CMPolIsIdle                   ; Wait till bus becomes Idle
+    mI2CMPolStop                            ; Send Stop bit
+
+    return
 
 ;***********************************************************************;
 ; LOW LEVEL CODE:                               ;
