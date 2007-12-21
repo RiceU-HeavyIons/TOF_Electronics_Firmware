@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.14 2007-12-14 00:27:58 jschamba Exp $
+; $Id: CANHLP.asm,v 1.15 2007-12-21 21:32:04 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -230,17 +230,39 @@ is_it_TofReadPLDFirmwareID
 
 is_it_TofReadTemp
     ;**************************************************************
-    ;****** Read Temperature Sensor********************************
+    ;****** Read Temperature Sensor *******************************
     ;* msgID = 0x404
     ;* RxData[0] = 0x3
+    ;* RxData[1] = 1 or 2 to read temperature sensor U131 or U132
     ;*
-    ;* Effect:  
+    ;* Effect: reads the temperature ADC from the LM73 chips, 
+    ;*          U131 if RxData[1] = 1, else U132 
     ;*
     ;**************************************************************
     movf    RxData,W
     sublw   0x3
-    bnz     is_it_TofReadSiID  
+    bnz     is_it_TofReadVoltage  
     call    TofReadTemp
+    return
+
+is_it_TofReadVoltage
+    ;**************************************************************
+    ;****** Read Voltage Monitor **********************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x4
+    ;* RxData[1] = 2,3, or 4 to read U122, U123, or U124
+    ;* RxData[2] = ADC_MUX register content
+    ;*
+    ;* Effect: Read ADC high and low from the ispPAC 1014A chips;
+    ;*          set RxData[1] to 2,3, or 4 to read U122, U123, 
+    ;*          or U124. Set RxData[2] to a value according to
+    ;*          the ispPAC manual page 26 for ADC_MUX register 
+    ;*
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x4
+    bnz     is_it_TofReadSiID  
+    call    TofReadVoltage
     return
 
 is_it_TofReadSiID:
@@ -624,7 +646,7 @@ TofReadPLDFirmwareID:
     return                  ; back to receiver loop
     
     ;**************************************************************
-    ;****** Read Temperature Sensor via I2C************************
+    ;****** Read Temperature Sensor via I2C ***********************
     ;**************************************************************
 TofReadTemp:
 	banksel	TXB0CON
@@ -638,6 +660,21 @@ TofReadTemp:
     mCANSendRdResponse  2
     return                  ; back to receiver loop
     
+    ;**************************************************************
+    ;****** Read Voltage Monitor via I2C **************************
+    ;**************************************************************
+TofReadVoltage:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    call    ispPAC_ReadADC
+
+    ; send read response with length 2
+	; banksel	TXB0CON ; is this needed?
+    mCANSendRdResponse  2
+    return                  ; back to receiver loop
+
     ;**************************************************************
     ;****** Read Firmware ID***************************************
     ;**************************************************************
