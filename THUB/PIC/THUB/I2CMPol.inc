@@ -1,4 +1,4 @@
-; $Id: I2CMPol.inc,v 1.1 2007-12-14 00:29:08 jschamba Exp $
+; $Id: I2CMPol.inc,v 1.2 2007-12-21 21:33:58 jschamba Exp $
 ;*******************************************************************************;
 ;*                                                                              ;
 ;*  This implements a generic library functionality to support I2C Master       ;
@@ -54,6 +54,8 @@
 ;***********************************************;
                                                 ;
         EXTERN  LM73_ReadTemp                   ;
+        EXTERN  ispPAC_ReadADC                  ;
+        EXTERN  LM73_ReadIDRegister             ;
                                                 ;
         EXTERN  I2CMPolInit                     ;
         EXTERN  I2CMPolIsIdle                   ;
