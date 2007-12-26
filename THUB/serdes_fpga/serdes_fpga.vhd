@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.16 2007-12-26 23:08:47 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.17 2007-12-26 23:29:29 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -39,7 +39,9 @@ ENTITY serdes_fpga IS
       mt                                                 : OUT   std_logic_vector(31 DOWNTO 0);
       mt_clk                                             : OUT   std_logic;
       -- ***** bus to main fpga *****
-      ma                                                 : INOUT std_logic_vector(35 DOWNTO 0);
+--      ma                                                 : INOUT std_logic_vector(35 DOWNTO 0);
+      maO                                                : OUT   std_logic_vector(16 DOWNTO 0);
+      maI                                                : IN    std_logic_vector(35 DOWNTO 17);
       m_all                                              : IN    std_logic_vector(3 DOWNTO 0);
       -- ***** SRAM *****
       -- ADDR[17] and ADDR[18] on schematic are actually TCK and TDO, so renamed 
@@ -302,30 +304,30 @@ BEGIN
   -----------------------------------------------------------------------------
   -- Serdes <-> Master Interface is implemented as 36 lines that are assigned
   -- as follows:
-  -- ma[15..0]  : 16 bit (Serdes FIFO) data from Serdes to Master (output)
-  -- ma[16]     : FIFO empty (output)
-  -- ma[18..17] : Select one of 4 Serdes FIFOs (input)
-  -- ma[19]     : Read Enable to FIFO (input)
+  -- maO[15..0]  : 16 bit (Serdes FIFO) data from Serdes to Master (output)
+  -- maO[16]     : FIFO empty (output)
+  -- maI[18..17] : Select one of 4 Serdes FIFOs (input)
+  -- maI[19]     : Read Enable to FIFO (input)
   --
-  -- ma[31..20] : 12 bit data from Master to Serdes (input)
-  -- ma[35..32] : 4 bit data type from Master (input)
+  -- maI[31..20] : 12 bit data from Master to Serdes (input)
+  -- maI[35..32] : 4 bit data type from Master (input)
   --
   -- Currently, there are 4 "data types" from Master to Serdes defined:
   --    "trigger", "bunch reset", "reset", and "load register"
   -- each action is triggered on leading edge of 40MHz clock and is followed
   -- by on clock of wait state (defined in smif.vhd)
 
-  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
+--  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
 
   -- SERDES (S) to MASTER (M) interface
-  ma(15 DOWNTO 0) <= s_smif_dataout;    -- 16bit data from S to M
-  ma(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
-  s_smif_select   <= ma(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
-  s_smif_rdenable <= ma(19);            -- read enable from M to S for FIFO
+  maO(15 DOWNTO 0) <= s_smif_dataout;    -- 16bit data from S to M
+  maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
+  s_smif_select   <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
+  s_smif_rdenable <= maI(19);            -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  s_smif_datain   <= ma(31 DOWNTO 20);  -- 12bit data from M to S 
-  s_smif_datatype <= ma(35 DOWNTO 32);  -- 4bit data type indicator from M to S
+  s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
+  s_smif_datatype <= maI(35 DOWNTO 32);  -- 4bit data type indicator from M to S
 
   smif_inst : smif PORT MAP (
     clk40mhz   => globalclk,
