@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.15 2007-12-07 21:52:13 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.16 2007-12-26 23:08:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-12-07
+-- Last update: 2007-12-26
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_arith.ALL;
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.ALL;
 LIBRARY lpm;
@@ -241,8 +242,29 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch3fifo_empty : std_logic;
   SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
 
+  SIGNAL s_ch0geo_areset_n : std_logic;
+  SIGNAL s_ch1geo_areset_n : std_logic;
+  SIGNAL s_ch2geo_areset_n : std_logic;
+  SIGNAL s_ch3geo_areset_n : std_logic;
+  SIGNAL s_geo_id0         : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id1         : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id2         : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id3         : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_sel0        : std_logic;
+  SIGNAL s_geo_sel1        : std_logic;
+  SIGNAL s_geo_sel2        : std_logic;
+  SIGNAL s_geo_sel3        : std_logic;
+
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
+
+  TYPE Geo_state_type IS
+    (g_data,
+     g_geo);
+  SIGNAL geoState0 : Geo_state_type;
+  SIGNAL geoState1 : Geo_state_type;
+  SIGNAL geoState2 : Geo_state_type;
+  SIGNAL geoState3 : Geo_state_type;
 
 BEGIN
 
@@ -297,7 +319,7 @@ BEGIN
 
   -- SERDES (S) to MASTER (M) interface
   ma(15 DOWNTO 0) <= s_smif_dataout;    -- 16bit data from S to M
-  ma(16)          <= s_smif_fifo_empty; -- FIFO empty indicator from S to M
+  ma(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
   s_smif_select   <= ma(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
   s_smif_rdenable <= ma(19);            -- read enable from M to S for FIFO
 
@@ -528,6 +550,36 @@ BEGIN
   -----------------------------------------------------------------------------
   -- Rx FIFOs
   -----------------------------------------------------------------------------
+
+  -- Channel 0 ----------------------------------------------------------------
+  geo0 : PROCESS (ch0_rclk, s_ch0geo_areset_n) IS
+  BEGIN
+    IF s_ch0geo_areset_n = '0' THEN     -- asynchronous reset (active low)
+      s_geo_sel0 <= '0';
+      
+    ELSIF ch0_rclk'event AND ch0_rclk = '1' THEN  -- rising clock edge
+      
+      CASE geoState0 IS
+        WHEN g_data =>                  -- change geographical data next clock
+          s_geo_sel0 <= '0';
+          IF (ch0_rxd(17) = '1') AND (ch0_rxd(15 DOWNTO 0) = X"C000") THEN
+            geoState0 <= g_geo;
+          END IF;
+
+        WHEN g_geo =>
+          s_geo_sel0 <= '1';
+          geoState0  <= g_data;
+          
+      END CASE;
+    END IF;
+  END PROCESS geo0;
+  s_ch0geo_areset_n <= s_ch0_locked;
+
+  WITH s_geo_sel0 SELECT
+    s_geo_id0 <=
+    CONV_STD_LOGIC_VECTOR(76, 7) WHEN '1',
+    ch0_rxd(7 DOWNTO 1)          WHEN OTHERS;
+  
   ch0fifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -542,18 +594,49 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk   => ch0_rclk,
-      rdreq   => s_ch0fifo_rdreq,
-      aclr    => s_ch0fifo_aclr,
-      rdclk   => pll_80mhz,
-      wrreq   => ch0_rxd(17),
-      data    => ch0_rxd(15 DOWNTO 0),
-      rdempty => s_ch0fifo_empty,
-      q       => s_ch0fifo_q
+      wrclk             => NOT ch0_rclk,  -- falling edge
+      rdreq             => s_ch0fifo_rdreq,
+      aclr              => s_ch0fifo_aclr,
+      rdclk             => pll_80mhz,
+      wrreq             => ch0_rxd(17),
+      data(15 DOWNTO 8) => ch0_rxd(15 DOWNTO 8),
+      data(7 DOWNTO 1)  => s_geo_id0,
+      data(0)           => ch0_rxd(0),
+      rdempty           => s_ch0fifo_empty,
+      q                 => s_ch0fifo_q
       );
 
   s_ch0fifo_aclr <= NOT s_ch0_locked;
 
+  -- Channel 1 ----------------------------------------------------------------
+  geo1 : PROCESS (ch1_rclk, s_ch1geo_areset_n) IS
+  BEGIN
+    IF s_ch1geo_areset_n = '0' THEN     -- asynchronous reset (active low)
+      s_geo_sel1 <= '0';
+      
+    ELSIF ch1_rclk'event AND ch1_rclk = '1' THEN  -- rising clock edge
+      
+      CASE geoState1 IS
+        WHEN g_data =>                  -- change geographical data next clock
+          s_geo_sel1 <= '0';
+          IF (ch1_rxd(17) = '1') AND (ch1_rxd(15 DOWNTO 0) = X"C000") THEN
+            geoState1 <= g_geo;
+          END IF;
+
+        WHEN g_geo =>
+          s_geo_sel1 <= '1';
+          geoState1  <= g_data;
+          
+      END CASE;
+    END IF;
+  END PROCESS geo1;
+  s_ch1geo_areset_n <= s_ch1_locked;
+
+  WITH s_geo_sel1 SELECT
+    s_geo_id1 <=
+    CONV_STD_LOGIC_VECTOR(77, 7) WHEN '1',
+    ch1_rxd(7 DOWNTO 1)          WHEN OTHERS;
+  
   ch1fifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -568,18 +651,49 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk   => ch1_rclk,
-      rdreq   => s_ch1fifo_rdreq,
-      aclr    => s_ch1fifo_aclr,
-      rdclk   => pll_80mhz,
-      wrreq   => ch1_rxd(17),
-      data    => ch1_rxd(15 DOWNTO 0),
-      rdempty => s_ch1fifo_empty,
-      q       => s_ch1fifo_q
+      wrclk             => NOT ch1_rclk,  -- falling clock edge
+      rdreq             => s_ch1fifo_rdreq,
+      aclr              => s_ch1fifo_aclr,
+      rdclk             => pll_80mhz,
+      wrreq             => ch1_rxd(17),
+      data(15 DOWNTO 8) => ch1_rxd(15 DOWNTO 8),
+      data(7 DOWNTO 1)  => s_geo_id1,
+      data(0)           => ch1_rxd(0),
+      rdempty           => s_ch1fifo_empty,
+      q                 => s_ch1fifo_q
       );
 
   s_ch1fifo_aclr <= NOT s_ch1_locked;
 
+  -- Channel 2 ----------------------------------------------------------------
+  geo2 : PROCESS (ch2_rclk, s_ch2geo_areset_n) IS
+  BEGIN
+    IF s_ch2geo_areset_n = '0' THEN     -- asynchronous reset (active low)
+      s_geo_sel2 <= '0';
+      
+    ELSIF ch2_rclk'event AND ch2_rclk = '1' THEN  -- rising clock edge
+      
+      CASE geoState2 IS
+        WHEN g_data =>                  -- change geographical data next clock
+          s_geo_sel2 <= '0';
+          IF (ch2_rxd(17) = '1') AND (ch2_rxd(15 DOWNTO 0) = X"C000") THEN
+            geoState2 <= g_geo;
+          END IF;
+
+        WHEN g_geo =>
+          s_geo_sel2 <= '1';
+          geoState2  <= g_data;
+          
+      END CASE;
+    END IF;
+  END PROCESS geo2;
+  s_ch2geo_areset_n <= s_ch2_locked;
+
+  WITH s_geo_sel2 SELECT
+    s_geo_id2 <=
+    CONV_STD_LOGIC_VECTOR(78, 7) WHEN '1',
+    ch2_rxd(7 DOWNTO 1)          WHEN OTHERS;
+  
   ch2fifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -594,18 +708,49 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk   => ch2_rclk,
-      rdreq   => s_ch2fifo_rdreq,
-      aclr    => s_ch2fifo_aclr,
-      rdclk   => pll_80mhz,
-      wrreq   => ch2_rxd(17),
-      data    => ch2_rxd(15 DOWNTO 0),
-      rdempty => s_ch2fifo_empty,
-      q       => s_ch2fifo_q
+      wrclk             => NOT ch2_rclk,  -- falling clock edge
+      rdreq             => s_ch2fifo_rdreq,
+      aclr              => s_ch2fifo_aclr,
+      rdclk             => pll_80mhz,
+      wrreq             => ch2_rxd(17),
+      data(15 DOWNTO 8) => ch2_rxd(15 DOWNTO 8),
+      data(7 DOWNTO 1)  => s_geo_id2,
+      data(0)           => ch2_rxd(0),
+      rdempty           => s_ch2fifo_empty,
+      q                 => s_ch2fifo_q
       );
 
   s_ch2fifo_aclr <= NOT s_ch2_locked;
 
+  -- Channel 3 ----------------------------------------------------------------
+  geo3 : PROCESS (ch3_rclk, s_ch3geo_areset_n) IS
+  BEGIN
+    IF s_ch3geo_areset_n = '0' THEN     -- asynchronous reset (active low)
+      s_geo_sel3 <= '0';
+      
+    ELSIF ch3_rclk'event AND ch3_rclk = '1' THEN  -- rising clock edge
+      
+      CASE geoState3 IS
+        WHEN g_data =>                  -- change geographical data next clock
+          s_geo_sel3 <= '0';
+          IF (ch3_rxd(17) = '1') AND (ch3_rxd(15 DOWNTO 0) = X"C000") THEN
+            geoState3 <= g_geo;
+          END IF;
+
+        WHEN g_geo =>
+          s_geo_sel3 <= '1';
+          geoState3  <= g_data;
+          
+      END CASE;
+    END IF;
+  END PROCESS geo3;
+  s_ch3geo_areset_n <= s_ch3_locked;
+
+  WITH s_geo_sel3 SELECT
+    s_geo_id3 <=
+    CONV_STD_LOGIC_VECTOR(79, 7) WHEN '1',
+    ch3_rxd(7 DOWNTO 1)          WHEN OTHERS;
+  
   ch3fifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -620,18 +765,21 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk   => ch3_rclk,
-      rdreq   => s_ch3fifo_rdreq,
-      aclr    => s_ch3fifo_aclr,
-      rdclk   => pll_80mhz,
-      wrreq   => ch3_rxd(17),
-      data    => ch3_rxd(15 DOWNTO 0),
-      rdempty => s_ch3fifo_empty,
-      q       => s_ch3fifo_q
+      wrclk             => NOT ch3_rclk,  -- falling clock edge
+      rdreq             => s_ch3fifo_rdreq,
+      aclr              => s_ch3fifo_aclr,
+      rdclk             => pll_80mhz,
+      wrreq             => ch3_rxd(17),
+      data(15 DOWNTO 8) => ch3_rxd(15 DOWNTO 8),
+      data(7 DOWNTO 1)  => s_geo_id3,
+      data(0)           => ch3_rxd(0),
+      rdempty           => s_ch3fifo_empty,
+      q                 => s_ch3fifo_q
       );
 
   s_ch3fifo_aclr <= NOT s_ch3_locked;
 
+  -- FIFO output decoded to Master FPGA lines -----------------
   rdreq_decode : decoder PORT MAP (
     input_sig => s_smif_rdenable,
     adr       => s_smif_select,
