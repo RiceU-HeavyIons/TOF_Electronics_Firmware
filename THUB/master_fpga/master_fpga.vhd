@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.14 2007-12-14 14:59:21 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.15 2007-12-27 15:32:43 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-12-14
+-- Last update: 2007-12-27
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -36,9 +36,15 @@ ENTITY master_fpga IS
       -- Mictor outputs
       mic        : OUT   std_logic_vector(28 DOWNTO 0);
       -- bus to serdes fpga's
-      ma, mb, mc : INOUT std_logic_vector(35 DOWNTO 0);
-      md, me, mf : INOUT std_logic_vector(35 DOWNTO 0);
-      mg, mh     : INOUT std_logic_vector(35 DOWNTO 0);
+--      ma, mb, mc : INOUT std_logic_vector(35 DOWNTO 0);
+--      md, me, mf : INOUT std_logic_vector(35 DOWNTO 0);
+--      mg, mh     : INOUT std_logic_vector(35 DOWNTO 0);
+      maI, mbI, mcI : IN std_logic_vector(16 DOWNTO 0);
+      mdI, meI, mfI : IN std_logic_vector(16 DOWNTO 0);
+      mgI, mhI      : IN std_logic_vector(16 DOWNTO 0);
+      maO, mbO, mcO : OUT std_logic_vector(35 DOWNTO 17);
+      mdO, meO, mfO : OUT std_logic_vector(35 DOWNTO 17);
+      mgO, mhO      : OUT std_logic_vector(35 DOWNTO 17);
       m_all      : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
       cpld       : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
@@ -368,22 +374,22 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
   -----------------------------------------------------------------------------
-  ma(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mb(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mc(16 DOWNTO 0) <= (OTHERS => 'Z');
-  md(16 DOWNTO 0) <= (OTHERS => 'Z');
-  me(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mf(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mg(16 DOWNTO 0) <= (OTHERS => 'Z');
-  mh(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  ma(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  mb(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  mc(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  md(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  me(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  mf(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  mg(16 DOWNTO 0) <= (OTHERS => 'Z');
+--  mh(16 DOWNTO 0) <= (OTHERS => 'Z');
 
 
   -- ***************** SERDES "A" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sa_smif_datain     <= ma(15 DOWNTO 0);   -- 16bit data from S to M
-  sa_smif_fifo_empty <= ma(16);         -- FIFO empty indicator from S to M
-  ma(18 DOWNTO 17)   <= sa_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  ma(19)             <= sa_smif_rdenable;  -- read enable from M to S for FIFO
+  sa_smif_datain     <= maI(15 DOWNTO 0);   -- 16bit data from S to M
+  sa_smif_fifo_empty <= maI(16);         -- FIFO empty indicator from S to M
+  maO(18 DOWNTO 17)   <= sa_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  maO(19)             <= sa_smif_rdenable;  -- read enable from M to S for FIFO
 
   serdesA_reader : serdes_reader PORT MAP (
     clk80mhz            => clk_80mhz,
@@ -398,8 +404,8 @@ BEGIN
   sAr_areset_n <= '1';
 
   -- MASTER (M) to SERDES (S) interface
-  ma(31 DOWNTO 20) <= sa_smif_dataout;  -- 12bit data from M to S 
-  ma(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
+  maO(31 DOWNTO 20) <= sa_smif_dataout;  -- 12bit data from M to S 
+  maO(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
 
 --  sa_smif_select   <= "00";
 --  sa_smif_rdenable <= '0';
@@ -407,98 +413,98 @@ BEGIN
 
   -- ***************** SERDES "B" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sb_smif_datain     <= mb(15 DOWNTO 0);   -- 16bit data from S to M
-  sb_smif_fifo_empty <= mb(16);         -- FIFO empty indicator from S to M
-  mb(18 DOWNTO 17)   <= sb_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  mb(19)             <= sb_smif_rdenable;  -- read enable from M to S for FIFO
+  sb_smif_datain     <= mbI(15 DOWNTO 0);   -- 16bit data from S to M
+  sb_smif_fifo_empty <= mbI(16);         -- FIFO empty indicator from S to M
+  mbO(18 DOWNTO 17)   <= sb_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mbO(19)             <= sb_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  mb(31 DOWNTO 20) <= sb_smif_dataout;  -- 12bit data from M to S 
-  mb(35 DOWNTO 32) <= sb_smif_datatype;  -- 4bit data type indicator from M to S
+  mbO(31 DOWNTO 20) <= sb_smif_dataout;  -- 12bit data from M to S 
+  mbO(35 DOWNTO 32) <= sb_smif_datatype;  -- 4bit data type indicator from M to S
 
   sb_smif_select   <= "00";
   sb_smif_rdenable <= '0';
 
   -- ***************** SERDES "C" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sc_smif_datain     <= mc(15 DOWNTO 0);   -- 16bit data from S to M
-  sc_smif_fifo_empty <= mc(16);         -- FIFO empty indicator from S to M
-  mc(18 DOWNTO 17)   <= sc_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  mc(19)             <= sc_smif_rdenable;  -- read enable from M to S for FIFO
+  sc_smif_datain     <= mcI(15 DOWNTO 0);   -- 16bit data from S to M
+  sc_smif_fifo_empty <= mcI(16);         -- FIFO empty indicator from S to M
+  mcO(18 DOWNTO 17)   <= sc_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mcO(19)             <= sc_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  mc(31 DOWNTO 20) <= sc_smif_dataout;  -- 12bit data from M to S 
-  mc(35 DOWNTO 32) <= sc_smif_datatype;  -- 4bit data type indicator from M to S
+  mcO(31 DOWNTO 20) <= sc_smif_dataout;  -- 12bit data from M to S 
+  mcO(35 DOWNTO 32) <= sc_smif_datatype;  -- 4bit data type indicator from M to S
 
   sc_smif_select   <= "00";
   sc_smif_rdenable <= '0';
 
   -- ***************** SERDES "D" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sd_smif_datain     <= md(15 DOWNTO 0);   -- 16bit data from S to M
-  sd_smif_fifo_empty <= md(16);         -- FIFO empty indicator from S to M
-  md(18 DOWNTO 17)   <= sd_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  md(19)             <= sd_smif_rdenable;  -- read enable from M to S for FIFO
+  sd_smif_datain     <= mdI(15 DOWNTO 0);   -- 16bit data from S to M
+  sd_smif_fifo_empty <= mdI(16);         -- FIFO empty indicator from S to M
+  mdO(18 DOWNTO 17)   <= sd_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mdO(19)             <= sd_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  md(31 DOWNTO 20) <= sd_smif_dataout;  -- 12bit data from M to S 
-  md(35 DOWNTO 32) <= sd_smif_datatype;  -- 4bit data type indicator from M to S
+  mdO(31 DOWNTO 20) <= sd_smif_dataout;  -- 12bit data from M to S 
+  mdO(35 DOWNTO 32) <= sd_smif_datatype;  -- 4bit data type indicator from M to S
 
   sd_smif_select   <= "00";
   sd_smif_rdenable <= '0';
 
   -- ***************** SERDES "E" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  se_smif_datain     <= me(15 DOWNTO 0);   -- 16bit data from S to M
-  se_smif_fifo_empty <= me(16);         -- FIFO empty indicator from S to M
-  me(18 DOWNTO 17)   <= se_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  me(19)             <= se_smif_rdenable;  -- read enable from M to S for FIFO
+  se_smif_datain     <= meI(15 DOWNTO 0);   -- 16bit data from S to M
+  se_smif_fifo_empty <= meI(16);         -- FIFO empty indicator from S to M
+  meO(18 DOWNTO 17)   <= se_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  meO(19)             <= se_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  me(31 DOWNTO 20) <= se_smif_dataout;  -- 12bit data from M to S 
-  me(35 DOWNTO 32) <= se_smif_datatype;  -- 4bit data type indicator from M to S
+  meO(31 DOWNTO 20) <= se_smif_dataout;  -- 12bit data from M to S 
+  meO(35 DOWNTO 32) <= se_smif_datatype;  -- 4bit data type indicator from M to S
 
   se_smif_select   <= "00";
   se_smif_rdenable <= '0';
 
   -- ***************** SERDES "F" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sf_smif_datain     <= mf(15 DOWNTO 0);   -- 16bit data from S to M
-  sf_smif_fifo_empty <= mf(16);         -- FIFO empty indicator from S to M
-  mf(18 DOWNTO 17)   <= sf_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  mf(19)             <= sf_smif_rdenable;  -- read enable from M to S for FIFO
+  sf_smif_datain     <= mfI(15 DOWNTO 0);   -- 16bit data from S to M
+  sf_smif_fifo_empty <= mfI(16);         -- FIFO empty indicator from S to M
+  mfO(18 DOWNTO 17)   <= sf_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mfO(19)             <= sf_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  mf(31 DOWNTO 20) <= sf_smif_dataout;  -- 12bit data from M to S 
-  mf(35 DOWNTO 32) <= sf_smif_datatype;  -- 4bit data type indicator from M to S
+  mfO(31 DOWNTO 20) <= sf_smif_dataout;  -- 12bit data from M to S 
+  mfO(35 DOWNTO 32) <= sf_smif_datatype;  -- 4bit data type indicator from M to S
 
   sf_smif_select   <= "00";
   sf_smif_rdenable <= '0';
 
   -- ***************** SERDES "G" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sg_smif_datain     <= mg(15 DOWNTO 0);   -- 16bit data from S to M
-  sg_smif_fifo_empty <= mg(16);         -- FIFO empty indicator from S to M
-  mg(18 DOWNTO 17)   <= sg_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  mg(19)             <= sg_smif_rdenable;  -- read enable from M to S for FIFO
+  sg_smif_datain     <= mgI(15 DOWNTO 0);   -- 16bit data from S to M
+  sg_smif_fifo_empty <= mgI(16);         -- FIFO empty indicator from S to M
+  mgO(18 DOWNTO 17)   <= sg_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mgO(19)             <= sg_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  mg(31 DOWNTO 20) <= sg_smif_dataout;  -- 12bit data from M to S 
-  mg(35 DOWNTO 32) <= sg_smif_datatype;  -- 4bit data type indicator from M to S
+  mgO(31 DOWNTO 20) <= sg_smif_dataout;  -- 12bit data from M to S 
+  mgO(35 DOWNTO 32) <= sg_smif_datatype;  -- 4bit data type indicator from M to S
 
   sg_smif_select   <= "00";
   sg_smif_rdenable <= '0';
 
   -- ***************** SERDES "H" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
-  sh_smif_datain     <= mh(15 DOWNTO 0);   -- 16bit data from S to M
-  sh_smif_fifo_empty <= mh(16);         -- FIFO empty indicator from S to M
-  mh(18 DOWNTO 17)   <= sh_smif_select;  -- select from M to S to select 1 of 4 FIFOs
-  mh(19)             <= sh_smif_rdenable;  -- read enable from M to S for FIFO
+  sh_smif_datain     <= mhI(15 DOWNTO 0);   -- 16bit data from S to M
+  sh_smif_fifo_empty <= mhI(16);         -- FIFO empty indicator from S to M
+  mhO(18 DOWNTO 17)   <= sh_smif_select;  -- select from M to S to select 1 of 4 FIFOs
+  mhO(19)             <= sh_smif_rdenable;  -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
-  mh(31 DOWNTO 20) <= sh_smif_dataout;  -- 12bit data from M to S 
-  mh(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
+  mhO(31 DOWNTO 20) <= sh_smif_dataout;  -- 12bit data from M to S 
+  mhO(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
 
   sh_smif_select   <= "00";
   sh_smif_rdenable <= '0';
@@ -575,9 +581,7 @@ BEGIN
   mic(19 DOWNTO 0)  <= s_triggerword;
   mic(20)           <= s_trigger;
   mic(21)           <= s_evt_trg;
---  mic(27 DOWNTO 22) <= (OTHERS => '0');
---  mic(63 DOWNTO 32) <= ddl_data;
---  mic(31)           <= ddlfifo_empty;
+  mic(27 DOWNTO 22) <= (OTHERS => '0');
 
   -- mictor clock
   mic(28) <= globalclk;
