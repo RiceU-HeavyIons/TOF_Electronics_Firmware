@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.4 2007-12-03 23:27:14 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.5 2007-12-28 16:16:03 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2007-12-03
+-- Last update: 2007-12-04
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ ENTITY TCPU_B_TOP IS
       c2_ddaisy_data    : IN  std_logic;  -- N1
       c2_ddaisy_tok_out : IN  std_logic;  -- N2 token in/out is from pov of TDC
       c2_dstatus        : IN  std_logic_vector(1 DOWNTO 0);   -- N4, N3
-      pld_crc_error     : OUT std_logic;  -- D3
+--      pld_crc_error     : OUT std_logic;  -- D3. This one is assigned by Quartus for CRC error
       c2_ddaisy_tok_in  : OUT std_logic;  -- N6  token in/out is from pov of TDC
       c2_ddaisy_clk     : OUT std_logic;  -- P1
       c2_tray_token     : OUT std_logic;
@@ -335,16 +335,15 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL serdesFifo_q     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_serdes_data    : std_logic_vector(17 DOWNTO 0);
 
+  SIGNAL s_rhic_clk : std_logic;
+
 ----------------------------------------------------------
 
 BEGIN
 
   -- these signals have no source, so set them to some default now
-  c1_clk_10mhz      <= '0';
-  c2_clk_10mhz      <= '0';
   c2_mcu_resetb     <= '1';
   trig_data_out     <= (OTHERS => '0');
-  pld_crc_error     <= '0';
   pld_serout        <= '0';
   c1_ddaisy_clk     <= '0';
   c1_dspare_out1    <= '0';
@@ -377,7 +376,12 @@ BEGIN
   -- GLOBAL CLOCK BUFFER
   global_clk_buffer1 : global PORT MAP (a_in => pld_clkin1, a_out => clk_40mhz);
   global_clk_buffer2 : global PORT MAP (a_in => pll_20mhz, a_out => clk_20mhz);
+  global_clk_buffer3 : global PORT MAP (a_in => trig_clk_in_clk, a_out => s_rhic_clk);
 
+  c1_clk_10mhz      <= s_rhic_clk;
+  c2_clk_10mhz      <= s_rhic_clk;
+  
+  
 --**********************************************************************************
 -- Control for serial THUB link
 --********************************************************************************** 
