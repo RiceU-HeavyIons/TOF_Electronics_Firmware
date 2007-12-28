@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.5 2007-12-28 16:16:03 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.6 2007-12-28 20:25:49 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2007-12-04
+-- Last update: 2007-12-28
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -228,7 +228,9 @@ ARCHITECTURE a OF TCPU_B_TOP IS
       areset_n   : IN  std_logic;
       ch_ready   : OUT std_logic;
       pll_locked : IN  std_logic;
-      trigger    : OUT std_logic);
+      trigger    : OUT std_logic;
+      bunch_rst  : OUT std_logic
+      );
   END COMPONENT serdes_if;
 
   COMPONENT serdes_serializer IS
@@ -328,6 +330,7 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL trigger_pulse   : std_logic;
   SIGNAL serdes_areset_n : std_logic;
   SIGNAL serdes_ready    : std_logic;
+  SIGNAL serdes_b_rst    : std_logic;
 
   SIGNAL serdesFifo_rdreq : std_logic;
   SIGNAL serdesFifo_aclr  : std_logic;
@@ -408,7 +411,9 @@ BEGIN
     areset_n   => serdes_areset_n,
     ch_ready   => serdes_ready,
     pll_locked => pll_locked,
-    trigger    => serdes_trigger);
+    trigger    => serdes_trigger,
+    bunch_rst  => serdes_b_rst
+    );
 
 ------------------------------------------------------------------------------------
 --      MCU INTERFACE : BIDIR BUFFER AND ADDRESS DECODE
@@ -467,6 +472,7 @@ BEGIN
   load_config3  <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(3);
   load_config14 <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(14);
 
+  -- Configuration Register Address 0x0
   config0_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -479,6 +485,7 @@ BEGIN
       aclr   => reg_clr,
       q      => config0_data);
 
+  -- Configuration Register Address 0x1
   config1_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -491,9 +498,14 @@ BEGIN
       aclr   => reg_clr,
       q      => config1_data);
 
+  -- use this  register to reset all state machines (data = 0x1)
+  -- and clear buffers (data = 0x2)
   sm_reset <= config1_data(0);
   buf_clr  <= config1_data(1);
 
+  -- Configuration Register Address 0x2
+  -- use to enable readout (data = 0x1)
+  -- and to switch to serdes-triggers (data = 0x2)
   config2_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -506,6 +518,7 @@ BEGIN
       aclr   => reg_clr,
       q      => config2_data);
 
+  -- Configuration Register Address 0x3
   config3_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -518,6 +531,10 @@ BEGIN
       aclr   => reg_clr,
       q      => config3_data);
 
+  -- Configuration Register Address 0xe
+  -- used for internal pulser (data = 0x8 - 0xf)
+  -- and bunch reset (data = 0x10)
+  -- switch to AUX path for readout (data = 0x80)
   config14_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -565,7 +582,7 @@ BEGIN
     config1_data             WHEN x"1",
     config2_data             WHEN x"2",
     config3_data             WHEN x"3",
-    x"77" WHEN x"7",
+    x"77"                    WHEN x"7",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",
     mcu_fifo_q(23 DOWNTO 16) WHEN x"d",
@@ -610,6 +627,7 @@ BEGIN
     END IF;
   END PROCESS;
 
+  -- this determines the internal pulser frequency:
   WITH config14_data(2 DOWNTO 0) SELECT
     internal_pulser <=
     test_pls_bits(19) WHEN "000",
@@ -639,6 +657,7 @@ BEGIN
 
   test_pulse <= dff2_q AND (NOT dff3_q);
 
+  -- select between internal/test-pulse triggers and Serdes triggers
   WITH config2_data(1) SELECT
     trigger_pulse <=
     test_pulse     WHEN '0',
@@ -655,7 +674,6 @@ BEGIN
       shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
-
 
 ---------------------------------------------------------------------------
 -- Muxes for AUX / NORMAL serial readout for cable1
@@ -684,7 +702,7 @@ BEGIN
   c1_trigger       <= trigger_delay(2);
   c1_ddaisy_tok_in <= c1Sel_token_in AND (NOT config14_data(7));
   c1_tray_token    <= c1Sel_token_in AND config14_data(7);
-  c1_bunch_rst     <= config14_data(4);
+  c1_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c1_sm_reset      <= sm_reset;
 --  c1_rdout_en       <= test_pulse;
   c1_rdout_en      <= config2_data(0);
@@ -754,7 +772,7 @@ BEGIN
   c2_trigger       <= trigger_delay(2);
   c2_ddaisy_tok_in <= c2Sel_token_in AND (NOT config14_data(7));
   c2_tray_token    <= c2Sel_token_in AND config14_data(7);
-  c2_bunch_rst     <= config14_data(4);
+  c2_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c2_sm_reset      <= sm_reset;
 --  c2_rdout_en       <= test_pulse;
   c2_rdout_en      <= config2_data(0);
