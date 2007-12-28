@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.16 2007-12-27 19:33:39 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.17 2007-12-28 22:19:55 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-12-27
+-- Last update: 2007-12-28
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -265,6 +265,7 @@ ARCHITECTURE a OF master_fpga IS
 
   SIGNAL ddl_data            : std_logic_vector (31 DOWNTO 0);
   SIGNAL ddlfifo_usedw       : std_logic_vector (12 DOWNTO 0);
+  SIGNAL ddlfifo_aclr        : std_logic;
   SIGNAL ddlfifo_empty       : std_logic;
   SIGNAL rd_ddl_fifo         : std_logic;
   SIGNAL ddlfifo_almost_full : boolean;
@@ -636,13 +637,17 @@ BEGIN
       rdclk   => NOT globalclk,
       rdreq   => rd_ddl_fifo,
       data    => sAr_outdata,
+      aclr    => ddlfifo_aclr,
       rdempty => ddlfifo_empty,
       wrusedw => ddlfifo_usedw,
       q       => ddl_data
       );
 
+  ddlfifo_aclr <= s_runReset;            -- clear at Begin Run
+
   -- if there are less than 512 words left:
   ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 9) = "1111");
+
 
   -- (need a state machine to control what goes into this FIFO, i.e. switch
   -- from Serdes to Serdes) 
