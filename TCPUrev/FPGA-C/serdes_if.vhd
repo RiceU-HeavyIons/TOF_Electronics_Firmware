@@ -1,4 +1,4 @@
--- $Id: serdes_if.vhd,v 1.1 2007-11-21 16:43:46 jschamba Exp $
+-- $Id: serdes_if.vhd,v 1.2 2007-12-28 20:25:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_IF
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-11-14
--- Last update: 2007-11-20
+-- Last update: 2007-12-28
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -41,7 +41,8 @@ ENTITY serdes_if IS
       areset_n   : IN  std_logic;
       ch_ready   : OUT std_logic;
       pll_locked : IN  std_logic;
-      trigger    : OUT std_logic
+      trigger    : OUT std_logic;
+      bunch_rst  : OUT std_logic
 
       );
 END serdes_if;
@@ -51,7 +52,7 @@ ARCHITECTURE a OF serdes_if IS
 
   COMPONENT serdes_poweron IS
     PORT (
-      clk         : IN  std_logic;      -- Master clock
+      clk         : IN  std_logic;      -- Master (40MHz) clock
       tpwdn_n     : OUT std_logic;
       rpwdn_n     : OUT std_logic;
       sync        : OUT std_logic;
@@ -77,7 +78,15 @@ ARCHITECTURE a OF serdes_if IS
   SIGNAL ff2_aresetn : std_logic;
   SIGNAL trg_phase0  : std_logic;
   SIGNAL trg_phase1  : std_logic;
-  
+
+  FUNCTION bool2sl (b : boolean) RETURN std_logic IS
+  BEGIN
+    IF b THEN
+      RETURN '1';
+    ELSE
+      RETURN '0';
+    END IF;
+  END bool2sl;
 
 BEGIN
 
@@ -86,7 +95,8 @@ BEGIN
   txd <= s_txd;                         -- from poweron state machine
 
   ch_ready <= s_ch_ready;
-  
+
+  -- Power Up State Machine for Serdes
   poweron_ch0 : serdes_poweron PORT MAP (
     clk         => clk,
     tpwdn_n     => tpwdn_n,
@@ -103,6 +113,14 @@ BEGIN
   ff1_aresetn <= s_ch_ready;
   ff2_aresetn <= s_ch_ready;
 
+------------------------------------------------------------------------------------
+--      Trigger decode
+------------------------------------------------------------------------------------
+  -- trigger command from Serdes:
+  -- rxd[17:16] = 11 or 10, so just check for rxd[17]
+  -- rxd[15:12] = 0000 (phase A) or 0001 (phase B)
+
+  -- Trigger Phase A: sync to 40MHz and shorten
   ff1 : PROCESS (clk, ff1_aresetn)
   BEGIN
     IF ff1_aresetn = '0' THEN           -- asynchronous reset (active low)
@@ -119,6 +137,7 @@ BEGIN
 
   trg_phase0 <= dff2_q AND (NOT dff3_q);
 
+  -- Trigger Phase B: sync to 40MHz and shorten
   ff2 : PROCESS (clk, ff2_aresetn)
   BEGIN
     IF ff2_aresetn = '0' THEN           -- asynchronous reset (active low)
@@ -137,6 +156,13 @@ BEGIN
 
   trg_phase1 <= dff6_q AND (NOT dff7_q);
 
+  -- Final trigger is either Phase A or Phase B trigger
   trigger <= trg_phase1 OR trg_phase0;
+
+------------------------------------------------------------------------------------
+--      Bunch Reset decode
+------------------------------------------------------------------------------------
+
+  bunch_rst <= s_ch_ready AND bool2sl(rxd(17 DOWNTO 12) = "010010");
   
 END a;
