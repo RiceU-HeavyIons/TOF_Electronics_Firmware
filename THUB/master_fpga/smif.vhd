@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.3 2007-12-07 19:43:38 jschamba Exp $
+-- $Id: smif.vhd,v 1.4 2007-12-31 20:58:39 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : master-serdes-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-06-18
--- Last update: 2007-12-07
+-- Last update: 2007-12-31
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -64,17 +64,6 @@ END smif;
 
 ARCHITECTURE a OF smif IS
 
-  COMPONENT mux16x4 IS
-    PORT (
-      data0x : IN  std_logic_vector (15 DOWNTO 0);
-      data1x : IN  std_logic_vector (15 DOWNTO 0);
-      data2x : IN  std_logic_vector (15 DOWNTO 0);
-      data3x : IN  std_logic_vector (15 DOWNTO 0);
-      sel    : IN  std_logic_vector (1 DOWNTO 0);
-      result : OUT std_logic_vector (15 DOWNTO 0));
-  END COMPONENT mux16x4;
-
-
   TYPE   State_type IS (State0, State1a, State1, State2, State3, State4);
   SIGNAL state : State_type;
 
@@ -101,131 +90,134 @@ BEGIN
 
   s_dataout_reg <= "0000" & serdes_reg;  -- extend SERDES register data to 12bit
 
+  -- Master->Serdes data type
+  -- 1. Trigger:
   s_datatype_trig <= "0011" WHEN evt_trg = '1' ELSE
                      "0000";            -- only valid when actual trigger occurs
 
-  -- bunch reset
+  -- 2. Bunch reset
   s_datatype_br <= "0101" WHEN is_bunch_reset = '1' ELSE
                    "0000";
 
-  -- SERDES register load only valid during reg_load
+  -- 3. SERDES register load only valid during reg_load
   s_datatype_reg <= "1010" WHEN is_regload = '1' ELSE
                     "0000";
 
+  -- 4. Reset
   s_datatype_rst <= "0000";             -- data type 'reset' is not yet implemented
 
   -- muxes for the "Master <-> Serdes" interface data: 12 bit data & 4 bit data type
-  muxa_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sa_sel,
-      result(15 DOWNTO 12) => data_type_a,
-      result(11 DOWNTO 0)  => dataout_a);
+  -- Serdes A:
+  WITH sa_sel SELECT
+    dataout_a <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxb_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sb_sel,
-      result(15 DOWNTO 12) => data_type_b,
-      result(11 DOWNTO 0)  => dataout_b);
+  WITH sa_sel SELECT
+    data_type_a <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes B:
+  WITH sb_sel SELECT
+    dataout_b <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxc_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sc_sel,
-      result(15 DOWNTO 12) => data_type_c,
-      result(11 DOWNTO 0)  => dataout_c);
+  WITH sb_sel SELECT
+    data_type_b <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes C:
+  WITH sc_sel SELECT
+    dataout_c <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxd_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sd_sel,
-      result(15 DOWNTO 12) => data_type_d,
-      result(11 DOWNTO 0)  => dataout_d);
+  WITH sc_sel SELECT
+    data_type_c <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes D:
+  WITH sd_sel SELECT
+    dataout_d <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxe_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => se_sel,
-      result(15 DOWNTO 12) => data_type_e,
-      result(11 DOWNTO 0)  => dataout_e);
+  WITH sd_sel SELECT
+    data_type_d <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes E:
+  WITH se_sel SELECT
+    dataout_e <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxf_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sf_sel,
-      result(15 DOWNTO 12) => data_type_f,
-      result(11 DOWNTO 0)  => dataout_f);
+  WITH se_sel SELECT
+    data_type_e <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes F:
+  WITH sf_sel SELECT
+    dataout_f <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxg_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sg_sel,
-      result(15 DOWNTO 12) => data_type_g,
-      result(11 DOWNTO 0)  => dataout_g);
+  WITH sf_sel SELECT
+    data_type_f <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes G:
+  WITH sg_sel SELECT
+    dataout_g <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
 
-  muxh_inst : mux16x4
-    PORT MAP (
-      data0x(15 DOWNTO 12) => s_datatype_trig,
-      data0x(11 DOWNTO 0)  => trgtoken,
-      data1x(15 DOWNTO 12) => s_datatype_reg,
-      data1x(11 DOWNTO 0)  => s_dataout_reg,
-      data2x(15 DOWNTO 12) => s_datatype_br,
-      data2x(11 DOWNTO 0)  => (OTHERS => '0'),
-      data3x(15 DOWNTO 12) => s_datatype_rst,
-      data3x(11 DOWNTO 0)  => (OTHERS => '0'),
-      sel                  => sh_sel,
-      result(15 DOWNTO 12) => data_type_h,
-      result(11 DOWNTO 0)  => dataout_h);
+  WITH sg_sel SELECT
+    data_type_g <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
+  
+  -- Serdes H:
+  WITH sh_sel SELECT
+    dataout_h <=
+    trgtoken       WHEN "00",
+    s_dataout_reg  WHEN "01",
+    "000000000000" WHEN OTHERS;
+
+  WITH sh_sel SELECT
+    data_type_h <=
+    s_datatype_trig WHEN "00",
+    s_datatype_reg  WHEN "01",
+    s_datatype_br   WHEN "10",
+    s_datatype_rst  WHEN OTHERS;
 
   -- Process to control the "Serdes <-> Master" interface line Mux's
   smif_sm : PROCESS (clock, areset_n) IS
@@ -262,13 +254,13 @@ BEGIN
       is_regload     <= '0';
 
       CASE state IS
-        WHEN State0 =>
+        WHEN State0 =>                  -- Trigger happens in this state
           IF (sreg_load = '1') AND (sreg_addr = "1001") THEN
-            state <= State2;
+            state <= State2;            -- bunch reset
           ELSIF sreg_load = '1' THEN
-            state <= State1a;
+            state <= State1a;           -- Serdes register load
           ELSIF rstin = '1' THEN        -- active high
-            state <= State2;
+            state <= State2;            -- bunch reset
           END IF;
         WHEN State1a =>                 -- wait a little to let register settle
           IF sreg_addr = "0001" THEN sa_sel    <= "01";
@@ -312,7 +304,7 @@ BEGIN
 
           state <= State3;
         WHEN State3 =>                  -- Bunch reset (continued)
-          rstout <= '0';                -- active low
+          rstout <= '0';                -- active high
 
           state <= State4;
         WHEN State4 =>                  -- wait for load and reset to go back to default again
