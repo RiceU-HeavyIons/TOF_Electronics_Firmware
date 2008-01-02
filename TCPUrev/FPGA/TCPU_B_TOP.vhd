@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.7 2008-01-02 17:03:15 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.8 2008-01-02 17:38:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2007-12-28
+-- Last update: 2008-01-02
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -276,6 +276,7 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL mcu_fifo_full   : std_logic;
   SIGNAL mcu_fifo_parity : std_logic;
   SIGNAL mcu_fifo_rdreq  : std_logic;
+  SIGNAL mcu_fifo_wrreq  : std_logic;
   SIGNAL mcu_fifo_q      : std_logic_vector (31 DOWNTO 0);
   SIGNAL addr_equ        : std_logic_vector(15 DOWNTO 0);
 
@@ -368,6 +369,7 @@ BEGIN
   test6             <= '0';
   test5             <= '0';
   test3             <= '0';
+  test2             <= '0';
   reg_clr           <= '0';
 
   pld_led <= NOT pll_locked;
@@ -512,6 +514,7 @@ BEGIN
   -- Configuration Register Address 0x2
   -- use to enable readout (data = 0x1)
   -- and to switch to serdes-triggers (data = 0x2)
+  -- turn off CANbus data packets (data = 0x4)
   config2_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -828,6 +831,12 @@ BEGIN
   
   finalFifo_aclr <= buf_clr;
 
+  -- this let's one turn off CANbus data packets
+  WITH config2_data(2) SELECT
+    mcu_fifo_wrreq <=
+    finalFifo_wrreq WHEN '0',
+    '0'             WHEN OTHERS;
+
   mcu_fifo : scfifo
     GENERIC MAP (
       add_ram_output_register => "ON",
@@ -845,7 +854,7 @@ BEGIN
       rdreq => mcu_fifo_rdreq,
       aclr  => finalFifo_aclr,
       clock => clk_40mhz,
-      wrreq => finalFifo_wrreq,
+      wrreq => mcu_fifo_wrreq,
       data  => finalFifo_data,
       empty => mcu_fifo_empty,
       q     => mcu_fifo_q,
