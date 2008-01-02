@@ -1,4 +1,4 @@
-# $Id: TCPU_B_TOP.qsf,v 1.7 2008-01-02 17:04:26 jschamba Exp $
+# $Id: TCPU_B_TOP.qsf,v 1.8 2008-01-02 17:37:42 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -221,3 +221,6 @@ set_global_assignment -name VHDL_FILE TCPU_B_TOP.vhd
 set_global_assignment -name CRC_ERROR_CHECKING ON
 set_global_assignment -name ERROR_CHECK_FREQUENCY_DIVISOR 1
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ser_rec_clk
+set_instance_assignment -name CLOCK_SETTINGS ser_rec_clk -to ser_rec_clk
