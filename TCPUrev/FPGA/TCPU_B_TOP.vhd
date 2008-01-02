@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.6 2007-12-28 20:25:49 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.7 2008-01-02 17:03:15 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -160,10 +160,10 @@ ENTITY TCPU_B_TOP IS
       test7  : OUT std_logic;
       test6  : OUT std_logic;
       test5  : OUT std_logic;
-      test4  : IN  std_logic;
+      test4  : OUT std_logic;
       test3  : OUT std_logic;
-      test2  : IN  std_logic;
-      test1  : IN  std_logic;
+      test2  : OUT std_logic;
+      test1  : OUT std_logic;
 
       pld_serin  : IN  std_logic;       -- AB4
       pld_serout : OUT std_logic        -- AB5
@@ -338,6 +338,9 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL serdesFifo_q     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_serdes_data    : std_logic_vector(17 DOWNTO 0);
 
+  SIGNAL s_c1_trigger : std_logic;
+  SIGNAL s_c2_trigger : std_logic;
+
   SIGNAL s_rhic_clk : std_logic;
 
 ----------------------------------------------------------
@@ -383,7 +386,10 @@ BEGIN
 
   c1_clk_10mhz      <= s_rhic_clk;
   c2_clk_10mhz      <= s_rhic_clk;
-  
+
+  -- test header:
+  test1 <= pld_clkin1;
+  test4 <= s_c1_trigger;
   
 --**********************************************************************************
 -- Control for serial THUB link
@@ -674,6 +680,8 @@ BEGIN
       shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
+  s_c1_trigger <= trigger_delay(2);
+  s_c2_trigger <= trigger_delay(2);
 
 ---------------------------------------------------------------------------
 -- Muxes for AUX / NORMAL serial readout for cable1
@@ -699,7 +707,7 @@ BEGIN
 -- CABLE 1 READOUT
 ---------------------------------------------------------------------------
 
-  c1_trigger       <= trigger_delay(2);
+  c1_trigger       <= s_c1_trigger;
   c1_ddaisy_tok_in <= c1Sel_token_in AND (NOT config14_data(7));
   c1_tray_token    <= c1Sel_token_in AND config14_data(7);
   c1_bunch_rst     <= config14_data(4) OR serdes_b_rst;
@@ -769,7 +777,7 @@ BEGIN
 -- CABLE 2 READOUT
 ---------------------------------------------------------------------------
   
-  c2_trigger       <= trigger_delay(2);
+  c2_trigger       <= s_c2_trigger;
   c2_ddaisy_tok_in <= c2Sel_token_in AND (NOT config14_data(7));
   c2_tray_token    <= c2Sel_token_in AND config14_data(7);
   c2_bunch_rst     <= config14_data(4) OR serdes_b_rst;
