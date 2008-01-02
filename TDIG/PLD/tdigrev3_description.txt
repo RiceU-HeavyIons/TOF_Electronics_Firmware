@@ -1,3 +1,0 @@
-Revision name:      tdigrev3
-Created on:         Saturday, October 09, 2004
-Based on :          TDIG_PLD
