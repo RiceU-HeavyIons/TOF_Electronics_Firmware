@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.4 2007-12-07 19:28:51 jschamba Exp $
+-- $Id: cpld.vhd,v 1.5 2008-01-03 17:41:14 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2007-11-26
+-- Last update: 2008-01-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -38,8 +38,9 @@ ENTITY cpld IS
       tdo_fp                 : IN  std_logic;  -- JTAG Input
       -- buses to micro and master FPGA
       cpld                   : OUT std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus
-      uc_cpld                : IN  std_logic_vector(10 DOWNTO 1);  -- CPLD/Micro bus
+      uc_cpld                : IN  std_logic_vector(9 DOWNTO 1);  -- CPLD/Micro bus
       uc_cpld0               : OUT std_logic;  -- CPLD/Micro bus
+      uc_cpld10              : OUT std_logic;  -- CPLD/Micro bus
       -- switch, button and LEDs
       cpld_sw                : IN  std_logic_vector(3 DOWNTO 0);  -- switch
       cpld_led               : OUT std_logic_vector(3 DOWNTO 0);  -- LEDs
@@ -76,6 +77,7 @@ ARCHITECTURE a OF cpld IS
   SIGNAL uc_tck      : std_logic;
   SIGNAL uc_tdi      : std_logic;
   SIGNAL uc_tms      : std_logic;
+  SIGNAL s_crc_error : std_logic;
   SIGNAL count       : integer RANGE 0 TO 9;
   
 BEGIN
@@ -87,7 +89,8 @@ BEGIN
   cpld(3 DOWNTO 0) <= cpld_sw;
   cpld(9 DOWNTO 4) <= (OTHERS => '0');
 
-  uc_cpld0   <= uc_data;
+  -- Micro-CPLD bus signal definitions:
+  uc_cpld0   <= uc_data;                -- output
   uc_dclk    <= uc_cpld(1);
   uc_asdi    <= uc_cpld(2);
   uc_ncs     <= uc_cpld(3);
@@ -96,11 +99,13 @@ BEGIN
   as_enable  <= uc_cpld(6);
   s_ctrClk   <= uc_cpld(8);
   s_ctrRst   <= uc_cpld(9);
+  uc_cpld10  <= s_crc_error;            -- output
 
-
-
+  -- counter to select the FPGA to operate ON
+  -- increased by pulsing uc_cpld(8) (s_ctrClk)
+  -- reset by pulsing uc_cpld(9) (s_ctrRst)
   selCounter : PROCESS (s_ctrClk, s_ctrRst) IS
-  BEGIN  -- PROCESS selCounter
+  BEGIN
     IF s_ctrRst = '1' THEN              -- asynchronous reset (active high)
       count <= 0;
     ELSIF s_ctrClk'event AND s_ctrClk = '1' THEN  -- rising clock edge
@@ -108,18 +113,21 @@ BEGIN
     END IF;
   END PROCESS selCounter;
 
+  -- input signals assigned according to value in "count"
   gen1 : FOR i IN 0 TO 8 GENERATE
     s_dclk(i) <= uc_dclk WHEN count = i ELSE '0';
     s_ncs(i)  <= uc_ncs  WHEN count = i ELSE '1';
     s_asdi(i) <= uc_asdi WHEN count = i ELSE '0';
   END GENERATE gen1;
 
+  -- JTAG signals for count = 9
   uc_tck <= uc_cpld(1) WHEN count = 9 ELSE '0';
   uc_tdi <= uc_cpld(2) WHEN count = 9 ELSE '1';
   uc_tms <= uc_cpld(3) WHEN count = 9 ELSE '1';
 
-  -- uc_data <= datao(count);
-  uc_data <= tdo_fp WHEN count = 9 ELSE datao(count);
+  -- output signals
+  uc_data     <= tdo_fp WHEN count = 9 ELSE datao(count);
+  s_crc_error <= '0' WHEN count = 9    ELSE crc_error(count);
 
   -- SERDES FPGAs A,B,C,D (1,2,3,4) are on nce and nconfig
   -- SERDES FPGAs E,F,G,H (5,6,7,8) are on nce_2 and nconfig_2
@@ -137,6 +145,7 @@ BEGIN
   nce_2     <= s_nce_2     WHEN as_enable = '1' ELSE 'Z';
   nconfig_2 <= s_nconfig_2 WHEN as_enable = '1' ELSE 'Z';
 
+  -- these function as JTAG signals to the FPGA JTAG chain
   tck_fp <= uc_tck WHEN as_enable = '1' ELSE 'Z';
   tms_fp <= uc_tms WHEN as_enable = '1' ELSE 'Z';
   tdi_fp <= uc_tdi WHEN as_enable = '1' ELSE 'Z';
