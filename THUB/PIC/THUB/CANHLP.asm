@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.15 2007-12-21 21:32:04 jschamba Exp $
+; $Id: CANHLP.asm,v 1.16 2008-01-03 17:50:03 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -199,6 +199,18 @@ is_it_programPLD:
 TofHandleRead:
     GLOBAL TofHandleRead
 
+is_it_TofReadReg:
+    ;**************************************************************
+    ;****** Read PLD Register *************************************
+    ;* msgID = 0x404
+    ;* RxData[0] = Register address, 0x80 < address < 0xff
+    ;**************************************************************
+    btfss   RxData, 7       ; if ( 0x80 < RxData[0] < 0xFF )
+    bra     is_it_TOFReadMCUFirmwareID  ; false; next test
+    call    TofReadReg      ; true: read PLD register
+    return
+
+is_it_TOFReadMCUFirmwareID:
     ;**************************************************************
     ;****** Read MCU Firmware ID **********************************
     ;* msgID = 0x404
@@ -218,6 +230,7 @@ is_it_TofReadPLDFirmwareID
     ;****** Read PLD Firmware ID **********************************
     ;* msgID = 0x404
     ;* RxData[0] = 0x2
+    ;* RxData[1] = [0..8] - FPGA number to read
     ;*
     ;* Effect: read Usercode of FPGA pointed to by RxData[1] 
     ;*          and return as a Read Response
@@ -261,8 +274,33 @@ is_it_TofReadVoltage
     ;**************************************************************
     movf    RxData,W
     sublw   0x4
-    bnz     is_it_TofReadSiID  
+    bnz     is_it_TofReadCRCErrors  
     call    TofReadVoltage
+    return
+
+is_it_TofReadCRCErrors:
+    ;**************************************************************
+    ;****** Read CRC Errors ***************************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x5
+    ;*
+    ;* Effect: Read CRC_Error pins on FPGAs and return as a
+    ;*          two byte response. Main FPGA is in Byte 1 bit 0,
+    ;*          Serdes FPGAs are in byte 0, bits 0 - 7 (A - H)
+    ;*
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x5
+    bnz     is_it_TofReadSiID  
+
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    call    asReadCRC_Error
+
+    ; send read response with length 2
+    mCANSendRdResponse  2
     return
 
 is_it_TofReadSiID:
@@ -278,19 +316,8 @@ is_it_TofReadSiID:
     ;**************************************************************
     movf    RxData,W
     sublw   0x27
-    bnz     is_it_TofReadReg  
+    bnz     unknown_message  
     call    TofReadSiID
-    return
-
-is_it_TofReadReg:
-    ;**************************************************************
-    ;****** Read PLD Register *************************************
-    ;* msgID = 0x404
-    ;* RxData[0] = Register address, 0x80 < address < 0xff
-    ;**************************************************************
-    btfss   RxData, 7       ; if ( 0x80 < RxData[0] < 0xFF )
-    bra     unknown_message ; false: send error message
-    call    TofReadReg      ; true: read PLD register
     return
 
     ;**************************************************************
