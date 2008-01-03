@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "09:44:55  DECEMBER 16, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION 7.2
+set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP1"
 
 # Pin & Location Assignments
 # ==========================
@@ -126,7 +126,8 @@ set_location_assignment PIN_22 -to uc_cpld[6]
 set_location_assignment PIN_21 -to uc_cpld[7]
 set_location_assignment PIN_19 -to uc_cpld[8]
 set_location_assignment PIN_18 -to uc_cpld[9]
-set_location_assignment PIN_16 -to uc_cpld[10]
+#set_location_assignment PIN_16 -to uc_cpld[10]
+set_location_assignment PIN_16 -to uc_cpld10
 set_location_assignment PIN_11 -to tp174
 set_location_assignment PIN_31 -to tp19
 set_location_assignment PIN_37 -to tp175
