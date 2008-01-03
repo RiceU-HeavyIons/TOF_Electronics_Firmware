@@ -1,4 +1,4 @@
-; $Id: init_18F8680.asm,v 1.3 2007-12-21 15:26:08 jschamba Exp $
+; $Id: init_18F8680.asm,v 1.4 2008-01-03 17:51:54 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -209,7 +209,7 @@ InitMicro:
 
 ; PORTJ bit#:   0 : UC_CPLD8	(o) (as_Clk)
 ;               1 : UC_CPLD9	(o) (as_Rst)
-;               2 : UC_CPLD10	(o)
+;               2 : UC_CPLD10	(i) (CRC_Error)
 ;               3 : TP340   	(i)
 ;               4 : TP362   	(i)
 ;               5 : TP363   	(i)
@@ -218,7 +218,7 @@ InitMicro:
 
 	clrf    PORTJ	; clear output data latches
 
-	movlw   0xF8    ; bits 0,1,2 outputs, others inputs 
+	movlw   0xFC    ; bits 0,1 outputs, others inputs 
 	movwf   TRISJ
 
 
