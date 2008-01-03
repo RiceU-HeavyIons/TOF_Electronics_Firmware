@@ -1,4 +1,4 @@
-; $Id: SRunner.asm,v 1.8 2007-11-05 15:32:04 jschamba Exp $
+; $Id: SRunner.asm,v 1.9 2008-01-03 17:50:59 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.asm                                               *
@@ -478,6 +478,40 @@ asCheckStatus2:
     ; byte write finished
     set_NCS
     return 
+
+;***********************************************************
+;* Function:    asReadCRC_Error
+;*
+;* Description: Read CRC pin from FPGAs and put into CAN
+;*              transmit buffers byte 0 and 1
+;*
+;* Inputs:      None
+;*
+;* Outputs:     None
+;*
+;************************************************************
+asReadCRC_Error:
+    GLOBAL  asReadCRC_Error
+
+    clrf    TXB0D0     ; clear TX buffer Byte 0
+    clrf    TXB0D1     ; clear TX buffer Byte 1
+
+    pulse_asRst         ; pulse asReset pin
+    btfsc   crcError
+    bsf     TXB0D1,0    ; set Byte 1 to "1"
+
+    movlw   .8
+    movwf   __asTemp1 
+
+asReadCRCLoop:
+    pulse_asClk
+    rrncf   TXB0D0, F   ; Shift bits to the right
+    btfsc   crcError    ; check if CRC Error bit is set
+    bsf     TXB0D0,7    ; set highest bit in TXB0 Byte 0
+    decfsz  __asTemp1, F
+    bra     asReadCRCLoop
+
+    return
 
     END
    

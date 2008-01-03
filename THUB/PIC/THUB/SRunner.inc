@@ -1,4 +1,4 @@
-; $Id: SRunner.inc,v 1.4 2007-04-03 20:32:41 jschamba Exp $
+; $Id: SRunner.inc,v 1.5 2008-01-03 17:50:59 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      SRunner.inc                                               *
@@ -15,6 +15,7 @@
 
 #ifndef  AS_PRIOR_SOURCE
     EXTERN  asReadSiliconID, asStart, asDone, asBulkErase, asProgram256, asSelect
+    EXTERN  asReadCRC_Error
 
     EXTERN  asOneByte, asAddress, asDataBytes
 #endif
