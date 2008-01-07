@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.8 2008-01-02 17:38:27 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.9 2008-01-07 15:09:12 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-01-02
+-- Last update: 2008-01-07
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -176,6 +176,8 @@ END TCPU_B_TOP;  -- end.entity
 -- ********************************************************************
 
 ARCHITECTURE a OF TCPU_B_TOP IS
+
+  CONSTANT TCPU_VERSION : std_logic_vector := x"78";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -591,7 +593,7 @@ BEGIN
     config1_data             WHEN x"1",
     config2_data             WHEN x"2",
     config3_data             WHEN x"3",
-    x"77"                    WHEN x"7",
+    TCPU_VERSION             WHEN x"7",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",
     mcu_fifo_q(23 DOWNTO 16) WHEN x"d",
@@ -716,7 +718,7 @@ BEGIN
   c1_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c1_sm_reset      <= sm_reset;
 --  c1_rdout_en       <= test_pulse;
-  c1_rdout_en      <= config2_data(0);
+  c1_rdout_en      <= config2_data(0) AND trigger_pulse;
   
   c1_ser_rdo_inst : ser_rdo PORT MAP (
     strb_out       => c1Sel_strob_out,
@@ -786,7 +788,7 @@ BEGIN
   c2_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c2_sm_reset      <= sm_reset;
 --  c2_rdout_en       <= test_pulse;
-  c2_rdout_en      <= config2_data(0);
+  c2_rdout_en      <= config2_data(0) AND trigger_pulse;
   
   c2_ser_rdo_inst : ser_rdo PORT MAP (
     strb_out       => c2Sel_strob_out,
