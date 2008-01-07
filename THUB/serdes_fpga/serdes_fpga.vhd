@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.17 2007-12-26 23:29:29 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.18 2008-01-07 15:13:59 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2007-12-26
+-- Last update: 2008-01-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -608,7 +608,7 @@ BEGIN
       q                 => s_ch0fifo_q
       );
 
-  s_ch0fifo_aclr <= NOT s_ch0_locked;
+  s_ch0fifo_aclr <= NOT s_ch0_locked OR m_all(0);
 
   -- Channel 1 ----------------------------------------------------------------
   geo1 : PROCESS (ch1_rclk, s_ch1geo_areset_n) IS
@@ -665,7 +665,7 @@ BEGIN
       q                 => s_ch1fifo_q
       );
 
-  s_ch1fifo_aclr <= NOT s_ch1_locked;
+  s_ch1fifo_aclr <= NOT s_ch1_locked OR m_all(0);
 
   -- Channel 2 ----------------------------------------------------------------
   geo2 : PROCESS (ch2_rclk, s_ch2geo_areset_n) IS
@@ -722,7 +722,7 @@ BEGIN
       q                 => s_ch2fifo_q
       );
 
-  s_ch2fifo_aclr <= NOT s_ch2_locked;
+  s_ch2fifo_aclr <= NOT s_ch2_locked OR m_all(0);
 
   -- Channel 3 ----------------------------------------------------------------
   geo3 : PROCESS (ch3_rclk, s_ch3geo_areset_n) IS
@@ -779,7 +779,7 @@ BEGIN
       q                 => s_ch3fifo_q
       );
 
-  s_ch3fifo_aclr <= NOT s_ch3_locked;
+  s_ch3fifo_aclr <= NOT s_ch3_locked OR m_all(0);
 
   -- FIFO output decoded to Master FPGA lines -----------------
   rdreq_decode : decoder PORT MAP (
