@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.17 2007-12-28 22:19:55 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.18 2008-01-07 15:11:35 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2007-12-28
+-- Last update: 2008-01-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -383,8 +383,6 @@ BEGIN
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
 
-  -- common bus to SERDES FPGA's is driven by CPLD (which sends the buttons)
-  m_all <= cpld(3 DOWNTO 0);
 
   -----------------------------------------------------------------------------
   -- Mictor signals
@@ -425,7 +423,8 @@ BEGIN
     rdreq_out           => sa_smif_rdenable,
     wrreq_out           => sAr_wrreq_out,
     outdata             => sAr_outdata);
-  sAr_areset_n <= '1';
+  -- sAr_areset_n <= '1';
+  sAr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
 
   -- MASTER (M) to SERDES (S) interface
   maO(31 DOWNTO 20) <= sa_smif_dataout;   -- 12bit data from M to S 
@@ -718,6 +717,9 @@ BEGIN
       sreg_load   => s_sreg_load,
       reg_clr     => s_reg_clr,
       uc_data_out => s_uc_o);
+
+  -- common bus to SERDES FPGA's is driven by register 2 bits 0 - 3 
+  m_all <= s_reg2(3 DOWNTO 0);
 
   -- ********************************************************************************
   -- TCD interface
