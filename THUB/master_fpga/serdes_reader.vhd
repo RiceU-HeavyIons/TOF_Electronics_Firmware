@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.5 2007-12-27 20:23:15 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.6 2008-01-07 15:12:40 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2007-12-27
+-- Last update: 2008-01-04
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -88,7 +88,7 @@ BEGIN  -- ARCHITECTURE a
       rdreq_out     <= '0';
       block_end     := false;
       TState        <= SWaitTrig;
-      busy          <= '0';             -- default is "busy"
+      busy          <= '1';             -- default is "not busy"
       trgFifo_rdreq <= '0';
       
     ELSIF clk80mhz'event AND clk80mhz = '1' THEN  -- rising clock edge
@@ -102,6 +102,7 @@ BEGIN  -- ARCHITECTURE a
         -- wait for trigger
         WHEN SWaitTrig =>
           busy <= '1';                  -- "not busy" until trigger
+          ctr  := 0;
           IF evt_trg = '1' THEN
             TState <= SFifoChk;
           END IF;
@@ -116,7 +117,7 @@ BEGIN  -- ARCHITECTURE a
         WHEN STagWrd =>
           s_outdata   <= X"DEADFACE";
           s_wrreq_out <= '1';
-
+          
           TState <= SRdSerA;
 
           -- deserialize the 16bit input stream into 32bit output
@@ -127,7 +128,7 @@ BEGIN  -- ARCHITECTURE a
         WHEN SRdSerA =>
           rdreq_out <= '1';
 
-          IF indata(15 DOWNTO 8) = X"E0" THEN
+          IF (indata(15 DOWNTO 8) = X"E0") AND (ctr = 0) THEN
             block_end := true;
           END IF;
 
