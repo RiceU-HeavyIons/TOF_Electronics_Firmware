@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.18 2008-01-07 15:11:35 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.19 2008-01-09 20:53:29 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-04
+-- Last update: 2008-01-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -336,6 +336,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sh_smif_rdenable   : std_logic;
   SIGNAL sh_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
+  SIGNAL s_tcd_busy_n       : std_logic;
 
   SIGNAL sArfifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL sArfifo_empty : std_logic;
@@ -380,6 +381,7 @@ BEGIN
 
   -- Other defaults
 
+  tcd_busy_p <= s_tcd_busy_n;              -- active "low"
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
 
@@ -418,7 +420,7 @@ BEGIN
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
-    busy                => tcd_busy_p,
+    busy                => s_tcd_busy_n,
     rdsel_out           => sa_smif_select,
     rdreq_out           => sa_smif_rdenable,
     wrreq_out           => sAr_wrreq_out,
@@ -426,6 +428,7 @@ BEGIN
   -- sAr_areset_n <= '1';
   sAr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
 
+  
   -- MASTER (M) to SERDES (S) interface
   maO(31 DOWNTO 20) <= sa_smif_dataout;   -- 12bit data from M to S 
   maO(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
@@ -552,7 +555,7 @@ BEGIN
       serdes_reg  => s_serdes_reg,
       sreg_addr   => s_sreg_addr,
       sreg_load   => s_sreg_load,
-      evt_trg     => (s_evt_trg AND s_trigger),
+      evt_trg     => (s_evt_trg AND s_trigger AND s_tcd_busy_n),
       trgtoken    => s_triggerword(11 DOWNTO 0),
       rstin       => rstin,
       rstout      => rstout,
