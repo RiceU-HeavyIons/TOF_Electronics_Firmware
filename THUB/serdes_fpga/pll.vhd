@@ -164,7 +164,7 @@ BEGIN
 		clk2_divide_by => 1,
 		clk2_duty_cycle => 50,
 		clk2_multiply_by => 2,
-		clk2_phase_shift => "4688",
+		clk2_phase_shift => "0",
 		compensate_clock => "CLK0",
 		gate_lock_signal => "NO",
 		inclk0_input_frequency => 25000,
@@ -294,7 +294,7 @@ END SYN;
 -- Retrieval info: PRIVATE: PHASE_RECONFIG_INPUTS_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PHASE_SHIFT0 STRING "0.00000000"
 -- Retrieval info: PRIVATE: PHASE_SHIFT1 STRING "120.00000000"
--- Retrieval info: PRIVATE: PHASE_SHIFT2 STRING "135.00000000"
+-- Retrieval info: PRIVATE: PHASE_SHIFT2 STRING "0.00000000"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_STEP_ENABLED_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT0 STRING "deg"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT1 STRING "deg"
@@ -347,7 +347,7 @@ END SYN;
 -- Retrieval info: CONSTANT: CLK2_DIVIDE_BY NUMERIC "1"
 -- Retrieval info: CONSTANT: CLK2_DUTY_CYCLE NUMERIC "50"
 -- Retrieval info: CONSTANT: CLK2_MULTIPLY_BY NUMERIC "2"
--- Retrieval info: CONSTANT: CLK2_PHASE_SHIFT STRING "4688"
+-- Retrieval info: CONSTANT: CLK2_PHASE_SHIFT STRING "0"
 -- Retrieval info: CONSTANT: COMPENSATE_CLOCK STRING "CLK0"
 -- Retrieval info: CONSTANT: GATE_LOCK_SIGNAL STRING "NO"
 -- Retrieval info: CONSTANT: INCLK0_INPUT_FREQUENCY NUMERIC "25000"
