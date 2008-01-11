@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.19 2008-01-09 20:53:29 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.20 2008-01-11 17:47:03 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-07
+-- Last update: 2008-01-11
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -91,6 +91,17 @@ ARCHITECTURE a OF master_fpga IS
         locked : OUT std_logic
         );
   END COMPONENT;
+
+  -- this one for testing only:
+--  COMPONENT pll
+--    PORT
+--      (
+--        inclk0 : IN  std_logic := '0';
+--        c0     : OUT std_logic;
+--        c1     : OUT std_logic;
+--        locked : OUT std_logic
+--        );
+--  END COMPONENT;
 
   COMPONENT serdes_registers IS
     PORT (
@@ -361,6 +372,13 @@ BEGIN
     inclk0 => clk,
     c0     => clk_80mhz,
     locked => pll_locked);
+
+  -- this one for testing only:
+--  pll_instance : pll PORT MAP (
+--    inclk0 => clk,
+--    c0     => clk_80mhz,
+--    c1     => mic(28),
+--    locked => pll_locked);
 
 
   -- counter to divide clock
@@ -634,7 +652,7 @@ BEGIN
       wrsync_delaypipe       => 4
       )
     PORT MAP (
-      wrclk   => NOT clk_80mhz,
+      wrclk   => clk_80mhz,
       wrreq   => sAr_wrreq_out,
       rdclk   => NOT globalclk,
       rdreq   => rd_ddl_fifo,
