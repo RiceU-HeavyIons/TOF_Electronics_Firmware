@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.7 2008-01-11 17:46:12 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.8 2008-01-11 21:49:40 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -207,7 +207,7 @@ BEGIN  -- ARCHITECTURE a
           rdreq_out   <= '1';
           sl_areset_n <= '1';
 
-          IF s_shiftout(31 DOWNTO 24) = X"E0" THEN
+          IF (s_shiftout(15 DOWNTO 8) = X"E0") AND (s_prelatch = '1') THEN
             block_end <= true;
           END IF;
 
