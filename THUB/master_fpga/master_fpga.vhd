@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.21 2008-01-14 15:05:27 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.22 2008-01-14 20:46:51 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -56,14 +56,14 @@ ENTITY master_fpga IS
       tcd_strb      : IN    std_logic;  -- RHIC strobe
       tcd_clk       : IN    std_logic;  -- RHIC Data Clock
       -- SIU
-      fbctrl_n      : INOUT std_logic;  -- INOUT std_logic;
-      fbten_n       : INOUT std_logic;  -- INOUT std_logic;
+      fbctrl_n      : INOUT std_logic;
+      fbten_n       : INOUT std_logic;
       fidir         : IN    std_logic;
       fiben_n       : IN    std_logic;
       filf_n        : IN    std_logic;
       fobsy_n       : OUT   std_logic;
       foclk         : OUT   std_logic;
-      fbd           : INOUT std_logic_vector(31 DOWNTO 0);  -- INOUT std_logic_vector(31 DOWNTO 0)
+      fbd           : INOUT std_logic_vector(31 DOWNTO 0);
       -- Level-2 SIU
       l2_fbctrl_n   : INOUT std_logic;
       l2_fbten_n    : INOUT std_logic;
@@ -130,27 +130,35 @@ ARCHITECTURE a OF master_fpga IS
 
   COMPONENT uc_fpga_interface IS
     PORT (
-      clock       : IN  std_logic;
-      arstn       : IN  std_logic;
-      dir         : IN  std_logic;
-      ctl         : IN  std_logic;
-      ds          : IN  std_logic;
-      uc_data_in  : IN  std_logic_vector(7 DOWNTO 0);
-      reg1        : IN  std_logic_vector(7 DOWNTO 0);
-      reg2        : IN  std_logic_vector(7 DOWNTO 0);
-      reg3        : IN  std_logic_vector(7 DOWNTO 0);
-      reg4        : IN  std_logic_vector(7 DOWNTO 0);
-      reg5        : IN  std_logic_vector(7 DOWNTO 0);
-      reg6        : IN  std_logic_vector(7 DOWNTO 0);
-      reg7        : IN  std_logic_vector(7 DOWNTO 0);
-      reg8        : IN  std_logic_vector(7 DOWNTO 0);
-      serdes_reg  : IN  std_logic_vector(7 DOWNTO 0);
-      reg_addr    : OUT std_logic_vector(2 DOWNTO 0);
-      sreg_addr   : OUT std_logic_vector(3 DOWNTO 0);
-      reg_load    : OUT std_logic;
-      sreg_load   : OUT std_logic;
-      reg_clr     : OUT std_logic;
-      uc_data_out : OUT std_logic_vector(7 DOWNTO 0)
+      clock         : IN  std_logic;
+      arstn         : IN  std_logic;
+      dir           : IN  std_logic;
+      ctl           : IN  std_logic;
+      ds            : IN  std_logic;
+      uc_data_in    : IN  std_logic_vector(7 DOWNTO 0);
+      reg1          : IN  std_logic_vector(7 DOWNTO 0);
+      reg2          : IN  std_logic_vector(7 DOWNTO 0);
+      reg3          : IN  std_logic_vector(7 DOWNTO 0);
+      reg4          : IN  std_logic_vector(7 DOWNTO 0);
+      reg5          : IN  std_logic_vector(7 DOWNTO 0);
+      reg6          : IN  std_logic_vector(7 DOWNTO 0);
+      reg7          : IN  std_logic_vector(7 DOWNTO 0);
+      reg8          : IN  std_logic_vector(7 DOWNTO 0);
+      serdes_reg    : IN  std_logic_vector(7 DOWNTO 0);
+      serdes_statma : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmb : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmc : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmd : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statme : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmf : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmg : IN  std_logic_vector(3 DOWNTO 0);
+      serdes_statmh : IN  std_logic_vector(3 DOWNTO 0);
+      reg_addr      : OUT std_logic_vector(2 DOWNTO 0);
+      sreg_addr     : OUT std_logic_vector(3 DOWNTO 0);
+      reg_load      : OUT std_logic;
+      sreg_load     : OUT std_logic;
+      reg_clr       : OUT std_logic;
+      uc_data_out   : OUT std_logic_vector(7 DOWNTO 0)
       );
   END COMPONENT uc_fpga_interface;
 
@@ -400,7 +408,7 @@ BEGIN
 
   -- Other defaults
 
-  tcd_busy_p <= s_tcd_busy_n;              -- active "low"
+  tcd_busy_p <= s_tcd_busy_n;           -- active "low"
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
 
@@ -445,10 +453,9 @@ BEGIN
     rdreq_out           => sa_smif_rdenable,
     wrreq_out           => sAr_wrreq_out,
     outdata             => sAr_outdata);
-  -- sAr_areset_n <= '1';
   sAr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
 
-  
+
   -- MASTER (M) to SERDES (S) interface
   maO(31 DOWNTO 20) <= sa_smif_dataout;   -- 12bit data from M to S 
   maO(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
@@ -665,14 +672,10 @@ BEGIN
       q       => ddl_data
       );
 
-  ddlfifo_aclr <= s_runReset;            -- clear at Begin Run
+  ddlfifo_aclr <= s_runReset;           -- clear at Begin Run
 
   -- if there are less than 512 words left:
   ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 9) = "1111");
-
-
-  -- (need a state machine to control what goes into this FIFO, i.e. switch
-  -- from Serdes to Serdes) 
 
   -- ********************************************************************************
   -- Micro Controller interface
@@ -719,27 +722,35 @@ BEGIN
   -- Micro - FPGA interface state machine
   uc_fpga_inst : uc_fpga_interface
     PORT MAP (
-      clock       => globalclk,
-      arstn       => arstn,
-      dir         => s_ucDIR,
-      ctl         => s_ucCTL,
-      ds          => s_ucDS,
-      uc_data_in  => s_uc_i,
-      reg1        => s_reg1,
-      reg2        => s_reg2,
-      reg3        => s_reg3,
-      reg4        => s_reg4,
-      reg5        => s_reg5,
-      reg6        => s_reg6,
-      reg7        => s_reg7,
-      reg8        => s_reg8,
-      serdes_reg  => s_serdes_reg,
-      reg_addr    => s_reg_addr,
-      sreg_addr   => s_sreg_addr,
-      reg_load    => s_reg_load,
-      sreg_load   => s_sreg_load,
-      reg_clr     => s_reg_clr,
-      uc_data_out => s_uc_o);
+      clock         => globalclk,
+      arstn         => arstn,
+      dir           => s_ucDIR,
+      ctl           => s_ucCTL,
+      ds            => s_ucDS,
+      uc_data_in    => s_uc_i,
+      reg1          => s_reg1,
+      reg2          => s_reg2,
+      reg3          => s_reg3,
+      reg4          => s_reg4,
+      reg5          => s_reg5,
+      reg6          => s_reg6,
+      reg7          => s_reg7,
+      reg8          => s_reg8,
+      serdes_reg    => s_serdes_reg,
+      serdes_statma => sa_smif_datain(13 DOWNTO 10),
+      serdes_statmb => sb_smif_datain(13 DOWNTO 10),
+      serdes_statmc => sc_smif_datain(13 DOWNTO 10),
+      serdes_statmd => sd_smif_datain(13 DOWNTO 10),
+      serdes_statme => se_smif_datain(13 DOWNTO 10),
+      serdes_statmf => sf_smif_datain(13 DOWNTO 10),
+      serdes_statmg => sg_smif_datain(13 DOWNTO 10),
+      serdes_statmh => sh_smif_datain(13 DOWNTO 10),
+      reg_addr      => s_reg_addr,
+      sreg_addr     => s_sreg_addr,
+      reg_load      => s_reg_load,
+      sreg_load     => s_sreg_load,
+      reg_clr       => s_reg_clr,
+      uc_data_out   => s_uc_o);
 
   -- common bus to SERDES FPGA's is driven by register 2 bits 0 - 3 
   m_all <= s_reg2(3 DOWNTO 0);
