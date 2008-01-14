@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.1 2008-01-11 17:35:07 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.2 2008-01-14 20:53:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-01-11
+-- Last update: 2008-01-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -40,8 +40,9 @@ ENTITY serdes_rcvr IS
       rdreq_in   : IN  std_logic;
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
-      ch_rxd     : IN  std_logic_vector(17 DOWNTO 0);
-      dataout    : OUT std_logic_vector(15 DOWNTO 0);
+      ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
+      geo_id     : IN  std_logic_vector (6 DOWNTO 0);
+      dataout    : OUT std_logic_vector (15 DOWNTO 0);
       fifo_empty : OUT std_logic
       );
 END serdes_rcvr;
@@ -101,8 +102,8 @@ BEGIN
 
   WITH (s_shiftout(31 DOWNTO 28) = X"C") SELECT
     s_geo_id <=
-    CONV_STD_LOGIC_VECTOR(76, 7) WHEN true,
-    s_shiftout(7 DOWNTO 1)       WHEN OTHERS;
+    geo_id                 WHEN true,
+    s_shiftout(7 DOWNTO 1) WHEN OTHERS;
 
   s_fifo_wrreq <= s_latch;  -- will be disabled when FIFO is full due to overflow checking
   rxfifo : dcfifo
