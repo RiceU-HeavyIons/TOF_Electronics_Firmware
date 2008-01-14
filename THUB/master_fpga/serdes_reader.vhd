@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.8 2008-01-11 21:49:40 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.9 2008-01-14 15:04:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-01-11
+-- Last update: 2008-01-14
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -42,6 +42,7 @@ ENTITY serdes_reader IS
     fifo_empty          : IN  std_logic;
     outfifo_almost_full : IN  boolean;
     evt_trg             : IN  std_logic;
+    triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
     trgFifo_empty       : IN  std_logic;
     trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
     trgFifo_rdreq       : OUT std_logic;
@@ -79,6 +80,7 @@ ARCHITECTURE a OF serdes_reader IS
 
   TYPE TState_type IS (
     SWaitTrig,
+    SLatchTrig,
     SFifoChk,
     STagWrd,
     SRdSerA,
@@ -182,9 +184,17 @@ BEGIN  -- ARCHITECTURE a
         WHEN SWaitTrig =>
           busy <= '1';                  -- "not busy" until trigger
           IF evt_trg = '1' THEN
-            TState <= SFifoChk;
+            TState <= SLatchTrig;
           END IF;
 
+          -- strobe current trigger word into FIFO
+        WHEN SLatchTrig =>
+          s_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
+          s_outdata(19 DOWNTO 0)  <= triggerWord;
+          s_wrreq_out <= '1';
+
+          TState <= SFifoChk;
+          
           -- only continue, if there is enough space in the upstream FIFO
         WHEN SFifoChk =>
           IF (NOT outfifo_almost_full) THEN
