@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.20 2008-01-11 17:47:03 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.21 2008-01-14 15:05:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-11
+-- Last update: 2008-01-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -225,6 +225,7 @@ ARCHITECTURE a OF master_fpga IS
       fifo_empty          : IN  std_logic;
       outfifo_almost_full : IN  boolean;
       evt_trg             : IN  std_logic;
+      triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_empty       : IN  std_logic;
       trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_rdreq       : OUT std_logic;
@@ -435,6 +436,7 @@ BEGIN
     fifo_empty          => sa_smif_fifo_empty,
     outfifo_almost_full => ddlfifo_almost_full,
     evt_trg             => (s_evt_trg AND s_trigger),
+    triggerWord         => s_triggerword,
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
