@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.19 2008-01-11 17:39:54 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.20 2008-01-14 20:55:22 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-01-11
+-- Last update: 2008-01-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -80,6 +80,11 @@ END serdes_fpga;
 
 
 ARCHITECTURE a OF serdes_fpga IS
+
+  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(76,7);
+  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR(77,7);
+  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR(78,7);
+  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR(79,7);
 
   COMPONENT serdes_poweron IS
     PORT (
@@ -180,6 +185,7 @@ ARCHITECTURE a OF serdes_fpga IS
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
       ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
+      geo_id     : IN  std_logic_vector (6 DOWNTO 0);
       dataout    : OUT std_logic_vector (15 DOWNTO 0);
       fifo_empty : OUT std_logic);
   END COMPONENT serdes_rcvr;
@@ -264,19 +270,6 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch3fifo_aclr  : std_logic;
   SIGNAL s_ch3fifo_empty : std_logic;
   SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
-
-  SIGNAL s_ch0geo_areset_n : std_logic;
-  SIGNAL s_ch1geo_areset_n : std_logic;
-  SIGNAL s_ch2geo_areset_n : std_logic;
-  SIGNAL s_ch3geo_areset_n : std_logic;
-  SIGNAL s_geo_id0         : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_geo_id1         : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_geo_id2         : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_geo_id3         : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_geo_sel0        : std_logic;
-  SIGNAL s_geo_sel1        : std_logic;
-  SIGNAL s_geo_sel2        : std_logic;
-  SIGNAL s_geo_sel3        : std_logic;
 
   SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
@@ -589,6 +582,7 @@ BEGIN
       fifo_aclr  => s_ch0fifo_aclr,
       ch_rclk    => ch0_rclk,
       ch_rxd     => ch0_rxd,
+      geo_id     => GEO_ID_CH0,
       dataout    => s_ch0fifo_q,
       fifo_empty => s_ch0fifo_empty);
 
@@ -604,6 +598,7 @@ BEGIN
       fifo_aclr  => s_ch1fifo_aclr,
       ch_rclk    => ch1_rclk,
       ch_rxd     => ch1_rxd,
+      geo_id     => GEO_ID_CH1,
       dataout    => s_ch1fifo_q,
       fifo_empty => s_ch1fifo_empty);
 
@@ -619,6 +614,7 @@ BEGIN
       fifo_aclr  => s_ch2fifo_aclr,
       ch_rclk    => ch2_rclk,
       ch_rxd     => ch2_rxd,
+      geo_id     => GEO_ID_CH2,
       dataout    => s_ch2fifo_q,
       fifo_empty => s_ch2fifo_empty);
 
@@ -634,6 +630,7 @@ BEGIN
       fifo_aclr  => s_ch3fifo_aclr,
       ch_rclk    => ch3_rclk,
       ch_rxd     => ch3_rxd,
+      geo_id     => GEO_ID_CH3,
       dataout    => s_ch3fifo_q,
       fifo_empty => s_ch3fifo_empty);
 
@@ -674,9 +671,14 @@ BEGIN
       s_smif_dataout(8)  <= (globalclk NOR s_smif_fifo_empty) AND s_smif_rdenable;
     END IF;
   END PROCESS latcher;
-  s_smif_dataout(15) <= pll_80mhz;
 
-  s_smif_dataout(14 DOWNTO 9) <= (OTHERS => '0');
+  s_smif_dataout( 9) <= '0';
+  s_smif_dataout(10) <= s_ch0_locked;
+  s_smif_dataout(11) <= s_ch1_locked;
+  s_smif_dataout(12) <= s_ch2_locked;
+  s_smif_dataout(13) <= s_ch3_locked;
+  s_smif_dataout(14) <= '0';
+  s_smif_dataout(15) <= pll_80mhz;
 
   -----------------------------------------------------------------------------
   -- SERDES power on procedures
