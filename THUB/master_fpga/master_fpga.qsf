@@ -531,3 +531,5 @@ set_global_assignment -name VHDL_FILE serdes_registers.vhd
 set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id maI_clk
+set_instance_assignment -name CLOCK_SETTINGS maI_clk -to maI[15]
