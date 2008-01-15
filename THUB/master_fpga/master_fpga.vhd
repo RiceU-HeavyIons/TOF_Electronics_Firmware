@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.22 2008-01-14 20:46:51 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.23 2008-01-15 20:08:37 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-14
+-- Last update: 2008-01-15
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -229,7 +229,7 @@ ARCHITECTURE a OF master_fpga IS
     PORT (
       clk80mhz            : IN  std_logic;
       areset_n            : IN  std_logic;
-      indata              : IN  std_logic_vector (15 DOWNTO 0);
+      indataA             : IN  std_logic_vector (15 DOWNTO 0);
       fifo_empty          : IN  std_logic;
       outfifo_almost_full : IN  boolean;
       evt_trg             : IN  std_logic;
@@ -440,7 +440,7 @@ BEGIN
   serdesA_reader : serdes_reader PORT MAP (
     clk80mhz            => clk_80mhz,
     areset_n            => sAr_areset_n,
-    indata              => sa_smif_datain,
+    indataA             => sa_smif_datain,
     fifo_empty          => sa_smif_fifo_empty,
     outfifo_almost_full => ddlfifo_almost_full,
     evt_trg             => (s_evt_trg AND s_trigger),
