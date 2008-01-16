@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.23 2008-01-15 20:08:37 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.24 2008-01-16 23:13:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-15
+-- Last update: 2008-01-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -83,25 +83,25 @@ END master_fpga;
 
 ARCHITECTURE a OF master_fpga IS
 
-  COMPONENT pll
-    PORT
-      (
-        inclk0 : IN  std_logic := '0';
-        c0     : OUT std_logic;
-        locked : OUT std_logic
-        );
-  END COMPONENT;
-
-  -- this one for testing only:
 --  COMPONENT pll
 --    PORT
 --      (
 --        inclk0 : IN  std_logic := '0';
 --        c0     : OUT std_logic;
---        c1     : OUT std_logic;
 --        locked : OUT std_logic
 --        );
 --  END COMPONENT;
+
+  -- this one for testing only:
+  COMPONENT pll
+    PORT
+      (
+        inclk0 : IN  std_logic := '0';
+        c0     : OUT std_logic;
+        c1     : OUT std_logic;
+        locked : OUT std_logic
+        );
+  END COMPONENT;
 
   COMPONENT serdes_registers IS
     PORT (
@@ -229,13 +229,15 @@ ARCHITECTURE a OF master_fpga IS
     PORT (
       clk80mhz            : IN  std_logic;
       areset_n            : IN  std_logic;
-      indataA             : IN  std_logic_vector (15 DOWNTO 0);
+      sync_q              : IN  std_logic_vector(16 DOWNTO 0);
+      ser_status          : IN  std_logic_vector (3 DOWNTO 0);
       fifo_empty          : IN  std_logic;
       outfifo_almost_full : IN  boolean;
       evt_trg             : IN  std_logic;
       triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_empty       : IN  std_logic;
       trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
+      serSel              : OUT std_logic_vector (2 DOWNTO 0);
       trgFifo_rdreq       : OUT std_logic;
       busy                : OUT std_logic;
       rdsel_out           : OUT std_logic_vector (1 DOWNTO 0);
@@ -243,6 +245,39 @@ ARCHITECTURE a OF master_fpga IS
       wrreq_out           : OUT std_logic;
       outdata             : OUT std_logic_vector (31 DOWNTO 0));
   END COMPONENT serdes_reader;
+
+  COMPONENT synchronizer IS
+    PORT (
+      clk80mhz      : IN  std_logic;
+      areset_n      : IN  std_logic;
+      serdes_indata : IN  std_logic_vector (7 DOWNTO 0);
+      serdes_clk    : IN  std_logic;
+      serdes_strb   : IN  std_logic;
+      sync_q        : OUT std_logic_vector (16 DOWNTO 0));
+  END COMPONENT synchronizer;
+
+  COMPONENT serdesRdDecoder IS
+    PORT (
+      rdSel  : IN  std_logic_vector (1 DOWNTO 0);
+      rdreq  : IN  std_logic;
+      adr    : IN  std_logic_vector(2 DOWNTO 0);
+      rdSelA : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqA : OUT std_logic;
+      rdSelB : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqB : OUT std_logic;
+      rdSelC : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqC : OUT std_logic;
+      rdSelD : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqD : OUT std_logic;
+      rdSelE : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqE : OUT std_logic;
+      rdSelF : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqF : OUT std_logic;
+      rdSelG : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqG : OUT std_logic;
+      rdSelH : OUT std_logic_vector (1 DOWNTO 0);
+      rdreqH : OUT std_logic);
+  END COMPONENT serdesRdDecoder;
 
   SIGNAL globalclk : std_logic;
   SIGNAL arstn     : std_logic;
@@ -297,18 +332,28 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL counter25b_q    : std_logic_vector(24 DOWNTO 0);
   SIGNAL clk_80mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
-
+  SIGNAL test_clk        : std_logic;
+  
+  SIGNAL s_serSel           : std_logic_vector (2 DOWNTO 0);
+  SIGNAL s_serStatus        : std_logic_vector (3 DOWNTO 0);
+  SIGNAL smif_fifo_empty : std_logic;
+  SIGNAL smif_select : std_logic_vector(1 DOWNTO 0);
+  SIGNAL smif_rdenable : std_logic;
+  SIGNAL s_sync_q : std_logic_vector (16 DOWNTO 0);
+  
   SIGNAL sa_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sa_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sa_smif_fifo_empty : std_logic;
   SIGNAL sa_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sa_smif_rdenable   : std_logic;
   SIGNAL sa_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sa_smif_datatype   : std_logic_vector(3 DOWNTO 0);
-  SIGNAL sAr_areset_n       : std_logic;
-  SIGNAL sAr_wrreq_out      : std_logic;
-  SIGNAL sAr_outdata        : std_logic_vector(31 DOWNTO 0);
+  SIGNAL sr_areset_n       : std_logic;
+  SIGNAL sr_wrreq_out      : std_logic;
+  SIGNAL sr_outdata        : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sb_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sb_smif_fifo_empty : std_logic;
   SIGNAL sb_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sb_smif_rdenable   : std_logic;
@@ -316,6 +361,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sb_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sc_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sc_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sc_smif_fifo_empty : std_logic;
   SIGNAL sc_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sc_smif_rdenable   : std_logic;
@@ -323,6 +369,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sc_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sd_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sd_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sd_smif_fifo_empty : std_logic;
   SIGNAL sd_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sd_smif_rdenable   : std_logic;
@@ -330,6 +377,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sd_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL se_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL se_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL se_smif_fifo_empty : std_logic;
   SIGNAL se_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL se_smif_rdenable   : std_logic;
@@ -337,6 +385,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL se_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sf_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sf_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sf_smif_fifo_empty : std_logic;
   SIGNAL sf_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sf_smif_rdenable   : std_logic;
@@ -344,6 +393,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sf_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sg_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sg_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sg_smif_fifo_empty : std_logic;
   SIGNAL sg_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sg_smif_rdenable   : std_logic;
@@ -351,6 +401,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sg_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sh_smif_datain     : std_logic_vector (15 DOWNTO 0);
+  SIGNAL sh_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sh_smif_fifo_empty : std_logic;
   SIGNAL sh_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sh_smif_rdenable   : std_logic;
@@ -358,8 +409,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
   SIGNAL s_tcd_busy_n       : std_logic;
 
-  SIGNAL sArfifo_q     : std_logic_vector(31 DOWNTO 0);
-  SIGNAL sArfifo_empty : std_logic;
+  SIGNAL sr_fifo_q     : std_logic_vector(31 DOWNTO 0);
+  SIGNAL sr_fifo_empty : std_logic;
 
   SIGNAL s_ddltrgFifo_rdreq : std_logic;
   SIGNAL s_ddltrgFifo_empty : std_logic;
@@ -377,17 +428,17 @@ BEGIN
   arstn <= '1';                         -- no reset for now
 
   -- PLL
-  pll_instance : pll PORT MAP (
-    inclk0 => clk,
-    c0     => clk_80mhz,
-    locked => pll_locked);
-
-  -- this one for testing only:
 --  pll_instance : pll PORT MAP (
 --    inclk0 => clk,
 --    c0     => clk_80mhz,
---    c1     => mic(28),
 --    locked => pll_locked);
+
+  -- this one for testing only:
+  pll_instance : pll PORT MAP (
+    inclk0 => clk,
+    c0     => clk_80mhz,
+    c1     => test_clk,
+    locked => pll_locked);
 
 
   -- counter to divide clock
@@ -429,7 +480,6 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
   -----------------------------------------------------------------------------
-
   -- ***************** SERDES "A" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
   sa_smif_datain     <= maI(15 DOWNTO 0);  -- 16bit data from S to M
@@ -437,30 +487,19 @@ BEGIN
   maO(18 DOWNTO 17)  <= sa_smif_select;  -- select from M to S to select 1 of 4 FIFOs
   maO(19)            <= sa_smif_rdenable;  -- read enable from M to S for FIFO
 
-  serdesA_reader : serdes_reader PORT MAP (
-    clk80mhz            => clk_80mhz,
-    areset_n            => sAr_areset_n,
-    indataA             => sa_smif_datain,
-    fifo_empty          => sa_smif_fifo_empty,
-    outfifo_almost_full => ddlfifo_almost_full,
-    evt_trg             => (s_evt_trg AND s_trigger),
-    triggerWord         => s_triggerword,
-    trgFifo_empty       => s_ddltrgFifo_empty,
-    trgFifo_q           => s_ddltrgFifo_q,
-    trgFifo_rdreq       => s_ddltrgFifo_rdreq,
-    busy                => s_tcd_busy_n,
-    rdsel_out           => sa_smif_select,
-    rdreq_out           => sa_smif_rdenable,
-    wrreq_out           => sAr_wrreq_out,
-    outdata             => sAr_outdata);
-  sAr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
-
-
   -- MASTER (M) to SERDES (S) interface
   maO(31 DOWNTO 20) <= sa_smif_dataout;   -- 12bit data from M to S 
   maO(35 DOWNTO 32) <= sa_smif_datatype;  -- 4bit data type indicator from M to S
 
-
+  -- sync incoming data to 80MHz clock
+  syncA : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sa_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sa_smif_datain(15),
+    serdes_strb   => sa_smif_datain(8),
+    sync_q        => sa_sync_q);
+  
   -- ***************** SERDES "B" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
   sb_smif_datain     <= mbI(15 DOWNTO 0);  -- 16bit data from S to M
@@ -472,8 +511,14 @@ BEGIN
   mbO(31 DOWNTO 20) <= sb_smif_dataout;   -- 12bit data from M to S 
   mbO(35 DOWNTO 32) <= sb_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sb_smif_select   <= "00";
-  sb_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncB : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sb_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sb_smif_datain(15),
+    serdes_strb   => sb_smif_datain(8),
+    sync_q        => sb_sync_q);
 
   -- ***************** SERDES "C" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -486,8 +531,14 @@ BEGIN
   mcO(31 DOWNTO 20) <= sc_smif_dataout;   -- 12bit data from M to S 
   mcO(35 DOWNTO 32) <= sc_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sc_smif_select   <= "00";
-  sc_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncC : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sc_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sc_smif_datain(15),
+    serdes_strb   => sc_smif_datain(8),
+    sync_q        => sc_sync_q);
 
   -- ***************** SERDES "D" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -500,8 +551,14 @@ BEGIN
   mdO(31 DOWNTO 20) <= sd_smif_dataout;   -- 12bit data from M to S 
   mdO(35 DOWNTO 32) <= sd_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sd_smif_select   <= "00";
-  sd_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncD : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sd_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sd_smif_datain(15),
+    serdes_strb   => sd_smif_datain(8),
+    sync_q        => sd_sync_q);
 
   -- ***************** SERDES "E" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -514,8 +571,14 @@ BEGIN
   meO(31 DOWNTO 20) <= se_smif_dataout;   -- 12bit data from M to S 
   meO(35 DOWNTO 32) <= se_smif_datatype;  -- 4bit data type indicator from M to S
 
-  se_smif_select   <= "00";
-  se_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncE : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => se_smif_datain(7 DOWNTO 0),
+    serdes_clk    => se_smif_datain(15),
+    serdes_strb   => se_smif_datain(8),
+    sync_q        => se_sync_q);
 
   -- ***************** SERDES "F" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -528,8 +591,14 @@ BEGIN
   mfO(31 DOWNTO 20) <= sf_smif_dataout;   -- 12bit data from M to S 
   mfO(35 DOWNTO 32) <= sf_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sf_smif_select   <= "00";
-  sf_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncF : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sf_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sf_smif_datain(15),
+    serdes_strb   => sf_smif_datain(8),
+    sync_q        => sf_sync_q);
 
   -- ***************** SERDES "G" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -542,8 +611,14 @@ BEGIN
   mgO(31 DOWNTO 20) <= sg_smif_dataout;   -- 12bit data from M to S 
   mgO(35 DOWNTO 32) <= sg_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sg_smif_select   <= "00";
-  sg_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncG : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sg_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sg_smif_datain(15),
+    serdes_strb   => sg_smif_datain(8),
+    sync_q        => sg_sync_q);
 
   -- ***************** SERDES "H" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
@@ -556,8 +631,95 @@ BEGIN
   mhO(31 DOWNTO 20) <= sh_smif_dataout;   -- 12bit data from M to S 
   mhO(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
 
-  sh_smif_select   <= "00";
-  sh_smif_rdenable <= '0';
+  -- sync incoming data to 80MHz clock
+  syncH : synchronizer PORT MAP (
+    clk80mhz      => clk_80mhz,
+    areset_n      => sr_areset_n,
+    serdes_indata => sh_smif_datain(7 DOWNTO 0),
+    serdes_clk    => sh_smif_datain(15),
+    serdes_strb   => sh_smif_datain(8),
+    sync_q        => sh_sync_q);
+
+  -- ******* Serdes Readout State Machine *******************************************
+  -- take 16 bit data from synchronizer, generate 32 bit  data and latch for
+  -- DDL FIFO
+  serdes_reader_inst : serdes_reader PORT MAP (
+    clk80mhz            => clk_80mhz,
+    areset_n            => sr_areset_n,
+    sync_q              => s_sync_q,
+    ser_status          => s_serStatus,
+    fifo_empty          => smif_fifo_empty,
+    outfifo_almost_full => ddlfifo_almost_full,
+    evt_trg             => (s_evt_trg AND s_trigger),
+    triggerWord         => s_triggerword,
+    trgFifo_empty       => s_ddltrgFifo_empty,
+    trgFifo_q           => s_ddltrgFifo_q,
+    serSel              => s_serSel,
+    trgFifo_rdreq       => s_ddltrgFifo_rdreq,
+    busy                => s_tcd_busy_n,
+    rdsel_out           => smif_select,
+    rdreq_out           => smif_rdenable,
+    wrreq_out           => sr_wrreq_out,
+    outdata             => sr_outdata);
+  sr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
+
+  -- connect the selected sync'd data to serdes_reader
+  WITH s_serSel SELECT
+    s_sync_q <=
+    sa_sync_q WHEN "000",
+    sb_sync_q WHEN "001",
+    sc_sync_q WHEN "010",
+    sd_sync_q WHEN "011",
+    se_sync_q WHEN "100",
+    sf_sync_q WHEN "101",
+    sg_sync_q WHEN "110",
+    sh_sync_q WHEN OTHERS;
+
+  -- connect selected status bits
+  WITH s_serSel SELECT
+    s_serStatus <=
+    sa_smif_datain(13 DOWNTO 10) WHEN "000",
+    sb_smif_datain(13 DOWNTO 10) WHEN "001",
+    sc_smif_datain(13 DOWNTO 10) WHEN "010",
+    sd_smif_datain(13 DOWNTO 10) WHEN "011",
+    se_smif_datain(13 DOWNTO 10) WHEN "100",
+    sf_smif_datain(13 DOWNTO 10) WHEN "101",
+    sg_smif_datain(13 DOWNTO 10) WHEN "110",
+    sh_smif_datain(13 DOWNTO 10) WHEN OTHERS;
+
+  -- connect selected FIFO Empty
+  WITH s_serSel SELECT
+    smif_fifo_empty <=
+    sa_smif_fifo_empty WHEN "000",
+    sb_smif_fifo_empty WHEN "001",
+    sc_smif_fifo_empty WHEN "010",
+    sd_smif_fifo_empty WHEN "011",
+    se_smif_fifo_empty WHEN "100",
+    sf_smif_fifo_empty WHEN "101",
+    sg_smif_fifo_empty WHEN "110",
+    sh_smif_fifo_empty WHEN OTHERS;
+  
+  -- output to selected rdreq and Channel select
+  serRdDec_inst : serdesRdDecoder PORT MAP (
+    rdSel  => smif_select,
+    rdreq  => smif_rdenable,
+    adr    => s_serSel,
+    rdSelA => sa_smif_select,
+    rdreqA => sa_smif_rdenable,
+    rdSelB => sb_smif_select,
+    rdreqB => sb_smif_rdenable,
+    rdSelC => sc_smif_select,
+    rdreqC => sc_smif_rdenable,
+    rdSelD => sd_smif_select,
+    rdreqD => sd_smif_rdenable,
+    rdSelE => se_smif_select,
+    rdreqE => se_smif_rdenable,
+    rdSelF => sf_smif_select,
+    rdreqF => sf_smif_rdenable,
+    rdSelG => sg_smif_select,
+    rdreqG => sg_smif_rdenable,
+    rdSelH => sh_smif_select,
+    rdreqH => sh_smif_rdenable);
 
   -- ***************** Master-Serdes FPGA Interface Control **************************
   smif_inst : smif
@@ -662,10 +824,10 @@ BEGIN
       )
     PORT MAP (
       wrclk   => clk_80mhz,
-      wrreq   => sAr_wrreq_out,
+      wrreq   => sr_wrreq_out,
       rdclk   => NOT globalclk,
       rdreq   => rd_ddl_fifo,
-      data    => sAr_outdata,
+      data    => sr_outdata,
       aclr    => ddlfifo_aclr,
       rdempty => ddlfifo_empty,
       wrusedw => ddlfifo_usedw,
