@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.20 2008-01-14 20:55:22 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.21 2008-01-16 22:18:51 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-01-14
+-- Last update: 2008-01-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -81,10 +81,18 @@ END serdes_fpga;
 
 ARCHITECTURE a OF serdes_fpga IS
 
-  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(76,7);
-  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR(77,7);
-  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR(78,7);
-  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR(79,7);
+  -- These are for Serdes A in Run 8
+  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(121, 7);  -- tray 121
+  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 77, 7);  -- tray 77
+  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 78, 7);  -- tray 78
+  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 79, 7);  -- tray 79
+
+  -- These are for  Serdes B in Run 8
+--  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(80, 7);  -- tray 80
+--  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR(76, 7);  -- tray 76
+--  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR(82, 7);  -- tray 82
+--  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR(83, 7);  -- tray 83
+
 
   COMPONENT serdes_poweron IS
     PORT (
@@ -665,14 +673,14 @@ BEGIN
     dataout  => s_smif_dataout(7 DOWNTO 0));
 
   -- sync to 80 MHz clock
-  latcher: PROCESS (pll_80mhz) IS
+  latcher : PROCESS (pll_80mhz) IS
   BEGIN
     IF pll_80mhz'event AND pll_80mhz = '1' THEN  -- rising clock edge
-      s_smif_dataout(8)  <= (globalclk NOR s_smif_fifo_empty) AND s_smif_rdenable;
+      s_smif_dataout(8) <= (globalclk NOR s_smif_fifo_empty) AND s_smif_rdenable;
     END IF;
   END PROCESS latcher;
 
-  s_smif_dataout( 9) <= '0';
+  s_smif_dataout(9)  <= '0';
   s_smif_dataout(10) <= s_ch0_locked;
   s_smif_dataout(11) <= s_ch1_locked;
   s_smif_dataout(12) <= s_ch2_locked;
