@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.10 2008-01-15 20:09:27 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.11 2008-01-16 23:10:59 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-01-15
+-- Last update: 2008-01-16
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -39,13 +39,15 @@ ENTITY serdes_reader IS
   PORT (
     clk80mhz            : IN  std_logic;
     areset_n            : IN  std_logic;
-    indataA             : IN  std_logic_vector(15 DOWNTO 0);
+    sync_q              : IN  std_logic_vector(16 DOWNTO 0);
+    ser_status          : IN  std_logic_vector (3 DOWNTO 0);
     fifo_empty          : IN  std_logic;
     outfifo_almost_full : IN  boolean;
     evt_trg             : IN  std_logic;
     triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
     trgFifo_empty       : IN  std_logic;
     trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
+    serSel              : OUT std_logic_vector (2 DOWNTO 0);
     trgFifo_rdreq       : OUT std_logic;
     busy                : OUT std_logic;  -- active low
     rdsel_out           : OUT std_logic_vector(1 DOWNTO 0);
@@ -73,14 +75,9 @@ ARCHITECTURE a OF serdes_reader IS
   SIGNAL sl_areset_n    : std_logic;
   SIGNAL s_slatch       : std_logic;
   SIGNAL s_prelatch     : std_logic;
-  SIGNAL s_ddio_outh    : std_logic_vector (7 DOWNTO 0);
-  SIGNAL s_ddio_outl    : std_logic_vector (7 DOWNTO 0);
   SIGNAL shift_areset_n : std_logic;
   SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
-  SIGNAL sync_q         : std_logic_vector (16 DOWNTO 0);
-  SIGNAL serdes_clk     : std_logic;
-  SIGNAL ddio_indata    : std_logic_vector (7 DOWNTO 0);
-  SIGNAL serdes_strb    : std_logic;
+  SIGNAL ser_selector   : std_logic_vector (4 DOWNTO 0);
 
   TYPE TState_type IS (
     SWaitTrig,
@@ -101,45 +98,9 @@ BEGIN  -- ARCHITECTURE a
   wrreq_out <= s_wrreq_out;
   outdata   <= s_outdata;
 
-  ddio_indata <= indataA(7 DOWNTO 0);
-  serdes_clk  <= indataA(15);
-  serdes_strb <= indataA(8);
-
-  -- first decode both edges of the incoming data stream with the "double data
-  -- rate" component. clock is taken from the Serdes input pins
-  ddio_in_inst : ddio_in PORT MAP (
-    datain    => ddio_indata,
-    inclock   => serdes_clk,
-    dataout_h => s_ddio_outh,
-    dataout_l => s_ddio_outl);
-
-  -- now synchronize the 2 decoded 8bit streams and the latch signal with a
-  -- dual-clock FIFO
-  syncfifo : dcfifo
-    GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_numwords           => 8,
-      lpm_showahead          => "OFF",
-      lpm_type               => "dcfifo",
-      lpm_width              => 17,
-      lpm_widthu             => 3,
-      overflow_checking      => "ON",
-      rdsync_delaypipe       => 4,
-      underflow_checking     => "ON",
-      use_eab                => "ON",
-      wrsync_delaypipe       => 4
-      )
-    PORT MAP (
-      wrclk             => serdes_clk,
-      wrreq             => '1',
-      rdclk             => clk80mhz,
-      rdreq             => '1',
-      data(16)          => serdes_strb,
-      data(15 DOWNTO 8) => s_ddio_outl,
-      data(7 DOWNTO 0)  => s_ddio_outh,
-      q                 => sync_q
-      );
-
+  rdsel_out <= ser_selector(1 DOWNTO 0);  -- lowest two bits = Serdes Channel
+  serSel    <= ser_selector(4 DOWNTO 2);  -- upper 3 bits = Serdes Number
+  
   -- create a delayed latch signal
   serdesLatch : PROCESS (clk80mhz, sl_areset_n) IS
   BEGIN
@@ -168,7 +129,8 @@ BEGIN  -- ARCHITECTURE a
   -- use a state machine to control the Serdes read process
   rdoutControl : PROCESS (clk80mhz, areset_n) IS
     VARIABLE delayCtr : integer RANGE 0 TO 2047 := 0;
-    VARIABLE chCtr : integer RANGE 0 TO 3 := 0;
+    VARIABLE chCtr    : integer RANGE 0 TO 3    := 0;
+    VARIABLE serCtr   : integer RANGE 0 TO 31   := 0;
   BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
       s_outdata      <= (OTHERS => '0');
@@ -179,7 +141,9 @@ BEGIN  -- ARCHITECTURE a
       trgFifo_rdreq  <= '0';
       sl_areset_n    <= '0';
       shift_areset_n <= '0';
-      rdsel_out      <= "00";
+      ser_selector   <= (OTHERS => '0');
+      chCtr          := 0;
+      serCtr         := 0;
       
     ELSIF clk80mhz'event AND clk80mhz = '1' THEN  -- rising clock edge
       s_wrreq_out    <= '0';
@@ -193,9 +157,11 @@ BEGIN  -- ARCHITECTURE a
 
         -- wait for trigger
         WHEN SWaitTrig =>
-          rdsel_out <= "00";
-          chCtr := 0;
-          busy <= '1';                  -- "not busy" until trigger
+          ser_selector <= (OTHERS => '0');
+          chCtr        := 0;
+          serCtr       := 0;
+          busy         <= '1';          -- "not busy" until trigger
+
           IF evt_trg = '1' THEN
             TState <= SLatchTrig;
           END IF;
@@ -217,7 +183,7 @@ BEGIN  -- ARCHITECTURE a
 
           -- check if channel is "locked"
         WHEN SChkChannel =>
-          IF indataA(chCtr+10) = '0' THEN  -- if NOT locked
+          IF ser_status(chCtr) = '0' THEN  -- if NOT locked
             TState <= SChgChannel;
           ELSE
             TState <= SFifoChk;
@@ -237,7 +203,6 @@ BEGIN  -- ARCHITECTURE a
         WHEN SRdSerA =>
           rdreq_out   <= '1';           -- start reading
           sl_areset_n <= '1';
-          delayCtr    := 0;
 
           -- Condition for last word from that channel:
           IF (s_shiftout(15 DOWNTO 8) = X"E0") AND (s_prelatch = '1') THEN
@@ -255,15 +220,17 @@ BEGIN  -- ARCHITECTURE a
 
           -- move on to next channel from same Serdes FPGA
         WHEN SChgChannel =>
-          chCtr := chCtr + 1;
+          delayCtr := 0;
+          chCtr    := chCtr + 1;
+          serCtr   := serCtr + 1;
 
-          IF chCtr = 0 THEN             -- if it has wrapped around
+          IF serCtr = 8 THEN            -- last channel: Serdes B, Channel 3
             TState <= SDelay;           -- move on
           ELSE                          -- otherwise repeat from SChkChannel
-            rdsel_out <= CONV_STD_LOGIC_VECTOR(chCtr,2);
-            TState <= SChkChannel;
+            ser_selector <= CONV_STD_LOGIC_VECTOR(serCtr, 5);
+            TState       <= SChkChannel;
           END IF;
-          
+
           -- delay for a while (~13 us)
         WHEN SDelay =>
           delayCtr := delayCtr + 1;
@@ -292,7 +259,7 @@ BEGIN  -- ARCHITECTURE a
           TState <= SWaitTrig;          -- return to the beginning
 
           -- this should never happen:
-        WHEN OTHERS => 
+        WHEN OTHERS =>
           TState <= SWaitTrig;
           
       END CASE;
