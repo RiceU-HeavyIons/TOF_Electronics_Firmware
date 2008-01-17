@@ -1,2 +1,2 @@
-; $Id: FirmwareID.inc,v 1.7 2008-01-03 17:52:12 jschamba Exp $
-F_ID: data 0x0102,0x0, 0x0, 0x0
+; $Id: FirmwareID.inc,v 1.8 2008-01-17 16:46:46 jschamba Exp $
+F_ID: data 0x0103,0x0, 0x0, 0x0
