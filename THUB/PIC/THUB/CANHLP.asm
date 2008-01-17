@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.16 2008-01-03 17:50:03 jschamba Exp $
+; $Id: CANHLP.asm,v 1.17 2008-01-17 16:48:33 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -385,10 +385,11 @@ TofProgramPLD:
     call    asSelect
     call    asStart
     call    asBulkErase
-    ; send WriteResponse packet
 
-    call    HLPCopyRxData
-    mCANSendWrResponse_IDL   RxDtLngth
+    ; send WriteResponse packet
+    call    HLPSendWriteResponseOK  ; send response    
+;    call    HLPCopyRxData
+;    mCANSendWrResponse_IDL   RxDtLngth
 
     return
 
@@ -411,6 +412,7 @@ is_it_writeAddress:
     movff   RxData+2, asAddress+1
     movff   RxData+3, asAddress+2
     lfsr    FSR2, asDataBytes
+
     ; sendWriteResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
@@ -435,6 +437,7 @@ is_it_writeDataByte:
     movf    RxDtLngth,W
     decfsz  WREG,W
     bra     mainProgLoop1
+
     ; sendWriteResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
@@ -446,9 +449,8 @@ mainProgLoop1:
     decfsz  WREG,W
     bra     mainProgLoop1
     ; sendWriteResponse
-;JS correct this later;;;;
-;    call    HLPCopyRxData
-;    mCANSendWrResponse_IDL   RxDtLngth
+    call    HLPCopyRxData
+    mCANSendWrResponse_IDL   RxDtLngth
     return   
 
 is_it_writePage:
@@ -481,6 +483,7 @@ mainProgLoop2:
     bra     mainProgLoop2
 program_it:
     call    asProgram256
+
     ; sendWriteResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
@@ -500,6 +503,7 @@ is_it_endPLDProgram:
     call    asDone
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
+
     ; sendWriteResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
@@ -531,6 +535,7 @@ reprogram_loop:
     bra     reprogram_loop
 programMCU:
     call    handle_reprogram64
+
     ; send WriteResponse packet
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
@@ -566,6 +571,7 @@ resetToNewProgram:
     nop
     btfsc   EECON1, WR      ; Wait
     bra     $ - 2
+
     ; EEPROM is written, send a CAN writeResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
