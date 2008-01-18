@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.9 2008-01-07 15:09:12 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.10 2008-01-18 18:10:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-01-07
+-- Last update: 2008-01-18
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"78";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"79";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -685,8 +685,8 @@ BEGIN
       shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
-  s_c1_trigger <= trigger_delay(2);
-  s_c2_trigger <= trigger_delay(2);
+  s_c1_trigger <= trigger_delay(0);
+  s_c2_trigger <= trigger_delay(0);
 
 ---------------------------------------------------------------------------
 -- Muxes for AUX / NORMAL serial readout for cable1
