@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.24 2008-01-16 23:13:23 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.25 2008-01-21 21:08:43 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-16
+-- Last update: 2008-01-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -32,7 +32,7 @@ USE altera.altera_primitives_components.ALL;
 ENTITY master_fpga IS
   PORT
     (
-      clk           : IN    std_logic;  -- Master clock
+      clk           : IN    std_logic;                      -- Master clock
       -- Mictor outputs
       mic           : OUT   std_logic_vector(28 DOWNTO 0);
       -- bus to serdes fpga's
@@ -53,8 +53,8 @@ ENTITY master_fpga IS
       -- TCD
       tcd_d         : IN    std_logic_vector(3 DOWNTO 0);
       tcd_busy_p    : OUT   std_logic;
-      tcd_strb      : IN    std_logic;  -- RHIC strobe
-      tcd_clk       : IN    std_logic;  -- RHIC Data Clock
+      tcd_strb      : IN    std_logic;                      -- RHIC strobe
+      tcd_clk       : IN    std_logic;                      -- RHIC Data Clock
       -- SIU
       fbctrl_n      : INOUT std_logic;
       fbten_n       : INOUT std_logic;
@@ -333,14 +333,15 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL clk_80mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
   SIGNAL test_clk        : std_logic;
-  
-  SIGNAL s_serSel           : std_logic_vector (2 DOWNTO 0);
-  SIGNAL s_serStatus        : std_logic_vector (3 DOWNTO 0);
+
+  SIGNAL s_serSel        : std_logic_vector (2 DOWNTO 0);
+  SIGNAL s_serStatus     : std_logic_vector (3 DOWNTO 0);
   SIGNAL smif_fifo_empty : std_logic;
-  SIGNAL smif_select : std_logic_vector(1 DOWNTO 0);
-  SIGNAL smif_rdenable : std_logic;
-  SIGNAL s_sync_q : std_logic_vector (16 DOWNTO 0);
-  
+  SIGNAL smif_select     : std_logic_vector(1 DOWNTO 0);
+  SIGNAL smif_rdenable   : std_logic;
+  SIGNAL s_sync_q        : std_logic_vector (16 DOWNTO 0);
+  SIGNAL s_smif_trigger  : std_logic;
+
   SIGNAL sa_smif_datain     : std_logic_vector (15 DOWNTO 0);
   SIGNAL sa_sync_q          : std_logic_vector (16 DOWNTO 0);
   SIGNAL sa_smif_fifo_empty : std_logic;
@@ -348,9 +349,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sa_smif_rdenable   : std_logic;
   SIGNAL sa_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sa_smif_datatype   : std_logic_vector(3 DOWNTO 0);
-  SIGNAL sr_areset_n       : std_logic;
-  SIGNAL sr_wrreq_out      : std_logic;
-  SIGNAL sr_outdata        : std_logic_vector(31 DOWNTO 0);
+  SIGNAL sr_areset_n        : std_logic;
+  SIGNAL sr_wrreq_out       : std_logic;
+  SIGNAL sr_outdata         : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
   SIGNAL sb_sync_q          : std_logic_vector (16 DOWNTO 0);
@@ -499,7 +500,7 @@ BEGIN
     serdes_clk    => sa_smif_datain(15),
     serdes_strb   => sa_smif_datain(8),
     sync_q        => sa_sync_q);
-  
+
   -- ***************** SERDES "B" *************************************************** 
   -- SERDES (S) to MASTER (M) interface
   sb_smif_datain     <= mbI(15 DOWNTO 0);  -- 16bit data from S to M
@@ -661,7 +662,7 @@ BEGIN
     rdreq_out           => smif_rdenable,
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
-  sr_areset_n <= s_reg1(0);            -- control reader with Register 1 bit 0
+  sr_areset_n <= s_reg1(0);             -- control reader with Register 1 bit 0
 
   -- connect the selected sync'd data to serdes_reader
   WITH s_serSel SELECT
@@ -698,7 +699,7 @@ BEGIN
     sf_smif_fifo_empty WHEN "101",
     sg_smif_fifo_empty WHEN "110",
     sh_smif_fifo_empty WHEN OTHERS;
-  
+
   -- output to selected rdreq and Channel select
   serRdDec_inst : serdesRdDecoder PORT MAP (
     rdSel  => smif_select,
@@ -722,6 +723,7 @@ BEGIN
     rdreqH => sh_smif_rdenable);
 
   -- ***************** Master-Serdes FPGA Interface Control **************************
+  s_smif_trigger <= s_evt_trg AND s_trigger AND s_tcd_busy_n AND s_reg1(0);
   smif_inst : smif
     PORT MAP (
       clock       => globalclk,
@@ -744,7 +746,7 @@ BEGIN
       serdes_reg  => s_serdes_reg,
       sreg_addr   => s_sreg_addr,
       sreg_load   => s_sreg_load,
-      evt_trg     => (s_evt_trg AND s_trigger AND s_tcd_busy_n),
+      evt_trg     => s_smif_trigger,
       trgtoken    => s_triggerword(11 DOWNTO 0),
       rstin       => rstin,
       rstout      => rstout,
