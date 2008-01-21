@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.4 2007-12-31 20:58:39 jschamba Exp $
+-- $Id: smif.vhd,v 1.5 2008-01-21 21:09:36 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : master-serdes-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-06-18
--- Last update: 2007-12-31
+-- Last update: 2008-01-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -304,10 +304,11 @@ BEGIN
 
           state <= State3;
         WHEN State3 =>                  -- Bunch reset (continued)
-          rstout <= '0';                -- active high
+          rstout <= '1';                -- active high
 
           state <= State4;
         WHEN State4 =>                  -- wait for load and reset to go back to default again
+          rstout <= '0';                -- active high
           IF (sreg_load = '0') AND (rstin = '0') THEN
             state <= State0;
           END IF;
