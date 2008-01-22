@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.10 2008-01-18 18:10:06 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.11 2008-01-22 15:23:35 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-01-18
+-- Last update: 2008-01-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"79";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"7A";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -265,6 +265,7 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL config7_data    : std_logic_vector (7 DOWNTO 0);
   SIGNAL config12_data   : std_logic_vector (7 DOWNTO 0);
   SIGNAL config14_data   : std_logic_vector (7 DOWNTO 0);
+  SIGNAL status_data     : std_logic_vector (7 DOWNTO 0);
   SIGNAL load_config0    : std_logic;
   SIGNAL load_config1    : std_logic;
   SIGNAL load_config2    : std_logic;
@@ -404,7 +405,7 @@ BEGIN
   th_local_le <= '0';                   -- DISABLE LOCAL LOOPBACK
   th_line_le  <= '0';                   -- DISABLE LINE LOOPBACK
 
-  serdes_areset_n <= '1';               -- control this from CANbus?
+  serdes_areset_n <= config2_data(3);   -- control this from CANbus
   
   serdes_if_inst : serdes_if PORT MAP (
     clk        => clk_40mhz,
@@ -517,6 +518,7 @@ BEGIN
   -- use to enable readout (data = 0x1)
   -- and to switch to serdes-triggers (data = 0x2)
   -- turn off CANbus data packets (data = 0x4)
+  -- turn on Serdes link (data = 0x8)
   config2_register : lpm_ff
     GENERIC MAP (
       lpm_fftype => "DFF",
@@ -587,12 +589,13 @@ BEGIN
   mcu_fifo_status(5)          <= mcu_fifo_parity;
   mcu_fifo_status(4 DOWNTO 0) <= mcu_fifo_level(4 DOWNTO 0);
 
+  status_data <= config3_data(7 DOWNTO 2) & serdes_ready & th_lockb;
   WITH mcu_addr SELECT
     mcu_output_data <=
     config0_data             WHEN x"0",
     config1_data             WHEN x"1",
     config2_data             WHEN x"2",
-    config3_data             WHEN x"3",
+    status_data              WHEN x"3",
     TCPU_VERSION             WHEN x"7",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",
