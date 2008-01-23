@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.22 2007-12-14 00:25:05 jschamba Exp $
+; $Id: main.asm,v 1.23 2008-01-23 23:07:23 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -36,6 +36,9 @@
 
 	;; LIST P=18F4680, F=INHX32	; directive to define processor, HEX file format
 	LIST P=18F8680, F=INHX32	; directive to define processor, HEX file format
+
+;; define this when compiling for CANbus download (upper memory)
+; #define THUB_is_upper
 	#include "THUB_uc.inc"		; processor specific variable definitions
     #include "CANHLP.inc"       ; CAN HLP functions 
     #include "SRunner.inc"      ; SRunner functions
