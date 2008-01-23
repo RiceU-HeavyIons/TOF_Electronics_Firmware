@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.11 2008-01-22 15:23:35 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.12 2008-01-23 23:02:53 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-01-21
+-- Last update: 2008-01-23
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"7A";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"7C";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -325,6 +325,7 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL shift_out       : std_logic;
   SIGNAL trigger_delay   : std_logic_vector(5 DOWNTO 0);
 
+  SIGNAL fifoSmReset     : std_logic;
   SIGNAL finalFifo_rdreq : std_logic;
   SIGNAL finalFifo_aclr  : std_logic;
   SIGNAL finalFifo_wrreq : std_logic;
@@ -890,13 +891,16 @@ BEGIN
       q       => serdesFifo_q
       );
 
-  serdesFifo_aclr <= NOT serdes_ready;
+  -- serdes FIFO cleared when Serdes is not connected and at every event
+  serdesFifo_aclr <= NOT serdes_ready OR trigger_pulse;
 
+  -- FIFO state machine reset with configuration reset and at every event
+  fifoSmReset     <= sm_reset OR trigger_pulse;
 
   -- Process to control data from c1 or c2 FIFO to Final FIFO
-  PROCESS (clk_40mhz, sm_reset) IS
+  PROCESS (clk_40mhz, fifoSmReset) IS
   BEGIN  -- PROCESS
-    IF sm_reset = '1' THEN              -- asynchronous reset (active high)
+    IF fifoSmReset = '1' THEN              -- asynchronous reset (active high)
       sState          <= s1;
       c1_fifo_rdreq   <= '0';
       c2_fifo_rdreq   <= '0';
