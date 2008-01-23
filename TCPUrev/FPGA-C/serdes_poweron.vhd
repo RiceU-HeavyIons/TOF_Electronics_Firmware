@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.1 2007-11-21 16:44:06 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.2 2008-01-23 22:58:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2007-11-14
+-- Last update: 2008-01-22
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ ARCHITECTURE a OF serdes_poweron IS
     PO_LOCKED
     );
 
-  SIGNAL counter_q       : std_logic_vector (11 DOWNTO 0);
+  SIGNAL counter_q       : std_logic_vector (12 DOWNTO 0);
   SIGNAL s_ctr_aclr      : std_logic;
   SIGNAL s_serdes_tx_sel : std_logic;
 
@@ -77,7 +77,7 @@ ARCHITECTURE a OF serdes_poweron IS
 BEGIN
 
   counter4b : lpm_counter GENERIC MAP (
-    LPM_WIDTH     => 12,
+    LPM_WIDTH     => 13,
     LPM_TYPE      => "LPM_COUNTER",
     LPM_DIRECTION => "UP")
     PORT MAP (
@@ -133,7 +133,7 @@ BEGIN
           IF rxd = LOCK_PATTERN_THUB THEN  -- wait for pattern on RX
             poweron_next := PO_PATTERN;
             s_ctr_aclr   <= '1';           -- reset timeout counter
-          ELSIF counter_q(11) = '1' THEN   -- timeout (lock seems to take 30us)
+          ELSIF counter_q(12) = '1' THEN   -- timeout (lock seems to take 30us)
             poweron_next := PO_INIT;
           END IF;
         WHEN PO_PATTERN =>
