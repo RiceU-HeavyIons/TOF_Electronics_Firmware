@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.3 2007-12-03 21:45:25 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.4 2008-01-23 22:58:02 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -126,7 +126,11 @@ BEGIN
             sState <= s5;
           END IF;
         WHEN s5 =>
-          rdo_data_valid <= '1';        -- write data to upstream fifos
+          IF (item_ctr < 253) THEN
+            rdo_data_valid <= '1';        -- write data to upstream fifos
+          ELSE
+            item_ctr := 254;
+          END IF;
           sState         <= s6;
         WHEN s6 =>
           sState <= s3;
