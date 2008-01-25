@@ -1,13 +1,13 @@
--- $Id: serdes_poweron.vhd,v 1.2 2008-01-23 22:58:48 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.3 2008-01-25 20:25:24 jschamba Exp $
 -------------------------------------------------------------------------------
--- Title      : SERDES Poweron
--- Project    : SERDES_FPGA
+-- Title      : SERDES Poweron for TCPU
+-- Project    : TCPU_B_TOP
 -------------------------------------------------------------------------------
 -- File       : serdes_poweron.vhd
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2008-01-22
+-- Last update: 2008-01-25
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -69,7 +69,7 @@ ARCHITECTURE a OF serdes_poweron IS
     PO_LOCKED
     );
 
-  SIGNAL counter_q       : std_logic_vector (12 DOWNTO 0);
+  SIGNAL counter_q       : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_ctr_aclr      : std_logic;
   SIGNAL s_serdes_tx_sel : std_logic;
 
@@ -77,7 +77,7 @@ ARCHITECTURE a OF serdes_poweron IS
 BEGIN
 
   counter4b : lpm_counter GENERIC MAP (
-    LPM_WIDTH     => 13,
+    LPM_WIDTH     => 4,
     LPM_TYPE      => "LPM_COUNTER",
     LPM_DIRECTION => "UP")
     PORT MAP (
@@ -113,6 +113,7 @@ BEGIN
       sync            <= '0';
       ch_ready        <= '0';
       s_serdes_tx_sel <= '0';           -- TX data default: "normal" data
+      s_ctr_aclr      <= '1';           -- reset timeout counter
 
       CASE poweron_present IS
         WHEN PO_INIT =>
@@ -132,16 +133,13 @@ BEGIN
           rpwdn_n <= '1';                  -- rx powered on
           IF rxd = LOCK_PATTERN_THUB THEN  -- wait for pattern on RX
             poweron_next := PO_PATTERN;
-            s_ctr_aclr   <= '1';           -- reset timeout counter
-          ELSIF counter_q(12) = '1' THEN   -- timeout (lock seems to take 30us)
-            poweron_next := PO_INIT;
           END IF;
         WHEN PO_PATTERN =>
           tpwdn_n         <= '1';          -- tx powered on
           rpwdn_n         <= '1';          -- rx powered on
           s_ctr_aclr      <= '0';          -- start timeout ctr
           s_serdes_tx_sel <= '1';          -- send lock pattern
-          IF counter_q(1) = '1' THEN       -- hold pattern for 2 clocks
+          IF counter_q(2) = '1' THEN       -- hold pattern for 4 clocks
             poweron_next := PO_LOCKED;     -- then move on to "Locked" state
           END IF;
         WHEN PO_LOCKED =>
