@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.3 2007-11-13 17:30:09 jschamba Exp $
+-- $Id: smif.vhd,v 1.4 2008-01-25 14:34:30 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : serdes-master-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-14
--- Last update: 2007-11-13
+-- Last update: 2008-01-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -39,6 +39,7 @@ ENTITY smif IS
       data_type  : IN  std_logic_vector(3 DOWNTO 0);
       serdes_out : OUT std_logic_vector(17 DOWNTO 0);
       serdes_reg : OUT std_logic_vector(7 DOWNTO 0);
+      trigger    : OUT std_logic;
       areset     : IN  std_logic
 
       );
@@ -65,8 +66,11 @@ BEGIN
       state        <= State0;
       s_serdes_out <= (OTHERS => '0');
       serdes_reg   <= (OTHERS => '0');
-
+      trigger      <= '0';
+      
     ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- leading clock edge
+      trigger <= '0';
+      
       CASE state IS
         -- ************* Waiting... ********************************
         WHEN State0 =>
@@ -87,6 +91,8 @@ BEGIN
 
         -- *************** trigger **********************************
         WHEN State1 =>
+          trigger <= '1';
+          
           -- latch the 20MHz clock phase
           -- calculate the parity
           -- set SERDES data lines to appropriate values
