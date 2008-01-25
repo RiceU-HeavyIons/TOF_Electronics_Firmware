@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.13 2008-01-25 20:25:53 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.14 2008-01-25 22:31:31 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -177,7 +177,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"7D";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"7E";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -740,11 +740,11 @@ BEGIN
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 256,
+      lpm_numwords           => 1024,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 8,
+      lpm_widthu             => 10,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -810,11 +810,11 @@ BEGIN
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 256,
+      lpm_numwords           => 1024,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 8,
+      lpm_widthu             => 10,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
@@ -871,11 +871,11 @@ BEGIN
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 512,
+      lpm_numwords           => 2048,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 32,
-      lpm_widthu             => 9,
+      lpm_widthu             => 11,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
