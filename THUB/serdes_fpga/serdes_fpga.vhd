@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.21 2008-01-16 22:18:51 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.22 2008-01-25 14:33:42 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-01-16
+-- Last update: 2008-01-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -117,6 +117,7 @@ ARCHITECTURE a OF serdes_fpga IS
       data_type  : IN  std_logic_vector(3 DOWNTO 0);
       serdes_out : OUT std_logic_vector(17 DOWNTO 0);
       serdes_reg : OUT std_logic_vector(7 DOWNTO 0);
+      trigger    : OUT std_logic;
       areset     : IN  std_logic);
   END COMPONENT smif;
 
@@ -261,6 +262,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch2_txd         : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_ch3_txd         : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_serdes_reg      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_smif_trigger    : std_logic;
 
   SIGNAL s_ch0fifo_rdreq : std_logic;
   SIGNAL s_ch0fifo_aclr  : std_logic;
@@ -362,6 +364,7 @@ BEGIN
     data_type  => s_smif_datatype,
     serdes_out => s_serdes_out,
     serdes_reg => s_serdes_reg,
+    trigger    => s_smif_trigger,
     areset     => '0');
 
   -----------------------------------------------------------------------------
@@ -594,7 +597,7 @@ BEGIN
       dataout    => s_ch0fifo_q,
       fifo_empty => s_ch0fifo_empty);
 
-  s_ch0fifo_aclr <= NOT s_ch0_locked OR m_all(0);
+  s_ch0fifo_aclr <= NOT s_ch0_locked OR m_all(0) OR s_smif_trigger;
 
   -- Channel 1 ----------------------------------------------------------------
   ch1rcvr : serdes_rcvr
@@ -610,7 +613,7 @@ BEGIN
       dataout    => s_ch1fifo_q,
       fifo_empty => s_ch1fifo_empty);
 
-  s_ch1fifo_aclr <= NOT s_ch1_locked OR m_all(0);
+  s_ch1fifo_aclr <= NOT s_ch1_locked OR m_all(0) OR s_smif_trigger;
 
   -- Channel 2 ----------------------------------------------------------------
   ch2rcvr : serdes_rcvr
@@ -626,7 +629,7 @@ BEGIN
       dataout    => s_ch2fifo_q,
       fifo_empty => s_ch2fifo_empty);
 
-  s_ch2fifo_aclr <= NOT s_ch2_locked OR m_all(0);
+  s_ch2fifo_aclr <= NOT s_ch2_locked OR m_all(0) OR s_smif_trigger;
 
   -- Channel 3 ----------------------------------------------------------------
   ch3rcvr : serdes_rcvr
@@ -642,7 +645,7 @@ BEGIN
       dataout    => s_ch3fifo_q,
       fifo_empty => s_ch3fifo_empty);
 
-  s_ch3fifo_aclr <= NOT s_ch3_locked OR m_all(0);
+  s_ch3fifo_aclr <= NOT s_ch3_locked OR m_all(0) OR s_smif_trigger;
 
   -- FIFO output decoded to Master FPGA lines -----------------
   rdreq_decode : decoder PORT MAP (
