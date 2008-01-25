@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.4 2008-01-23 22:58:02 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.5 2008-01-25 22:29:59 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -56,6 +56,8 @@ BEGIN
   --               - read 32 bits from "Serial_Out" pin into
   --                 shift register (s4)
   --               - clock shift register into FIFO (s5)
+  --               - if there are more than 1021 words, stop strobing shift
+  --                 register into FIFO, and set item_ctr to 1022
   --               - wait one clock tick and go back to s3 for next data item 
   --                 
   --               - when no more data, clock separator word into FIFO
@@ -64,7 +66,7 @@ BEGIN
   --                       
   PROCESS (reset, strb_out)
     VARIABLE ser_ctr  : integer RANGE 0 TO 32;
-    VARIABLE item_ctr : integer RANGE 0 TO 511;
+    VARIABLE item_ctr : integer RANGE 0 TO 1023;
     VARIABLE rdoutCtr : integer RANGE 0 TO 256;
   BEGIN
     IF (reset = '1') THEN
@@ -79,7 +81,7 @@ BEGIN
       rdo_data_valid             <= '0';
       ser_ctr                    := ser_ctr + 1;
       -- readout separator at end of readout:
-      rdo_separator(15 DOWNTO 8) <= CONV_STD_LOGIC_VECTOR(item_ctr, 8);
+      rdo_separator(17 DOWNTO 8) <= CONV_STD_LOGIC_VECTOR(item_ctr, 10);
       rdo_separator(7 DOWNTO 0)  <= CONV_STD_LOGIC_VECTOR(rdoutCtr, 8);
 
       CASE sState IS
@@ -126,10 +128,10 @@ BEGIN
             sState <= s5;
           END IF;
         WHEN s5 =>
-          IF (item_ctr < 253) THEN
+          IF (item_ctr < 1021) THEN
             rdo_data_valid <= '1';        -- write data to upstream fifos
           ELSE
-            item_ctr := 254;
+            item_ctr := 1022;
           END IF;
           sState         <= s6;
         WHEN s6 =>
@@ -151,7 +153,7 @@ BEGIN
   rdo_separator(31 DOWNTO 28) <= X"E";
   rdo_separator(27 DOWNTO 25) <= (OTHERS => '0');
   rdo_separator(24)           <= SW;
-  rdo_separator(23 DOWNTO 16) <= (OTHERS => '0');
+  rdo_separator(23 DOWNTO 18) <= (OTHERS => '0');
 
 
   -- latch the token coming back from the TDC
