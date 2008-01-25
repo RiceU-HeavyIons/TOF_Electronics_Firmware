@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.25 2008-01-21 21:08:43 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.26 2008-01-25 22:45:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-21
+-- Last update: 2008-01-25
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -838,8 +838,8 @@ BEGIN
 
   ddlfifo_aclr <= s_runReset;           -- clear at Begin Run
 
-  -- if there are less than 512 words left:
-  ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 9) = "1111");
+  -- if there are less than 2048 words left:
+  ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 11) = "11");
 
   -- ********************************************************************************
   -- Micro Controller interface
