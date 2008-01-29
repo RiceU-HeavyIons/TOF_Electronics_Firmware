@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.11 2008-01-16 23:10:59 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.12 2008-01-29 17:09:51 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-01-16
+-- Last update: 2008-01-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -47,6 +47,8 @@ ENTITY serdes_reader IS
     triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
     trgFifo_empty       : IN  std_logic;
     trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
+    timeout             : IN  std_logic;
+    timeout_clr         : OUT std_logic;
     serSel              : OUT std_logic_vector (2 DOWNTO 0);
     trgFifo_rdreq       : OUT std_logic;
     busy                : OUT std_logic;  -- active low
@@ -144,6 +146,7 @@ BEGIN  -- ARCHITECTURE a
       ser_selector   <= (OTHERS => '0');
       chCtr          := 0;
       serCtr         := 0;
+      timeout_clr    <= '1';
       
     ELSIF clk80mhz'event AND clk80mhz = '1' THEN  -- rising clock edge
       s_wrreq_out    <= '0';
@@ -152,7 +155,8 @@ BEGIN  -- ARCHITECTURE a
       trgFifo_rdreq  <= '0';
       sl_areset_n    <= '0';
       shift_areset_n <= '1';
-
+      timeout_clr    <= '1';
+      
       CASE TState IS
 
         -- wait for trigger
@@ -203,7 +207,8 @@ BEGIN  -- ARCHITECTURE a
         WHEN SRdSerA =>
           rdreq_out   <= '1';           -- start reading
           sl_areset_n <= '1';
-
+          timeout_clr <= s_slatch;      -- clear timeout on latch
+          
           -- Condition for last word from that channel:
           IF (s_shiftout(15 DOWNTO 8) = X"E0") AND (s_prelatch = '1') THEN
             block_end <= true;
@@ -213,7 +218,7 @@ BEGIN  -- ARCHITECTURE a
           s_wrreq_out <= s_slatch;
 
           -- when finished, wait for next latch signal
-          IF block_end AND (s_slatch = '1') THEN
+          IF (block_end AND (s_slatch = '1')) OR (timeout = '1') THEN
             block_end <= false;
             TState    <= SChgChannel;
           END IF;
