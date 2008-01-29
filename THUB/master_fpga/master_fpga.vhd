@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.26 2008-01-25 22:45:00 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.27 2008-01-29 17:11:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-25
+-- Last update: 2008-01-29
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -99,6 +99,7 @@ ARCHITECTURE a OF master_fpga IS
         inclk0 : IN  std_logic := '0';
         c0     : OUT std_logic;
         c1     : OUT std_logic;
+        c2     : OUT std_logic;
         locked : OUT std_logic
         );
   END COMPONENT;
@@ -237,6 +238,8 @@ ARCHITECTURE a OF master_fpga IS
       triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_empty       : IN  std_logic;
       trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
+      timeout             : IN  std_logic;
+      timeout_clr         : OUT std_logic;
       serSel              : OUT std_logic_vector (2 DOWNTO 0);
       trgFifo_rdreq       : OUT std_logic;
       busy                : OUT std_logic;
@@ -329,10 +332,13 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_trgfifo_empty : std_logic;
   SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trg_mcu_word  : std_logic_vector (19 DOWNTO 0);
-  SIGNAL counter25b_q    : std_logic_vector(24 DOWNTO 0);
+  SIGNAL counter23b_q    : std_logic_vector(22 DOWNTO 0);
   SIGNAL clk_80mhz       : std_logic;
+  SIGNAL clk_10mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
   SIGNAL test_clk        : std_logic;
+  SIGNAL timeout         : std_logic_vector (10 DOWNTO 0);
+  SIGNAL timeout_clr     : std_logic;
 
   SIGNAL s_serSel        : std_logic_vector (2 DOWNTO 0);
   SIGNAL s_serStatus     : std_logic_vector (3 DOWNTO 0);
@@ -439,23 +445,35 @@ BEGIN
     inclk0 => clk,
     c0     => clk_80mhz,
     c1     => test_clk,
+    c2     => clk_10mhz,
     locked => pll_locked);
 
 
   -- counter to divide clock
-  counter25b : lpm_counter
+  counter23b : lpm_counter
     GENERIC MAP (
-      LPM_WIDTH     => 25,
+      LPM_WIDTH     => 23,
       LPM_TYPE      => "LPM_COUNTER",
       LPM_DIRECTION => "UP")
     PORT MAP (
-      clock  => globalclk,
+      clock  => clk_10mhz,
       clk_en => pll_locked,
-      q      => counter25b_q);
+      q      => counter23b_q);
+
+  timeoutCtr : lpm_counter
+    GENERIC MAP (
+      LPM_WIDTH     => 11,
+      LPM_TYPE      => "LPM_COUNTER",
+      LPM_DIRECTION => "UP")
+    PORT MAP (
+      clock => clk_10mhz,
+      aclr  => timeout_clr,
+      q     => timeout);
+  
 
   -- LEDs
   -- led <= "00";
-  led(0) <= counter25b_q(24);  -- this should indicate if clock is present
+  led(0) <= counter23b_q(22);  -- this should indicate if clock is present
   led(1) <= rstin;
 
   -- Other defaults
@@ -655,6 +673,8 @@ BEGIN
     triggerWord         => s_triggerword,
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
+    timeout             => timeout(10),
+    timeout_clr         => timeout_clr,
     serSel              => s_serSel,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
     busy                => s_tcd_busy_n,
