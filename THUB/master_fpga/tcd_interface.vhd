@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.5 2007-11-16 21:50:34 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.6 2008-01-31 22:15:01 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2007-11-16
+-- Last update: 2008-01-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -57,6 +57,8 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_stage2     : std_logic;
   SIGNAL s_stage3     : std_logic;
   SIGNAL s_stage4     : std_logic;
+  SIGNAL s_l0like     : std_logic;
+  SIGNAL s_trigger    : std_logic;
   
 BEGIN  -- ARCHITECTURE a
 
@@ -99,43 +101,43 @@ BEGIN  -- ARCHITECTURE a
     CASE s_reg20_1(19 DOWNTO 16) IS
       WHEN "0100" =>                    -- "4" (trigger0)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "0101" =>                    -- "5" (trigger1)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "0110" =>                    -- "6" (trigger2)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "0111" =>                    -- "7" (trigger3)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1000" =>                    -- "8" (pulser0)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1001" =>                    -- "9" (pulser1)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1010" =>                    -- "10" (pulser2)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1011" =>                    -- "11" (pulser3)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1100" =>                    -- "12" (config)
         s_trg_unsync <= '1';
-        evt_trg      <= '1';
+        s_l0like     <= '1';
       WHEN "1101" =>                    -- "13" (abort)
         s_trg_unsync <= '1';
-        evt_trg      <= '0';
+        s_l0like     <= '0';
       WHEN "1110" =>                    -- "14" (L1accept)
         s_trg_unsync <= '1';
-        evt_trg      <= '0';
+        s_l0like     <= '0';
       WHEN "1111" =>                    -- "15" (L2accept)
         s_trg_unsync <= '1';
-        evt_trg      <= '0';
+        s_l0like     <= '0';
       WHEN OTHERS =>
         s_trg_unsync <= '0';
-        evt_trg      <= '0';
+        s_l0like     <= '0';
     END CASE;
   END PROCESS trg;
 
@@ -153,6 +155,9 @@ BEGIN  -- ARCHITECTURE a
     END IF;
   END PROCESS syncit;
 
-  trigger <= s_stage3 AND (NOT s_stage4);
+  s_trigger <= s_stage3 AND (NOT s_stage4);
+
+  trigger <= s_trigger;
+  evt_trg <= s_trigger AND s_l0like;
   
 END ARCHITECTURE a;
