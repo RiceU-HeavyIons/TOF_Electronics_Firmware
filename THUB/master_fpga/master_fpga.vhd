@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.27 2008-01-29 17:11:23 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.28 2008-01-31 22:16:08 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-29
+-- Last update: 2008-01-31
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -319,7 +319,11 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_serdes_reg : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_trigger    : std_logic;
   SIGNAL s_evt_trg    : std_logic;
+  SIGNAL s_tcdevt_trg : std_logic;
+  SIGNAL s_plsevt_trg : std_logic;
   SIGNAL s_runReset   : std_logic;
+  SIGNAL s_stage1     : std_logic;
+  SIGNAL s_stage2     : std_logic;
 
   SIGNAL ddl_data            : std_logic_vector (31 DOWNTO 0);
   SIGNAL ddlfifo_usedw       : std_logic_vector (12 DOWNTO 0);
@@ -333,6 +337,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_trgfifo_q     : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trg_mcu_word  : std_logic_vector (19 DOWNTO 0);
   SIGNAL counter23b_q    : std_logic_vector(22 DOWNTO 0);
+  SIGNAL s_internal_plsr : std_logic;
   SIGNAL clk_80mhz       : std_logic;
   SIGNAL clk_10mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
@@ -415,6 +420,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sh_smif_dataout    : std_logic_vector(11 DOWNTO 0);
   SIGNAL sh_smif_datatype   : std_logic_vector(3 DOWNTO 0);
   SIGNAL s_tcd_busy_n       : std_logic;
+  SIGNAL s_tcd_trigger      : std_logic;
 
   SIGNAL sr_fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL sr_fifo_empty : std_logic;
@@ -469,7 +475,7 @@ BEGIN
       clock => clk_10mhz,
       aclr  => timeout_clr,
       q     => timeout);
-  
+
 
   -- LEDs
   -- led <= "00";
@@ -669,11 +675,11 @@ BEGIN
     ser_status          => s_serStatus,
     fifo_empty          => smif_fifo_empty,
     outfifo_almost_full => ddlfifo_almost_full,
-    evt_trg             => (s_evt_trg AND s_trigger),
+    evt_trg             => s_evt_trg,
     triggerWord         => s_triggerword,
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
-    timeout             => timeout(10),
+    timeout             => timeout(10),  -- about 100us
     timeout_clr         => timeout_clr,
     serSel              => s_serSel,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
@@ -743,7 +749,7 @@ BEGIN
     rdreqH => sh_smif_rdenable);
 
   -- ***************** Master-Serdes FPGA Interface Control **************************
-  s_smif_trigger <= s_evt_trg AND s_trigger AND s_tcd_busy_n AND s_reg1(0);
+  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_reg1(0);
   smif_inst : smif
     PORT MAP (
       clock       => globalclk,
@@ -940,8 +946,9 @@ BEGIN
   m_all <= s_reg2(3 DOWNTO 0);
 
   -- ********************************************************************************
-  -- TCD interface
+  -- Trigger interface
   -- ********************************************************************************
+  -- tcd trigger
   tcd_inst : tcd
     PORT MAP (
       rhic_strobe => tcd_strb,
@@ -950,13 +957,38 @@ BEGIN
       clock       => globalclk,
       trgword     => s_triggerword,
       trigger     => s_trigger,
-      evt_trg     => s_evt_trg);
+      evt_trg     => s_tcdevt_trg);
+
+
+  -- pulser trigger: choose freq with register 1 bits [5..4]
+  WITH s_reg1(5 DOWNTO 4) SELECT
+    s_internal_plsr <=
+    counter23b_q(22) WHEN "00",         -- ~1.2 Hz
+    counter23b_q(18) WHEN "01",         -- ~19 Hz
+    counter23b_q(16) WHEN "10",         -- ~76 Hz
+    counter23b_q(13) WHEN OTHERS;       -- ~610 Hz
+
+  -- pulser trigger: shorten counter signal to 25ns
+  shorten_pls : PROCESS (globalclk) IS
+  BEGIN
+    IF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
+      s_stage2 <= s_stage1;
+      s_stage1 <= s_internal_plsr;
+    END IF;
+  END PROCESS shorten_pls;
+  s_plsevt_trg <= s_stage1 AND (NOT s_stage2);
+
+  -- select trigger with register 1 bit 1
+  WITH s_reg1(1) SELECT
+    s_evt_trg <=
+    s_tcdevt_trg WHEN '0',
+    s_plsevt_trg WHEN OTHERS;
 
   -- store the TCD info in a dual clock FIFO for later retrieval.
   -- s_trigger is high when a valid trigger is received, so USE
   -- it as the write request.
   -- s_reg_clr advances the FIFO to the next word on the read port.
-  dcfifo_inst : dcfifo
+  tcdfifo_inst : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_numwords           => 256,
