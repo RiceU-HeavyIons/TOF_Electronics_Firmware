@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.17 2008-01-17 16:48:33 jschamba Exp $
+; $Id: CANHLP.asm,v 1.18 2008-02-04 23:56:32 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -367,6 +367,21 @@ TofWriteReg:
     movff   RxData+1, uc_fpga_DATA ; second byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
+    btfss   RxDtLngth,2     ; test if data length == 4
+    return                  ; if not, back to receiver loop
+    ; otherwise, repeat the same for the next two data items
+    btfss   RxData+2, 7     ; first, test again, if bit 7 in RxData[2] is set
+    return                  ; if not, return
+    movff   RxData+2, uc_fpga_DATA   ; put third byte as register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    movff   RxData+3, uc_fpga_DATA ; fourth byte as register data on DATA PORT
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    btfss   RxDtLngth,2     ; if data length != 4
     return                  ; back to receiver loop
 
 TofProgramPLD:
