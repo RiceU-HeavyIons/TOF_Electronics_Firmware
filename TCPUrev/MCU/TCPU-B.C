@@ -1,4 +1,4 @@
-// $Id: TCPU-B.C,v 1.1 2008-02-13 17:44:42 jschamba Exp $
+// $Id: TCPU-B.C,v 1.2 2008-02-13 23:04:53 jschamba Exp $
 
 // TCPU-B.c
 // main program for PIC24HJ256GP610 as used on TCPU-B rev 0 board
@@ -136,7 +136,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-    #define FIRMWARE_ID_0 'M'      // M == 0x4D // JS
+    #define FIRMWARE_ID_0 'N'      // N == 0x4E // JS
 // WB-1L make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x81
@@ -1103,14 +1103,14 @@ main()
                     j += 4;
                     read_FPGA (FIFO_STATUS_R);          // extra read-status
 //                    // Check again for more data
-//                    if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {
-//                        sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
-//                        sendbuf[5] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
-//                        sendbuf[6] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
-//                        sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
-//                        j += 4;
-//                        read_FPGA (FIFO_STATUS_R);          // extra read-status
-//                    } // end if had more, send message
+                    if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {
+                        sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
+                        sendbuf[5] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
+                        sendbuf[6] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
+                        sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
+                        j += 4;
+                        read_FPGA (FIFO_STATUS_R);          // extra read-status
+                    } // end if had more, send message
                     if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                     j = 0;
                 } // end if have data to send
