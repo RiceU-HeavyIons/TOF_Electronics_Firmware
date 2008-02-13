@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.23 2008-01-23 23:07:23 jschamba Exp $
+; $Id: main.asm,v 1.24 2008-02-13 22:48:21 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -331,9 +331,11 @@ CanTxTestMsg:
 	bra		$ - 2
 
     ; banksel TXB0D0
+    bsf     LATJ,3
 	infsnz	TXB0D0, F	; increment counter by 1
 	incf	TXB0D1, F	; increment next byte by 1 when counter wraps
     mCANSendData    4
+    bcf     LATJ, 3
     movff   CANTestDelay, temp_2 ; amount of xcycle delays
     call    delay_XCycles   ; delay some
     bra     QuietLoop       ; branch back to QuientLoop to continue
@@ -444,7 +446,8 @@ readToken:
 ;******************************************************************************
 delay_XCycles:
     ;banksel temp_1
-    movlw   0xFF
+;    movlw   0xFF
+    movlw   0x4F
     movwf   temp_1
 ;    movlw   0x83
 ;    movwf   temp_2
@@ -453,7 +456,7 @@ d100l1:
     decfsz  temp_1,F
     bra     d100l1
     decfsz  temp_2,F
-    bra     d100l1
+    bra     delay_XCycles
     return
 
 ;******************************************************************************
