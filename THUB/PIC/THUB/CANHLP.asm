@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.18 2008-02-04 23:56:32 jschamba Exp $
+; $Id: CANHLP.asm,v 1.19 2008-02-14 17:12:19 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -183,6 +183,10 @@ is_it_CAN_TESTMSG_MODE:
     bnz     is_it_programPLD    ; false: test next command
     call    TofSetCANTestMsg_MODE   ; true: set CAN Test Msg Mode
     call    HLPSendWriteResponseOK  ; send response    
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+    clrf    TXB0D1
+    clrf    TXB0D0
     return
 is_it_programPLD:
     movf    RxData,W            ; WREG = RxData
@@ -349,9 +353,12 @@ TofSetCANTestMsg_MODE:
     movff   RxData+1, CANTestDelay
     movlw   0xa0
     movwf   TXB0D3
+    movwf   TXB0D7
+    movlw   0x01
+    movwf   TXB0D4
+    clrf    TXB0D6
+    clrf    TXB0D5
     clrf    TXB0D2
-    clrf    TXB0D1
-    clrf    TXB0D0
     return
 
 TofWriteReg:
