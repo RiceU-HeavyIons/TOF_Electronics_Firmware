@@ -227,3 +227,4 @@ set_global_assignment -name VHDL_FILE TDIG.vhd
 set_global_assignment -name VHDL_FILE TDIG_E_primitives.vhd
 set_global_assignment -name SDC_FILE TDIG.sdc
 set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
