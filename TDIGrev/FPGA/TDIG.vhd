@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.2 2008-02-15 20:08:43 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.3 2008-02-15 20:32:36 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -96,27 +96,27 @@ ENTITY TDIG IS
       --
       -- BANK 4, Schematic Sheet 6, H2 and H3 Interface -- 
       --
-      h2_rst              : OUT std_logic;                      -- A13
-      h2_bunch_rst        : OUT std_logic;                      -- A14
-      h2_event_rst        : OUT std_logic;                      -- A15
-      h2_ser_out          : IN  std_logic;                      -- A17
-      h2_token_out        : IN  std_logic;                      -- A18
-      h2_strobe_out       : IN  std_logic;                      -- A19
-      h3_test             : IN  std_logic;                      -- B13
-      h3_error            : IN  std_logic;                      -- B14
-      h3_tck              : OUT std_logic;                      -- B17
-      h3_tms              : OUT std_logic;                      -- B18
-      h3_tdi              : OUT std_logic;                      -- B19
-      h3_tdo              : IN  std_logic;                      -- B20
-      h3_trst             : OUT std_logic;                      -- C13
-      h3_ser_in           : OUT std_logic;                      -- C16
-      h3_token_in         : OUT std_logic;                      -- C17
-      h3_rst              : OUT std_logic;                      -- D16
-      h3_bunch_rst        : OUT std_logic;                      -- E14
-      h3_event_rst        : OUT std_logic;                      -- E15
-      h3_ser_out          : IN  std_logic;                      -- F14
-      h3_token_out        : IN  std_logic;                      -- F15
-      h3_strobe_out       : IN  std_logic;                      -- G16
+      h2_rst              : OUT   std_logic;                      -- A13
+      h2_bunch_rst        : OUT   std_logic;                      -- A14
+      h2_event_rst        : OUT   std_logic;                      -- A15
+      h2_ser_out          : IN    std_logic;                      -- A17
+      h2_token_out        : IN    std_logic;                      -- A18
+      h2_strobe_out       : IN    std_logic;                      -- A19
+      h3_test             : IN    std_logic;                      -- B13
+      h3_error            : IN    std_logic;                      -- B14
+      h3_tck              : OUT   std_logic;                      -- B17
+      h3_tms              : OUT   std_logic;                      -- B18
+      h3_tdi              : OUT   std_logic;                      -- B19
+      h3_tdo              : IN    std_logic;                      -- B20
+      h3_trst             : OUT   std_logic;                      -- C13
+      h3_ser_in           : OUT   std_logic;                      -- C16
+      h3_token_in         : OUT   std_logic;                      -- C17
+      h3_rst              : OUT   std_logic;                      -- D16
+      h3_bunch_rst        : OUT   std_logic;                      -- E14
+      h3_event_rst        : OUT   std_logic;                      -- E15
+      h3_ser_out          : IN    std_logic;                      -- F14
+      h3_token_out        : IN    std_logic;                      -- F15
+      h3_strobe_out       : IN    std_logic;                      -- G16
       --
       -- BANK 5, Schematic Sheet 9 -- 
       --
@@ -124,58 +124,56 @@ ENTITY TDIG IS
       --
       -- BANK 6, Schematic Sheet 2, Upstream Interface -- 
       --
-      umult               : OUT std_logic_vector (3 DOWNTO 0);  -- M19 thru M15
-      udaisy_data         : OUT std_logic;                      -- N15
-      udaisy_tok_out      : OUT std_logic;                      -- N21
-      ustrobe_out         : OUT std_logic;                      -- N22
-      ustatus             : OUT std_logic;                      -- T21
-      udaisy_clk          : IN  std_logic;                      -- P17
-      udaisy_tok_in       : IN  std_logic;                      -- P18
-      flex_reset_in       : IN  std_logic;                      -- P20
-      uspare_in           : IN  std_logic;                      -- V22
-      clk_10mhz_on_io_pin : IN  std_logic;                      -- R22
-      trigger             : IN  std_logic;                      -- T18
-
-      bunch_rst      : IN    std_logic;                      -- U21
+      umult               : OUT   std_logic_vector (3 DOWNTO 0);  -- M19 thru M15
+      udaisy_data         : OUT   std_logic;                      -- N15
+      udaisy_tok_out      : OUT   std_logic;                      -- N21
+      ustrobe_out         : OUT   std_logic;                      -- N22
+      ustatus             : OUT   std_logic;                      -- T21
+      udaisy_clk          : IN    std_logic;                      -- P17
+      udaisy_tok_in       : IN    std_logic;                      -- P18
+      flex_reset_in       : IN    std_logic;                      -- P20
+      uspare_in           : IN    std_logic;                      -- V22
+      clk_10mhz_on_io_pin : IN    std_logic;                      -- R22
+      trigger             : IN    std_logic;                      -- T18
+      bunch_rst           : IN    std_logic;                      -- U21
       --
       -- BANK 7, Schematic Sheet 1, MCU and Test Interface -- 
       --
-      mcu_pld_data   : INOUT std_logic_vector (7 DOWNTO 0);  -- R14 thru V14
-      mcu_pld_ctrl   : IN    std_logic_vector (4 DOWNTO 0);  -- W14 thru Y14
-      mcu_tdc_tdi    : IN    std_logic;                      -- AA12
-      mcu_tdc_tdo    : OUT   std_logic;                      -- AA13
-      mcu_tdc_tck    : IN    std_logic;                      -- AA14
-      mcu_tdc_tms    : IN    std_logic;                      -- AA15
-      usb_flaga      : IN    std_logic;                      -- AA19
-      test_at_J9     : OUT   std_logic;                      -- AA20
-      tino_test_pld  : OUT   std_logic;                      -- AB13
-      pld_pushbutton : IN    std_logic;  -- AB17   -- input is LOW when button is pushed
-      pld_led        : OUT   std_logic;                      -- AB20
+      mcu_pld_data        : INOUT std_logic_vector (7 DOWNTO 0);  -- R14 thru V14
+      mcu_pld_ctrl        : IN    std_logic_vector (4 DOWNTO 0);  -- W14 thru Y14
+      mcu_tdc_tdi         : IN    std_logic;                      -- AA12
+      mcu_tdc_tdo         : OUT   std_logic;                      -- AA13
+      mcu_tdc_tck         : IN    std_logic;                      -- AA14
+      mcu_tdc_tms         : IN    std_logic;                      -- AA15
+      usb_flaga           : IN    std_logic;                      -- AA19
+      test_at_J9          : OUT   std_logic;                      -- AA20
+      tino_test_pld       : OUT   std_logic;                      -- AB13
+      pld_pushbutton      : IN    std_logic;  -- AB17   -- input is LOW when button is pushed
+      pld_led             : OUT   std_logic;                      -- AB20
 
       --
       -- BANK 8, Schematic Sheet 1, MCU Interface -- 
       --
-      mcu_pld_spare : IN std_logic_vector(2 DOWNTO 0);  -- U9, U8, T11
-
-      test19 : OUT std_logic;
-      test18 : IN  std_logic;
-      test17 : OUT std_logic;
-      test16 : IN  std_logic;
-      test15 : OUT std_logic;
-      test14 : IN  std_logic;
-      test13 : OUT std_logic;
-      test12 : IN  std_logic;
-      test11 : OUT std_logic;
-      test10 : IN  std_logic;
-      test9  : OUT std_logic;
-      test8  : IN  std_logic;
-      test7  : OUT std_logic;
-      test6  : OUT std_logic;
-      test5  : OUT std_logic;
-      test4  : IN  std_logic;
-      test3  : OUT std_logic;
-      test2  : IN  std_logic;
-      test1  : IN  std_logic;
+      mcu_pld_spare : IN  std_logic_vector(2 DOWNTO 0);  -- U9, U8, T11
+      test19        : OUT std_logic;
+      test18        : IN  std_logic;
+      test17        : OUT std_logic;
+      test16        : IN  std_logic;
+      test15        : OUT std_logic;
+      test14        : IN  std_logic;
+      test13        : OUT std_logic;
+      test12        : IN  std_logic;
+      test11        : OUT std_logic;
+      test10        : IN  std_logic;
+      test9         : OUT std_logic;
+      test8         : IN  std_logic;
+      test7         : OUT std_logic;
+      test6         : OUT std_logic;
+      test5         : OUT std_logic;
+      test4         : IN  std_logic;
+      test3         : OUT std_logic;
+      test2         : IN  std_logic;
+      test1         : IN  std_logic;
 
       pld_serin  : IN  std_logic;       -- AB4
       pld_serout : OUT std_logic;       -- AB5
@@ -200,42 +198,23 @@ ARCHITECTURE a OF TDIG IS
 
   CONSTANT TDIG_VERSION : std_logic_vector := x"71";
 
-  SIGNAL global_40mhz, clk_160mhz, pll_locked : std_logic;  -- global clock signal
-  SIGNAL byteblaster_tdi                      : std_logic;
-  SIGNAL byteblaster_tdo                      : std_logic;
-  SIGNAL byteblaster_tms                      : std_logic;
-  SIGNAL byteblaster_tck                      : std_logic;
-  SIGNAL tdc_tdi, tdc_tdo, tdc_tms, tdc_tck   : std_logic;
-  SIGNAL jtag_sel                             : std_logic;
-  SIGNAL no_select                            : std_logic;
-  SIGNAL select_tdc1                          : std_logic;
-  SIGNAL select_tdc2                          : std_logic;
-  SIGNAL select_tdc3                          : std_logic;
-  SIGNAL jtag_mode                            : std_logic_vector(1 DOWNTO 0);  --  
+  SIGNAL global_40mhz                       : std_logic;  -- global clock signal
+  SIGNAL byteblaster_tdi                    : std_logic;
+  SIGNAL byteblaster_tdo                    : std_logic;
+  SIGNAL byteblaster_tms                    : std_logic;
+  SIGNAL byteblaster_tck                    : std_logic;
+  SIGNAL tdc_tdi, tdc_tdo, tdc_tms, tdc_tck : std_logic;
+  SIGNAL jtag_sel                           : std_logic;
+  SIGNAL jtag_mode                          : std_logic_vector(1 DOWNTO 0);
 
-  SIGNAL debounced_button, dbounce1, dbounce2          : std_logic;
-  SIGNAL hit_counter_load, hit_counter_enable          : std_logic;
-  SIGNAL hit_counter_value, frequency_control_value    : std_logic_vector(15 DOWNTO 0);
-  SIGNAL delay_count_a                                 : std_logic_vector(15 DOWNTO 0);
-  SIGNAL bunch_reset_test, internal_bunch_reset        : std_logic;
-  SIGNAL test_pulse, hit_counter_carry, hit_counter_tc : std_logic;
+  SIGNAL debounced_button, dbounce1, dbounce2 : std_logic;
 
-  SIGNAL test_mcu_tdc_tdi, test_mcu_tdc_tdo    : std_logic;
-  SIGNAL test_mcu_tdc_tck                      : std_logic;
-  SIGNAL test_mcu_tdc_tms, test_mcu_pld_spare0 : std_logic;
-  SIGNAL hit1_for_readout_test                 : std_logic;
-  SIGNAL bunch_reset_for_readout_test          : std_logic;
-
-  SIGNAL test_trigger, reset                       : std_logic;
-  SIGNAL pulse_gen_input, short_pulse_gen          : std_logic;
-  SIGNAL sig_h1_token_in                           : std_logic;
-  SIGNAL button_trigger, button_reset              : std_logic;
-  SIGNAL token_signal_issued_by_readout_controller : std_logic;
-
+  SIGNAL reset                            : std_logic;
+  SIGNAL pulse_gen_input, short_pulse_gen : std_logic;
+  SIGNAL sig_h1_token_in                  : std_logic;
 
 -- MCU I/F SIGNALS
-
-  SIGNAL bidir_data_bus, input_data                       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL input_data                                       : std_logic_vector(7 DOWNTO 0);
   SIGNAL output_data, config0_data                        : std_logic_vector(7 DOWNTO 0);
   SIGNAL config1_data, config2_data, config3_data         : std_logic_vector(7 DOWNTO 0);
   SIGNAL config12_data, config14_data                     : std_logic_vector(7 DOWNTO 0);
@@ -253,53 +232,28 @@ ARCHITECTURE a OF TDIG IS
   SIGNAL mcu_fifo_read, mcu_fifo_clear                    : std_logic;
   SIGNAL mcu_fifo_parity                                  : std_logic;
   SIGNAL mcu_fifo_level                                   : std_logic_vector(4 DOWNTO 0);
+  SIGNAL data15x                                          : std_logic_vector(7 DOWNTO 0);
 
-  SIGNAL sel_test_to_MCU_FIFO                : std_logic;
   SIGNAL sel_as_first_board_in_readout_chain : std_logic;
-  SIGNAL sel_test_token_from_MCU             : std_logic;
-  SIGNAL sel_test_mode_for_TDC_data          : std_logic;
-  SIGNAL sel_test_mode_for_TDC_trigger       : std_logic;
   SIGNAL mcu_token, token_to_start_of_chain  : std_logic;
 
   SIGNAL mcu_strobe8, mcu_strobe_short8 : std_logic;
   SIGNAL mcu_strobe12                   : std_logic;
-  SIGNAL read_from_adr14                : std_logic;
 
-  SIGNAL sel_test_mode_for_TDC_bunch_reset : std_logic;
-  SIGNAL sel_test_mode_for_TDC_event_reset : std_logic;
-  SIGNAL tdc_reset, reset_readout_sm       : std_logic;
+  SIGNAL TDC_reset : std_logic;
 
-  SIGNAL substitute_h1_token_in : std_logic;
-
-  SIGNAL mcu_test_reset                : std_logic;
   SIGNAL mcu_fifo_full, mcu_fifo_empty : std_logic;
 
-  SIGNAL initiate_readout     : std_logic;
-  SIGNAL test_init_readout, x : std_logic;
-  SIGNAL button_short         : std_logic;
+  SIGNAL button_short : std_logic;
 
   SIGNAL tdc_trigger, event_reset, bunch_reset : std_logic;
-  SIGNAL trigger_to_tdcs                       : std_logic;
 
-  SIGNAL tst_strobe4, tst_strobe5, tst_strobe9, tst_strobe10 : std_logic;
-  SIGNAL dummy1, dummy2, dummy3, dummy4, dummy5              : std_logic;
-  SIGNAL dummy6, dummy7, dummy8, dummy9                      : std_logic;
-
-  SIGNAL tray_bunch_reset, test_bunch_reset, local_bunch_reset : std_logic;
-
-  -- signals for test data shift register
-  SIGNAL tapped_delay  : std_logic_vector(31 DOWNTO 0);
-  SIGNAL start_readout : std_logic;
-
-  SIGNAL test_hit_pattern : std_logic_vector(3 DOWNTO 1);
-  SIGNAL tst_ctr_out      : std_logic_vector(15 DOWNTO 0);
-
-  SIGNAL sig_udaisy_data, inv_udaisy_data                  : std_logic;
-  SIGNAL sig_udaisy_tok_out, inv_udaisy_tok_out            : std_logic;
-  SIGNAL sig_dstatus                                       : std_logic_vector(1 DOWNTO 0);
-  SIGNAL sig_ustatus, inv_ustatus, ops_ustatus             : std_logic;
-  SIGNAL sig_ustrobe_out, inv_ustrobe_out, ops_ustrobe_out : std_logic;
-  SIGNAL sig_umult, sig_dmult, ops_umult, inv_umult        : std_logic_vector(3 DOWNTO 0);
+  SIGNAL sig_udaisy_data, inv_udaisy_data       : std_logic;
+  SIGNAL sig_udaisy_tok_out, inv_udaisy_tok_out : std_logic;
+  SIGNAL sig_dstatus                            : std_logic_vector(1 DOWNTO 0);
+  SIGNAL sig_ustatus, inv_ustatus               : std_logic;
+  SIGNAL sig_ustrobe_out, inv_ustrobe_out       : std_logic;
+  SIGNAL sig_umult, sig_dmult, inv_umult        : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sig_trigger, sig_bunch_rst, sig_udaisy_clk   : std_logic;
   SIGNAL sig_udaisy_tok_in, sig_ddaisy_tok_in         : std_logic;
@@ -307,15 +261,8 @@ ARCHITECTURE a OF TDIG IS
 
   SIGNAL sig_ddaisy_clk, sig_dspare_out, sig_flex_reset_out : std_logic;
   SIGNAL sig_ddaisy_data, sig_ddaisy_tok_out                : std_logic;
+  SIGNAL data_to_first_TDC, token_in_to_first_TDC           : std_logic;
 
-
-  SIGNAL ops_bunch_rst, ops_ddaisy_tok_in                 : std_logic;
-  SIGNAL ops_udaisy_data, ops_udaisy_tok_out              : std_logic;
-  SIGNAL data_to_first_TDC, token_in_to_first_TDC, temp20 : std_logic;
-
-  SIGNAL test_mux_sel : std_logic_vector(2 DOWNTO 0);
-  SIGNAL out_to_j9    : std_logic_vector(3 DOWNTO 0);
-  SIGNAL data15x      : std_logic_vector(7 DOWNTO 0);
 
   CONSTANT zero_byte      : std_logic_vector := x"00";
   CONSTANT five_five_byte : std_logic_vector := x"55";
@@ -683,8 +630,8 @@ BEGIN
   --            3 destinations : TDC1, TDC2 or TDC3
   --      4 signals: TCK, TMS, TDI inputs to TDC, TDO output from TDC
 
-  jtag_mode(1 DOWNTO 0) <= config1_data(1 DOWNTO 0);
-  jtag_sel              <= NOT config1_data(2);  -- HI on config bit selects MCU for JTAG configuration
+  jtag_mode <= config1_data(1 DOWNTO 0);
+  jtag_sel  <= NOT config1_data(2);  -- HI on config bit selects MCU for JTAG configuration
 
   -- Test code to hardwire select for TDC#1
   --jtag_sel <= '1';
@@ -696,7 +643,7 @@ BEGIN
   tdc_tck <= byteblaster_tck WHEN jtag_sel = '1' ELSE mcu_tdc_tck;
 
   -- selected TDO signal goes from TDC to byteblaster and MCU
-  WITH jtag_mode(1 DOWNTO 0) SELECT
+  WITH jtag_mode SELECT
     byteblaster_tdo <=
     h3_tdo WHEN "11",
     h2_tdo WHEN "10",
@@ -707,17 +654,17 @@ BEGIN
 
   -- The selected TDC receives tck, tdi, tms signals from Byteblaster,
   -- according to the selection made via "jtag_mode()"
-  h1_tms <= tdc_tms WHEN jtag_mode(1 DOWNTO 0) = "01" ELSE '0';
-  h1_tdi <= tdc_tdi WHEN jtag_mode(1 DOWNTO 0) = "01" ELSE '0';
-  h1_tck <= tdc_tck WHEN jtag_mode(1 DOWNTO 0) = "01" ELSE '0';
+  h1_tms <= tdc_tms WHEN jtag_mode = "01" ELSE '0';
+  h1_tdi <= tdc_tdi WHEN jtag_mode = "01" ELSE '0';
+  h1_tck <= tdc_tck WHEN jtag_mode = "01" ELSE '0';
 
-  h2_tms <= tdc_tms WHEN jtag_mode(1 DOWNTO 0) = "10" ELSE '0';
-  h2_tdi <= tdc_tdi WHEN jtag_mode(1 DOWNTO 0) = "10" ELSE '0';
-  h2_tck <= tdc_tck WHEN jtag_mode(1 DOWNTO 0) = "10" ELSE '0';
+  h2_tms <= tdc_tms WHEN jtag_mode = "10" ELSE '0';
+  h2_tdi <= tdc_tdi WHEN jtag_mode = "10" ELSE '0';
+  h2_tck <= tdc_tck WHEN jtag_mode = "10" ELSE '0';
 
-  h3_tms <= tdc_tms WHEN jtag_mode(1 DOWNTO 0) = "11" ELSE '0';
-  h3_tdi <= tdc_tdi WHEN jtag_mode(1 DOWNTO 0) = "11" ELSE '0';
-  h3_tck <= tdc_tck WHEN jtag_mode(1 DOWNTO 0) = "11" ELSE '0';
+  h3_tms <= tdc_tms WHEN jtag_mode = "11" ELSE '0';
+  h3_tdi <= tdc_tdi WHEN jtag_mode = "11" ELSE '0';
+  h3_tck <= tdc_tck WHEN jtag_mode = "11" ELSE '0';
 
   -- JTAG reset is always disabled (signal is active low)
   h1_trst <= '1';                       -- JTAG reset is disabled
