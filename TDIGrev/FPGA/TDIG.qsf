@@ -28,7 +28,7 @@ set_global_assignment -name DEVICE EP2C20F484C8
 set_global_assignment -name TOP_LEVEL_ENTITY TDIG
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 6.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:15:16  NOVEMBER 09, 2006"
-set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP2"
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 484
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
@@ -53,7 +53,6 @@ set_location_assignment PIN_A3 -to h1_test
 set_location_assignment PIN_A8 -to h1_tms
 set_location_assignment PIN_B4 -to h1_token_in
 set_location_assignment PIN_B10 -to h1_token_out
-set_location_assignment PIN_B8 -to h1_trig
 set_location_assignment PIN_A11 -to h1_trst
 set_location_assignment PIN_A14 -to h2_bunch_rst
 set_location_assignment PIN_D11 -to h2_error
@@ -69,7 +68,6 @@ set_location_assignment PIN_D9 -to h2_test
 set_location_assignment PIN_E11 -to h2_tms
 set_location_assignment PIN_E8 -to h2_token_in
 set_location_assignment PIN_A18 -to h2_token_out
-set_location_assignment PIN_A16 -to h2_trig
 set_location_assignment PIN_F10 -to h2_trst
 set_location_assignment PIN_E14 -to h3_bunch_rst
 set_location_assignment PIN_B14 -to h3_error
@@ -85,7 +83,6 @@ set_location_assignment PIN_B13 -to h3_test
 set_location_assignment PIN_B18 -to h3_tms
 set_location_assignment PIN_C17 -to h3_token_in
 set_location_assignment PIN_F15 -to h3_token_out
-set_location_assignment PIN_F13 -to h3_trig
 set_location_assignment PIN_C13 -to h3_trst
 set_location_assignment PIN_AA17 -to mcu_tdc_tck
 set_location_assignment PIN_AA15 -to mcu_tdc_tdi
@@ -198,8 +195,7 @@ set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS4
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD LVTTL
-set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION ON
 set_global_assignment -name USE_CONFIGURATION_DEVICE ON
 set_global_assignment -name GENERATE_RBF_FILE ON
 set_global_assignment -name GENERATE_SVF_FILE ON
@@ -224,30 +220,10 @@ set_location_assignment PIN_T21 -to ustatus
 set_global_assignment -name VECTOR_INPUT_SOURCE mcu_if_test.vwf
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
 set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
-set_global_assignment -name VHDL_FILE DFLOP.vhd
-set_global_assignment -name VHDL_FILE compare_16bit.vhd
-set_global_assignment -name VHDL_FILE shift32.vhd
-set_global_assignment -name VHDL_FILE mux_2to1_3bit_wide.vhd
-set_global_assignment -name VHDL_FILE decoder_4to1.vhd
-set_global_assignment -name VHDL_FILE FIFO_33wide_64deep.vhd
-set_global_assignment -name VHDL_FILE FIFO_RD.vhd
-set_global_assignment -name VHDL_FILE mux_2_to_1_1bit_wide.vhd
-set_global_assignment -name VHDL_FILE mux_2to1_33bits.vhd
-set_global_assignment -name VHDL_FILE counter_33bit.vhd
-set_global_assignment -name VHDL_FILE PUSH_TST.vhd
+set_location_assignment PIN_R22 -to clk_10mhz_on_io_pin
+set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
 set_global_assignment -name VHDL_FILE SHORT.vhd
-set_global_assignment -name VHDL_FILE mux_8bits_16inputs.vhd
-set_global_assignment -name VHDL_FILE reg_8bit.vhd
-set_global_assignment -name VHDL_FILE decoder_4to16_reg.vhd
-set_global_assignment -name VHDL_FILE bidir_buffer_8bit.vhd
-set_global_assignment -name VHDL_FILE mux_4to1_1bit_wide.vhd
-set_global_assignment -name VHDL_FILE mux_8to1_1bit_wide.vhd
-set_global_assignment -name VHDL_FILE mux_2to1_8bits.vhd
-set_global_assignment -name VHDL_FILE hit_counter_16bits.vhd
-set_global_assignment -name VHDL_FILE PLL_clk_mult_by3.vhd
 set_global_assignment -name VHDL_FILE TDIG.vhd
 set_global_assignment -name VHDL_FILE TDIG_E_primitives.vhd
-set_global_assignment -name VHDL_FILE ser_read.vhd
-set_global_assignment -name VHDL_FILE SER_CTL1.vhd
 set_global_assignment -name SDC_FILE TDIG.sdc
-set_location_assignment PIN_R22 -to clk_10mhz_on_io_pin
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
