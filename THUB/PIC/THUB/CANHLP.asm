@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.19 2008-02-14 17:12:19 jschamba Exp $
+; $Id: CANHLP.asm,v 1.20 2008-02-20 21:25:24 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -388,7 +388,6 @@ TofWriteReg:
     movff   RxData+3, uc_fpga_DATA ; fourth byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
-    btfss   RxDtLngth,2     ; if data length != 4
     return                  ; back to receiver loop
 
 TofProgramPLD:
