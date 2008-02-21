@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.6 2008-01-31 22:15:01 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.7 2008-02-21 17:45:22 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2008-01-30
+-- Last update: 2008-02-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -45,6 +45,8 @@ ENTITY tcd IS
 END ENTITY tcd;
 
 ARCHITECTURE a OF tcd IS
+  TYPE type_sreg IS (S1,S2,S3,S4,S5);
+  SIGNAL sreg : type_sreg;
 
   SIGNAL s_reg1       : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg2       : std_logic_vector (3 DOWNTO 0);
@@ -53,12 +55,14 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_reg5       : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg20_1    : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_trg_unsync : std_logic;
+  SIGNAL s_trg_short  : std_logic;
   SIGNAL s_stage1     : std_logic;
   SIGNAL s_stage2     : std_logic;
   SIGNAL s_stage3     : std_logic;
   SIGNAL s_stage4     : std_logic;
   SIGNAL s_l0like     : std_logic;
   SIGNAL s_trigger    : std_logic;
+  SIGNAL s_reset      : std_logic;
   
 BEGIN  -- ARCHITECTURE a
 
@@ -141,21 +145,52 @@ BEGIN  -- ARCHITECTURE a
     END CASE;
   END PROCESS trg;
 
+  -- shorten s_trg_unsync to 2 data strobe clock cycles
+  s_reset <= '0';                       -- no reset
+  shorten: PROCESS (data_strobe, s_reset) IS
+  BEGIN
+    IF s_reset = '1' THEN               -- asynchronous reset (active low)
+      s_trg_short <= '0';
+      sreg        <= S1;
+    ELSIF data_strobe'event AND data_strobe = '0' THEN  -- falling clock edge
+      s_trg_short <= '0';
+
+      CASE sreg IS
+        WHEN S1 =>
+          s_trg_short <= s_trg_unsync;
+          IF s_trg_unsync = '1' THEN
+            sreg <= S2;
+          END IF;
+        WHEN S2 =>
+          s_trg_short <= s_trg_unsync;
+          sreg <= S3;
+        WHEN S3 =>
+          sreg <= S4;
+        WHEN S4 =>
+          sreg <= S5;
+        WHEN S5 =>
+          sreg <= S1;
+        WHEN OTHERS =>
+          sreg <= S1;
+      END CASE;
+      
+    END IF;
+  END PROCESS shorten;
+
+  
   -- when a valid trigger command is found, synchronize the resulting trigger
   -- to the 40MHz clock with a 4 stage DFF cascade and to make the signal
   -- exactly 1 clock wide
-
   syncit : PROCESS (clock) IS
   BEGIN
     IF clock'event AND clock = '1' THEN  -- rising clock edge
-      s_stage1 <= s_trg_unsync;
+      s_stage1 <= s_trg_short;
       s_stage2 <= s_stage1;
       s_stage3 <= s_stage2;
-      s_stage4 <= s_stage3;
     END IF;
   END PROCESS syncit;
 
-  s_trigger <= s_stage3 AND (NOT s_stage4);
+  s_trigger <= s_stage2 AND (NOT s_stage3);
 
   trigger <= s_trigger;
   evt_trg <= s_trigger AND s_l0like;
