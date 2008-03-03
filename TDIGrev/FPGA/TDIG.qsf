@@ -248,3 +248,4 @@ set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id multc
 set_instance_assignment -name CLOCK_SETTINGS multc -to multc
 set_global_assignment -name CRC_ERROR_CHECKING ON
 set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
