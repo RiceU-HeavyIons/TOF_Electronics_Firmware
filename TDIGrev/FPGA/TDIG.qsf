@@ -104,7 +104,7 @@ set_location_assignment PIN_R21 -to udaisy_data
 set_location_assignment PIN_P18 -to udaisy_tok_in
 set_location_assignment PIN_N21 -to udaisy_tok_out
 set_location_assignment PIN_D5 -to usb_24m_clk
-set_location_assignment PIN_D3 -to usb_flaga
+set_location_assignment PIN_AA19 -to usb_flaga
 set_location_assignment PIN_D4 -to usb_flagb
 set_location_assignment PIN_J1 -to usb_flagc
 set_location_assignment PIN_C2 -to usb_if_clk
@@ -164,6 +164,7 @@ set_location_assignment PIN_R1 -to dspare_in[0]
 set_location_assignment PIN_H4 -to pld_usb[13]
 set_location_assignment PIN_U15 -to mcu_pld_data[6]
 set_location_assignment PIN_M1 -to pld_clkin1
+set_location_assignment PIN_M22 -to rhic_clkin
 set_location_assignment PIN_V1 -to dmult[0]
 set_location_assignment PIN_V2 -to dmult[1]
 set_location_assignment PIN_V4 -to dmult[2]
@@ -203,7 +204,6 @@ set_global_assignment -name GENERATE_JAM_FILE ON
 set_global_assignment -name ENABLE_SIGNALTAP OFF
 set_global_assignment -name AUTO_ENABLE_SMART_COMPILE OFF
 set_global_assignment -name SAVE_DISK_SPACE OFF
-set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
 set_global_assignment -name FMAX_REQUIREMENT "40 MHz"
 set_global_assignment -name PROJECT_SHOW_ENTITY_NAME ON
 set_global_assignment -name INCREMENTAL_COMPILATION OFF
@@ -221,10 +221,30 @@ set_global_assignment -name VECTOR_INPUT_SOURCE mcu_if_test.vwf
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
 set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
 set_location_assignment PIN_R22 -to clk_10mhz_on_io_pin
-set_global_assignment -name TIMEQUEST_MULTICORNER_ANALYSIS ON
-set_global_assignment -name VHDL_FILE SHORT.vhd
-set_global_assignment -name VHDL_FILE TDIG.vhd
-set_global_assignment -name VHDL_FILE TDIG_E_primitives.vhd
-set_global_assignment -name SDC_FILE TDIG.sdc
 set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name FMAX_REQUIREMENT "40 MHz" -section_id pld_clkin1
+set_instance_assignment -name CLOCK_SETTINGS pld_clkin1 -to pld_clkin1
+set_global_assignment -name VHDL_FILE adder_3by1bit.vhd
+set_global_assignment -name VHDL_FILE adder_2by4bit.vhd
+set_global_assignment -name VHDL_FILE register_4bits.vhd
+set_global_assignment -name VHDL_FILE ctr_4bit.vhd
+set_global_assignment -name VHDL_FILE DFLOP.vhd
+set_global_assignment -name VHDL_FILE MUX_6TO1.vhd
+set_global_assignment -name VHDL_FILE SHIFT_REG_5BITS.vhd
+set_global_assignment -name VHDL_FILE PLL_multiplier_16x.vhd
+set_global_assignment -name VHDL_FILE mult_primitives.vhd
+set_global_assignment -name VHDL_FILE SHORT.vhd
+set_global_assignment -name VHDL_FILE TDIG_E_primitives.vhd
+set_global_assignment -name VHDL_FILE TDIG.vhd
+set_global_assignment -name SDC_FILE TDIG.sdc
+set_global_assignment -name VECTOR_WAVEFORM_FILE TDIG.vwf
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id rhic_clk
+set_instance_assignment -name CLOCK_SETTINGS rhic_clk -to rhic_clkin
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id multa
+set_instance_assignment -name CLOCK_SETTINGS multa -to multa
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id multb
+set_instance_assignment -name CLOCK_SETTINGS multb -to multb
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id multc
+set_instance_assignment -name CLOCK_SETTINGS multc -to multc
+set_global_assignment -name CRC_ERROR_CHECKING ON
+set_global_assignment -name CYCLONEII_RESERVE_NCEO_AFTER_CONFIGURATION "USE AS REGULAR IO"
