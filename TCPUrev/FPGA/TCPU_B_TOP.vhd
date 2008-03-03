@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.14 2008-01-25 22:31:31 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.15 2008-03-03 16:45:19 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-01-25
+-- Last update: 2008-03-03
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -177,7 +177,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"7E";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"80";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -348,13 +348,16 @@ ARCHITECTURE a OF TCPU_B_TOP IS
 
   SIGNAL s_rhic_clk : std_logic;
 
+  SIGNAL s_mult_count : std_logic_vector (4 DOWNTO 0);
+  SIGNAL s_ctr_reset  : std_logic;
+
 ----------------------------------------------------------
 
 BEGIN
 
   -- these signals have no source, so set them to some default now
   c2_mcu_resetb     <= '1';
-  trig_data_out     <= (OTHERS => '0');
+--  trig_data_out     <= (OTHERS => '0');
   pld_serout        <= '0';
   c1_ddaisy_clk     <= '0';
   c1_dspare_out1    <= '0';
@@ -390,13 +393,13 @@ BEGIN
   global_clk_buffer2 : global PORT MAP (a_in => pll_20mhz, a_out => clk_20mhz);
   global_clk_buffer3 : global PORT MAP (a_in => trig_clk_in_clk, a_out => s_rhic_clk);
 
-  c1_clk_10mhz      <= s_rhic_clk;
-  c2_clk_10mhz      <= s_rhic_clk;
+  c1_clk_10mhz <= s_rhic_clk;
+  c2_clk_10mhz <= s_rhic_clk;
 
   -- test header:
   test1 <= pld_clkin1;
   test4 <= s_c1_trigger;
-  
+
 --**********************************************************************************
 -- Control for serial THUB link
 --********************************************************************************** 
@@ -841,7 +844,7 @@ BEGIN
   WITH config2_data(2) SELECT
     mcu_fifo_wrreq <=
     finalFifo_wrreq WHEN '0',
-    '0'             WHEN OTHERS;
+    '0' WHEN OTHERS;
 
   mcu_fifo : scfifo
     GENERIC MAP (
@@ -895,12 +898,12 @@ BEGIN
   serdesFifo_aclr <= NOT serdes_ready OR trigger_pulse;
 
   -- FIFO state machine reset with configuration reset and at every event
-  fifoSmReset     <= sm_reset OR trigger_pulse;
+  fifoSmReset <= sm_reset OR trigger_pulse;
 
   -- Process to control data from c1 or c2 FIFO to Final FIFO
   PROCESS (clk_40mhz, fifoSmReset) IS
   BEGIN  -- PROCESS
-    IF fifoSmReset = '1' THEN              -- asynchronous reset (active high)
+    IF fifoSmReset = '1' THEN           -- asynchronous reset (active high)
       sState          <= s1;
       c1_fifo_rdreq   <= '0';
       c2_fifo_rdreq   <= '0';
@@ -956,4 +959,19 @@ BEGIN
     txfifo_rdreq => serdesFifo_rdreq,
     serdes_data  => s_serdes_data);
 
+---------------------------------------------------------------------------
+-- Multiplicity Code
+---------------------------------------------------------------------------
+  s_ctr_reset <= '1';
+  mult_ctr : PROCESS (s_rhic_clk, s_ctr_reset) IS
+  BEGIN
+    IF s_ctr_reset = '0' THEN           -- asynchronous reset (active low)
+      s_mult_count <= "00000";
+    ELSIF s_rhic_clk'event AND s_rhic_clk = '1' THEN  -- rising clock edge
+      s_mult_count <= s_mult_count + 1;
+    END IF;
+  END PROCESS mult_ctr;
+
+  trig_data_out <= s_mult_count;
+  
 END ARCHITECTURE a;
