@@ -1,4 +1,4 @@
-# $Id: TCPU_B_TOP.qsf,v 1.9 2008-02-25 18:52:49 jschamba Exp $
+# $Id: TCPU_B_TOP.qsf,v 1.10 2008-03-03 16:42:51 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -224,3 +224,7 @@ set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name FMAX_REQUIREMENT "20 MHz" -section_id ser_rec_clk
 set_instance_assignment -name CLOCK_SETTINGS ser_rec_clk -to ser_rec_clk
+set_global_assignment -name VECTOR_WAVEFORM_FILE TCPU_B_TOP.vwf
+set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id RHICstrobe
+set_global_assignment -name DUTY_CYCLE 40 -section_id RHICstrobe
+set_instance_assignment -name CLOCK_SETTINGS RHICstrobe -to trig_clk_in_clk
