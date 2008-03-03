@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.3 2008-02-15 20:32:36 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.4 2008-03-03 16:57:58 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -196,7 +196,7 @@ END TDIG;  -- end.entity
 
 ARCHITECTURE a OF TDIG IS
 
-  CONSTANT TDIG_VERSION : std_logic_vector := x"71";
+  CONSTANT TDIG_VERSION : std_logic_vector := x"72";
 
   SIGNAL global_40mhz                       : std_logic;  -- global clock signal
   SIGNAL byteblaster_tdi                    : std_logic;
