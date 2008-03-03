@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.5 2008-01-25 22:29:59 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.6 2008-03-03 16:44:13 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -16,7 +16,7 @@ ENTITY ser_rdo IS PORT (
   token_out      : IN  std_logic;       -- token_out from TDC daisy chain
   ser_out        : IN  std_logic;       -- serial_out from TDC daisy chain
   rdout_en       : IN  std_logic;       -- readout rdout_en
-  SW             : IN  std_logic;       -- input from switch (now used as half-tray)
+  SW             : IN  std_logic;  -- input from switch (now used as half-tray)
   reset          : IN  std_logic;       -- state machine reset (active high)
   token_in       : OUT std_logic;       -- token_in to TDC daisy chain
   rdo_32b_data   : OUT std_logic_vector(31 DOWNTO 0);  -- parallel data from shift register 
@@ -27,7 +27,7 @@ END ser_rdo;
 -- Architecture body
 ARCHITECTURE a OF ser_rdo IS
   
-  TYPE   SState_type IS (s1, s2, s3a, s3, s4, s5, s6, s7, s8);
+  TYPE SState_type IS (s1, s2, s3a, s3, s4, s5, s6, s7, s8);
   SIGNAL sState : SState_type;
 
   SIGNAL token_cap     : std_logic;
@@ -37,6 +37,7 @@ ARCHITECTURE a OF ser_rdo IS
   SIGNAL rdreq_sig     : std_logic;
   SIGNAL s_aclr        : std_logic;
   SIGNAL inv_strb_out  : std_logic;
+  SIGNAL token_reset   : std_logic;
 
 BEGIN
 
@@ -70,11 +71,13 @@ BEGIN
     VARIABLE rdoutCtr : integer RANGE 0 TO 256;
   BEGIN
     IF (reset = '1') THEN
-      sState   <= s1;
-      ser_ctr  := 0;
-      rdoutCtr := 0;
+      ser_ctr     := 0;
+      rdoutCtr    := 0;
+      token_reset <= '1';               -- reset token
+      sState      <= s1;
       
-    ELSIF (strb_out'event AND strb_out = '1') THEN
+    ELSIF (strb_out'event AND strb_out = '0') THEN
+      token_reset                <= '0';
       token_in                   <= '0';
       shift_en                   <= '0';
       rdo_32b_data               <= rdo_shift_q;
@@ -113,12 +116,12 @@ BEGIN
           ELSIF (token_cap = '1') THEN
             sState <= s7;
           END IF;
-        WHEN s3 =>                      -- same state as 3, but w/out geogr. word
+        WHEN s3 =>                  -- same state as 3, but w/out geogr. word
           ser_ctr := 0;
 
           IF (ser_out = '1') THEN
-            item_ctr       := item_ctr + 1;
-            sState         <= s4;
+            item_ctr := item_ctr + 1;
+            sState   <= s4;
           ELSIF (token_cap = '1') THEN
             sState <= s7;
           END IF;
@@ -129,14 +132,15 @@ BEGIN
           END IF;
         WHEN s5 =>
           IF (item_ctr < 1021) THEN
-            rdo_data_valid <= '1';        -- write data to upstream fifos
+            rdo_data_valid <= '1';      -- write data to upstream fifos
           ELSE
             item_ctr := 1022;
           END IF;
-          sState         <= s6;
+          sState <= s6;
         WHEN s6 =>
           sState <= s3;
         WHEN s7 =>
+          token_reset  <= '1';          -- reset token DFF
           rdo_32b_data <= rdo_separator;
           sState       <= s8;
           
@@ -157,12 +161,12 @@ BEGIN
 
 
   -- latch the token coming back from the TDC
-  dff_inst: PROCESS (strb_out, reset) IS
+  dff_inst : PROCESS (token_out, token_reset) IS
   BEGIN
-    IF reset = '1' THEN                 -- asynchronous reset (active high)
+    IF token_reset = '1' THEN           -- asynchronous reset (active high)
       token_cap <= '0';
-    ELSIF strb_out'event AND strb_out = '1' THEN  -- rising clock edge
-      token_cap <= token_out;
+    ELSIF token_out'event AND token_out = '1' THEN  -- rising edge of token
+      token_cap <= '1';
     END IF;
   END PROCESS dff_inst;
 
