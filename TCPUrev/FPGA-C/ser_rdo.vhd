@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.6 2008-03-03 16:44:13 jschamba Exp $
+-- $Id: ser_rdo.vhd,v 1.7 2008-03-03 21:27:35 jschamba Exp $
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
@@ -89,7 +89,8 @@ BEGIN
 
       CASE sState IS
         WHEN s1 =>
-          ser_ctr := 0;
+          token_reset <= '1';           -- reset token DFF
+          ser_ctr     := 0;             -- reset serial rdo counter
           IF (rdout_en = '1') THEN
             sState <= s2;
           END IF;
