@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.4 2008-03-03 16:57:58 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.5 2008-03-05 21:43:16 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -25,6 +25,7 @@ ENTITY TDIG IS
       -- CLOCKS
       --        
       pld_clkin1 : IN std_logic;  -- 40 Mhz clock input; pin M1 I/O bank 1
+      rhic_clkin : IN std_logic;  -- rhic clk input; pin M22 I/O bank 6; signal "CLK_10MHZ" on schematic page 2  
 
       --
       -- BANK 1, Schematic Sheet 3, Downstream Interface -- 
@@ -438,31 +439,18 @@ BEGIN
 
 ----------------------------------------------------------------------------------
 
-  MCU_address_decoder : PROCESS (global_40mhz) IS
-  BEGIN
-    IF global_40mhz'event AND global_40mhz = '1' THEN  -- rising clock edge
-      IF strobe = '1' THEN
-        CASE mcu_adr IS
-          WHEN x"0"   => adr_equ <= "0000000000000001";
-          WHEN x"1"   => adr_equ <= "0000000000000010";
-          WHEN x"2"   => adr_equ <= "0000000000000100";
-          WHEN x"3"   => adr_equ <= "0000000000001000";
-          WHEN x"4"   => adr_equ <= "0000000000010000";
-          WHEN x"5"   => adr_equ <= "0000000000100000";
-          WHEN x"6"   => adr_equ <= "0000000001000000";
-          WHEN x"7"   => adr_equ <= "0000000010000000";
-          WHEN x"8"   => adr_equ <= "0000000100000000";
-          WHEN x"9"   => adr_equ <= "0000001000000000";
-          WHEN x"A"   => adr_equ <= "0000010000000000";
-          WHEN x"B"   => adr_equ <= "0000100000000000";
-          WHEN x"C"   => adr_equ <= "0001000000000000";
-          WHEN x"D"   => adr_equ <= "0010000000000000";
-          WHEN x"E"   => adr_equ <= "0100000000000000";
-          WHEN OTHERS => adr_equ <= "1000000000000000";
-        END CASE;
-      END IF;
-    END IF;
-  END PROCESS MCU_address_decoder;
+  MCU_address_decoder : lpm_decode
+    GENERIC MAP (
+      lpm_decodes  => 16,
+      lpm_pipeline => 1,
+      lpm_type     => "LPM_DECODE",
+      lpm_width    => 4)
+    PORT MAP (
+      clock  => global_40mhz,
+      data   => mcu_adr,
+      enable => strobe,
+      eq     => adr_equ
+      );
 
 -- **************************************************************************************
 --      3. MCU INTERFACE : CONFIGURATION REGISTERS
