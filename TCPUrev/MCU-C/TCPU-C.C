@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.1 2008-03-05 19:39:32 jschamba Exp $
+// $Id: TCPU-C.C,v 1.2 2008-03-05 19:59:36 jschamba Exp $
 
 // TCPU-C.c
 // main program for PIC24HJ256GP610 as used on TCPU-B rev 0 board
@@ -147,12 +147,12 @@
 //JS    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-    #define FIRMWARE_ID_0 'A'   // WB version 2A
+    #define FIRMWARE_ID_0 'B'   // JS version 2B
 // WB-1L make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x81
 #else
-    #define FIRMWARE_ID_1 0x2   // WB version 2A
+    #define FIRMWARE_ID_1 0x2   // JS version 2B
 #endif
 // WB-11H end
 
@@ -1109,15 +1109,15 @@ main()
                     sendbuf[3] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
                     j += 4;
                     read_FPGA (FIFO_STATUS_R);          // extra read-status
-//                    // Check again for more data
-//                    if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {
-//                        sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
-//                        sendbuf[5] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
-//                        sendbuf[6] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
-//                        sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
-//                        j += 4;
-//                        read_FPGA (FIFO_STATUS_R);          // extra read-status
-//                    } // end if had more, send message
+                    // Check again for more data
+                    if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {
+                        sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
+                        sendbuf[5] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
+                        sendbuf[6] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
+                        sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
+                        j += 4;
+                        read_FPGA (FIFO_STATUS_R);          // extra read-status
+                    } // end if had more, send message
                     if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                     j = 0;
                 } // end if have data to send
