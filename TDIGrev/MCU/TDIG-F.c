@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.1 2008-02-13 17:16:11 jschamba Exp $
+// $Id: TDIG-F.c,v 1.2 2008-03-10 16:58:29 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -255,7 +255,7 @@
 
 // Define the FIRMWARE ID
 //    #define FIRMWARE_ID_0 0xFA  //JS: to distinguish it from Bill's version
-    #define FIRMWARE_ID_0 0x48    //WB-11H
+    #define FIRMWARE_ID_0 0x49    //JS-11I
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -511,8 +511,8 @@ main()
 
 // Initialize and Set Threshhold DAC
 	#if defined (DAC_ADDR)	// if address defined, it exists
-    current_dac = DAC_INITIAL;
-    current_dac = Write_DAC((unsigned char *)&current_dac);       // Set it to 100 mV
+    current_dac = DAC_INITIAL;	// defined in TDIG-F_Board.h
+    current_dac = Write_DAC((unsigned char *)&current_dac);       // Set it to 2500 mV
 	#endif // defined (DAC_ADDR)
 
 // Initialize Extended CSR (to PLD, etc)
@@ -585,10 +585,10 @@ main()
 // Clear all interrupts
 	clearIntrflags();
 
-// Delay power-on by 1 second + 1 second x board-position switch value
+// Delay power-on by 2 second + 1 second x board-position switch value
 #define DELAYPOWER 36
 #if defined (DELAYPOWER)
-    j = board_posn + 1;
+    j = board_posn + 2;
     while ( j != 0 ) {
         spin(DELAYPOWER);               // delay approx 1 second per 36 counts
         --j;
@@ -690,6 +690,12 @@ main()
         // board_posn 3,7 have TDCs 0x9,0xA,0xB
         hptdc_setup[j][5] |= ((((board_posn&0x3)*NBR_HPTDCS)+(j-1))&0xF); // compute and insert new value
 #endif                                  // Not NEWTDCNUMBER (old method)
+#ifdef LOCAL_HEADER_BOARD0
+		if (((board_posn&0x3) == 0) && (j == 1)) {
+			hptdc_setup[j][4] |= 0x1; // turn on local header for board 0 and 4, TDC 1
+		}
+#endif
+
         // Fix up Parity bit in working initialization
 		insert_parity (&hptdc_setup[j][0], J_HPTDC_SETUPBITS);
         write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)&readback_setup);
@@ -975,6 +981,26 @@ main()
                             } else {        // else block was not ended, send error reply
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
                             } // end else block was not in progress
+                            break;
+
+                        case C_WS_RSTSEQHPTDCS:
+                        case C_WS_RSTSEQHPTDC1:
+                        case C_WS_RSTSEQHPTDC2:
+                        case C_WS_RSTSEQHPTDC3:
+                            if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
+                               i = 1;          // yes, set first
+                               k = NBR_HPTDCS;          // yes, set last
+                            } else {            // Not all 3,
+                               i = (retbuf[0]&0x3);       // set first and last to be the one
+                               k = i;          // set first and last to be the one
+                            } // end if one or all 3 HPTDCs.
+                            for (j=i; j<=k; j++) {   // put the data into an HPTDC
+                               select_hptdc(JTAG_MCU, j);        // select MCU controlling which HPTDC
+                               reset_hptdc (j, &hptdc_control[j][0]);  // JTAG the hptdc reset sequence
+                            } // end loop over one or all HPTDCs
+                            // restore Test header access to JTAG
+                            // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
+                            select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
                             break;
 
                         case C_WS_RECONFIGEE1:              // Reconfigure FPGA using EEPROM #1
