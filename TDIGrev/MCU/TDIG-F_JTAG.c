@@ -1,4 +1,4 @@
-// $Id: TDIG-F_JTAG.c,v 1.1 2008-02-13 17:16:11 jschamba Exp $
+// $Id: TDIG-F_JTAG.c,v 1.2 2008-03-10 16:56:02 jschamba Exp $
 
 /* TDIG-F_JTAG.c
 ** This file defines the TDIG-F routines and interfaces for JTAG interface to the TDIG chips.
@@ -150,24 +150,26 @@ void reset_hptdc(unsigned int tdcnbr, unsigned char *finalctrl) {
     if ((tdcnbr > 0) && (tdcnbr<= NBR_HPTDCS) ) {
         // Send first RESET word
         control_hptdc ( tdcnbr, (unsigned char *)&resetword1);
-        spin(15);
+        spin(1);
         // Send second RESET word
         control_hptdc ( tdcnbr, (unsigned char *)&resetword2);
-        spin(15);
+        spin(1);
         // Send third RESET word
         control_hptdc ( tdcnbr, (unsigned char *)&resetword3);
-        spin(15);
+        spin(1);
         //Send fourth RESET word
         control_hptdc ( tdcnbr, (unsigned char *)&resetword4);
-        spin(15);
+        spin(1);
         // Send fifth RESET word
         control_hptdc ( tdcnbr, (unsigned char *)&resetword5);
-        spin(15);
+        spin(0);
 
+//        spin(5);
+//
         // Put out "Final" control string (40 bits)
-        control_hptdc ( tdcnbr, finalctrl);
-        spin(5);
-        // Done with JTAG
+//        control_hptdc ( tdcnbr, finalctrl);
+//        spin(5);
+//        // Done with JTAG
         select_hptdc(JTAG_HDR, tdcnbr);        // select FPGA and which HPTDC
      } // end if valid HPTDC number
 // -----  end of routine reset_hptdc()
