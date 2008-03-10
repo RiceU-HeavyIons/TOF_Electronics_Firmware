@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.1 2008-02-13 17:16:12 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.2 2008-03-10 16:54:33 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -179,7 +179,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'H' )       // "H"
+    _FUID0( 'I' )       // "I"
     _FUID1( 0x11)       // 0x11
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
@@ -211,7 +211,7 @@
      	#define DAC_REFV 3300           // DAC Reference in millivolts
      	#define DAC_MASK 0x0FFF            // Mask everything but data bits
                                         // We do not define bits for power-down, we will not be using it.
-        #define DAC_INITIAL 124         // = 4096/3300mV x 100mV
+        #define DAC_INITIAL 3102         // = 4096/3300mV x 2500mV
 	#endif
 
 
@@ -241,17 +241,17 @@
 // 36  0x44x   MCP23008  GP.1            PLD_INIT_DONE      input
 // 36  0x44x   MCP23008  GP.0            PLD_CONFIG_DONE    input
 // 36  0x44x   MCP23008  INT             EXPANDER_INT       output, interrupt generated when change-of-state on GP2
-     #define ECSR_ADDR 0x44          // I2C Addrs of chip    Extended Control-Status Register
-     #define MCP23008_IODIR   0x0        // I/O Direction Control 1=in, 0=out
-	 #define ESCR_IODIR 0x9F             // 1001 1111 1=in, 0=out
-     #define ESCR_SPARE_PLD 0x80        // enable TDC power bit
-     #define ESCR_TINO_TEST_MCU 0x40        // enable TDC power bit
-     #define ESCR_TDC_POWER 0x20        // enable TDC power bit
-     #define ESCR_TDC_POWER_ERROR_B 0x10        // enable TDC power bit
-     #define ESCR_PLD_NSTATUS 0x08        // enable TDC power bit
-     #define ESCR_PLD_CRC_ERROR 0x04        // enable TDC power bit
-     #define ESCR_PLD_INIT_DONE 0x02        // enable TDC power bit
-     #define ESCR_PLD_CONFIG_DONE 0x01        // enable TDC power bit
+     #define ECSR_ADDR 0x44          		// I2C Addrs of chip    Extended Control-Status Register
+     #define MCP23008_IODIR   0x0        	// I/O Direction Control 1=in, 0=out
+	 #define ESCR_IODIR 0x9F             	// 1001 1111 1=in, 0=out
+     #define ESCR_SPARE_PLD 0x80        	// Spare bit
+     #define ESCR_TINO_TEST_MCU 0x40        // Test Pulse to TINO
+     #define ESCR_TDC_POWER 0x20        	// enable TDC power bit
+     #define ESCR_TDC_POWER_ERROR_B 0x10    // TDC power error status
+     #define ESCR_PLD_NSTATUS 0x08        	// PLD (FPGA) nSTATUS bit
+     #define ESCR_PLD_CRC_ERROR 0x04        // PLD (FPGA) CRC Error bit
+     #define ESCR_PLD_INIT_DONE 0x02        // PLD (FPGA) INIT_DONE bit
+     #define ESCR_PLD_CONFIG_DONE 0x01      // PLD (FPGA) CONFIG_DONE bit
      #define PLD_READY (ESCR_PLD_INIT_DONE | ESCR_PLD_CONFIG_DONE)
      #define MCP23008_ALL     0xFF       // All GP bits
      #define MCP23008_NONE    0x00       // None
@@ -423,3 +423,6 @@
                                 // board_posn 2,6 have TDCs 0x6,0x7,0x8
                                 // board_posn 3,7 have TDCs 0x9,0xA,0xB
 // #endif  // Not NEWTDCNUMBER (old method)
+
+// Default to turn on local header for Boards 0,4 TDC 1
+	#define LOCAL_HEADER_BOARD0
