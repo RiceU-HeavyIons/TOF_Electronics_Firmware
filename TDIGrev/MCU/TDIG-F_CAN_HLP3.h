@@ -1,4 +1,4 @@
-// $Id: TDIG-F_CAN_HLP3.h,v 1.1 2008-02-13 17:16:12 jschamba Exp $
+// $Id: TDIG-F_CAN_HLP3.h,v 1.2 2008-03-10 16:52:38 jschamba Exp $
 
 /* TDIG-D_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
@@ -42,8 +42,7 @@
     #define C_DATA (0x1<<2)             // Data Transmit message for ECAN buffer
 
 // Destination Codes (Address)
-//    #define C_TDIG (0x080<<2)           // Target / Source is TDIG per HLP 3.0
-    #define C_TDIG (0x100<<2)           // Target / Source is TDIG for debugging easier to see using PCANView
+    #define C_TDIG (0x100<<2)           // Target / Source is TDIG
 
 // Block transfer status indicators
     #define BLOCK_NOTSTARTED 0          // Block has not been started yet
@@ -74,6 +73,10 @@
     #define C_WS_RECONFIGEE2  0x8A      // Reconfigure FPGA from EEPROM #2
     #define C_WS_MCURESTARTA  0x8D      // MCU Restart at Address
     #define C_WS_MCURESET     0x8F      // MCU Reset (POR Reset)
+    #define C_WS_RSTSEQHPTDCS 0x90      // Reset Sequence of all 3 HPTDCs
+    #define C_WS_RSTSEQHPTDC1 0x91      // Reset Seq for HPTDC 1
+    #define C_WS_RSTSEQHPTDC2 0x92      // Reset Seq for HPTDC 2
+    #define C_WS_RSTSEQHPTDC3 0x93      // Reset Seq for HPTDC 3
 
 // Oscillator clock selection constants
     #define OSCSEL_JUMPER 0xFF          // Select oscillator from Jumper
