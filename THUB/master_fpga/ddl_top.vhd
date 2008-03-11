@@ -1,4 +1,4 @@
--- $Id: ddl_top.vhd,v 1.1 2006-11-30 15:50:40 jschamba Exp $
+-- $Id: ddl_top.vhd,v 1.2 2008-03-11 15:59:17 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : DDL
 -- Project    : TOF
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2004-12-09
--- Last update: 2006-11-29
+-- Last update: 2008-03-05
 -- Platform   : 
 -------------------------------------------------------------------------------
 -- Description: Top Level Component for the DDL interface
@@ -39,6 +39,7 @@ ENTITY ddl IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
+      event_read : OUT std_logic;       -- indicates run in progress
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
       foCTRL_N   : OUT std_logic;
@@ -52,18 +53,18 @@ ARCHITECTURE a OF ddl IS
 
   COMPONENT ddl_registers
     PORT (
-      clock       : IN  std_logic;
-      arstn       : IN  std_logic;
-      reg_data    : IN  std_logic_vector ( 7 DOWNTO 0);
-      reg_addr    : IN  std_logic_vector ( 5 DOWNTO 0);
-      reg_load    : IN  std_logic;
-      reg_lock    : IN  std_logic;
-      ps_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
-      bl_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
-      dt_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
-      fc_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
-      te_reg      : OUT std_logic_vector ( 7 DOWNTO 0);
-      xx_reg      : OUT std_logic_vector ( 7 DOWNTO 0)
+      clock    : IN  std_logic;
+      arstn    : IN  std_logic;
+      reg_data : IN  std_logic_vector (7 DOWNTO 0);
+      reg_addr : IN  std_logic_vector (5 DOWNTO 0);
+      reg_load : IN  std_logic;
+      reg_lock : IN  std_logic;
+      ps_reg   : OUT std_logic_vector (7 DOWNTO 0);
+      bl_reg   : OUT std_logic_vector (7 DOWNTO 0);
+      dt_reg   : OUT std_logic_vector (7 DOWNTO 0);
+      fc_reg   : OUT std_logic_vector (7 DOWNTO 0);
+      te_reg   : OUT std_logic_vector (7 DOWNTO 0);
+      xx_reg   : OUT std_logic_vector (7 DOWNTO 0)
       );
   END COMPONENT;
 
@@ -71,19 +72,19 @@ ARCHITECTURE a OF ddl IS
     PORT (
       clock       : IN  std_logic;
       arstn       : IN  std_logic;
-      fc_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
+      fc_reg      : IN  std_logic_vector (7 DOWNTO 0);
       block_read  : OUT std_logic;
       block_write : OUT std_logic;
       event_read  : OUT std_logic;
       reset_evid  : OUT std_logic;
       im_din      : OUT std_logic_vector (31 DOWNTO 0);
       im_dinval   : OUT std_logic;
-      reg_data    : OUT std_logic_vector ( 7 DOWNTO 0);
-      reg_addr    : OUT std_logic_vector ( 5 DOWNTO 0);
+      reg_data    : OUT std_logic_vector (7 DOWNTO 0);
+      reg_addr    : OUT std_logic_vector (5 DOWNTO 0);
       reg_load    : OUT std_logic;
       reg_read    : OUT std_logic;
       reg_lock    : OUT std_logic;
-      tid         : OUT std_logic_vector ( 3 DOWNTO 0);
+      tid         : OUT std_logic_vector (3 DOWNTO 0);
       fiD         : IN  std_logic_vector (31 DOWNTO 0);
       fiTEN_N     : IN  std_logic;
       fiCTRL_N    : IN  std_logic;
@@ -102,14 +103,14 @@ ARCHITECTURE a OF ddl IS
       block_read : IN  std_logic;
       event_read : IN  std_logic;
       reg_read   : IN  std_logic;
-      reg_addr   : IN  std_logic_vector ( 5 DOWNTO 0);
-      tid        : IN  std_logic_vector ( 3 DOWNTO 0);
-      ps_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
-      bl_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
-      dt_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
-      fc_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
-      te_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
-      xx_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+      reg_addr   : IN  std_logic_vector (5 DOWNTO 0);
+      tid        : IN  std_logic_vector (3 DOWNTO 0);
+      ps_reg     : IN  std_logic_vector (7 DOWNTO 0);
+      bl_reg     : IN  std_logic_vector (7 DOWNTO 0);
+      dt_reg     : IN  std_logic_vector (7 DOWNTO 0);
+      fc_reg     : IN  std_logic_vector (7 DOWNTO 0);
+      te_reg     : IN  std_logic_vector (7 DOWNTO 0);
+      xx_reg     : IN  std_logic_vector (7 DOWNTO 0);
       pg_dout    : IN  std_logic_vector (32 DOWNTO 0);
       pg_doutval : IN  std_logic;
       pg_enable  : OUT std_logic;
@@ -129,10 +130,10 @@ ARCHITECTURE a OF ddl IS
     PORT (
       clock       : IN  std_logic;
       arstn       : IN  std_logic;
-      ps_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
-      bl_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
-      xx_reg      : IN  std_logic_vector ( 7 DOWNTO 0);
-      tid         : IN  std_logic_vector ( 3 DOWNTO 0);
+      ps_reg      : IN  std_logic_vector (7 DOWNTO 0);
+      bl_reg      : IN  std_logic_vector (7 DOWNTO 0);
+      xx_reg      : IN  std_logic_vector (7 DOWNTO 0);
+      tid         : IN  std_logic_vector (3 DOWNTO 0);
       enable      : IN  std_logic;
       suspend     : IN  std_logic;
       reset_evid  : IN  std_logic;
@@ -150,7 +151,7 @@ ARCHITECTURE a OF ddl IS
       arstn      : IN  std_logic;
       ext_tr_in  : IN  std_logic;
       gap_active : IN  std_logic;
-      dt_reg     : IN  std_logic_vector ( 7 DOWNTO 0);
+      dt_reg     : IN  std_logic_vector (7 DOWNTO 0);
       fifo_empty : IN  std_logic;
       trigger    : OUT std_logic
       );
@@ -173,24 +174,24 @@ ARCHITECTURE a OF ddl IS
 
   SIGNAL s_arstn       : std_logic;
   SIGNAL s_clock       : std_logic;
-  SIGNAL s_reg_data    : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_reg_addr    : std_logic_vector ( 5 DOWNTO 0);
+  SIGNAL s_reg_data    : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_reg_addr    : std_logic_vector (5 DOWNTO 0);
   SIGNAL s_reg_load    : std_logic;
   SIGNAL s_reg_lock    : std_logic;
   SIGNAL s_reg_read    : std_logic;
-  SIGNAL s_ps_reg      : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_bl_reg      : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_dt_reg      : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_fc_reg      : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_te_reg      : std_logic_vector ( 7 DOWNTO 0);
-  SIGNAL s_xx_reg      : std_logic_vector ( 7 DOWNTO 0);
+  SIGNAL s_ps_reg      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_bl_reg      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_dt_reg      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_fc_reg      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_te_reg      : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_xx_reg      : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_block_read  : std_logic;
   SIGNAL s_block_write : std_logic;
   SIGNAL s_event_read  : std_logic;
   SIGNAL s_reset_evid  : std_logic;
   SIGNAL s_im_din      : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_im_dinval   : std_logic;
-  SIGNAL s_tid         : std_logic_vector ( 3 DOWNTO 0);
+  SIGNAL s_tid         : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_pg_dout     : std_logic_vector (32 DOWNTO 0);
   SIGNAL s_pg_doutval  : std_logic;
   SIGNAL s_pg_enable   : std_logic;
@@ -208,13 +209,14 @@ BEGIN
   s_clock      <= fiCLK;
   s_fifo_empty <= fifo_empty;
 
-  run_reset <= s_reset_evid;            -- do ext. logic reset at start of run
-  
+  run_reset  <= s_reset_evid;           -- do ext. logic reset at start of run
+  event_read <= s_event_read;
+
   PROCESS (s_clock)
     VARIABLE fidir_d1 : std_logic := '0';
     VARIABLE fidir_d2 : std_logic := '0';
   BEGIN  -- process
-    IF ( s_clock'event AND (s_clock = '1') ) THEN
+    IF (s_clock'event AND (s_clock = '1')) THEN
       IF ((fidir_d2 = '1') AND (fidir_d1 = '0') AND (fiBEN_N = '0')) THEN
         s_arstn <= '0';
       ELSE
@@ -233,18 +235,18 @@ BEGIN
 
   -- Component Instantiation Statements
   CTRL_REGS : ddl_registers PORT MAP (
-    clock       => s_clock,
-    arstn       => s_arstn,
-    reg_data    => s_reg_data,
-    reg_addr    => s_reg_addr,
-    reg_load    => s_reg_load,
-    reg_lock    => s_reg_lock,
-    ps_reg      => s_ps_reg,
-    bl_reg      => s_bl_reg,
-    dt_reg      => s_dt_reg,
-    fc_reg      => s_fc_reg,
-    te_reg      => s_te_reg,
-    xx_reg      => s_xx_reg
+    clock    => s_clock,
+    arstn    => s_arstn,
+    reg_data => s_reg_data,
+    reg_addr => s_reg_addr,
+    reg_load => s_reg_load,
+    reg_lock => s_reg_lock,
+    ps_reg   => s_ps_reg,
+    bl_reg   => s_bl_reg,
+    dt_reg   => s_dt_reg,
+    fc_reg   => s_fc_reg,
+    te_reg   => s_te_reg,
+    xx_reg   => s_xx_reg
     );
 
   RX : ddl_receiver PORT MAP (
