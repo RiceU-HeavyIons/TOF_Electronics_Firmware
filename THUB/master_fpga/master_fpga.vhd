@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.28 2008-01-31 22:16:08 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.29 2008-03-11 16:00:29 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-01-31
+-- Last update: 2008-03-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -189,6 +189,7 @@ ARCHITECTURE a OF master_fpga IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
+      event_read : OUT std_logic;
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
       foCTRL_N   : OUT std_logic;
@@ -322,6 +323,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_tcdevt_trg : std_logic;
   SIGNAL s_plsevt_trg : std_logic;
   SIGNAL s_runReset   : std_logic;
+  SIGNAL s_event_read : std_logic;
   SIGNAL s_stage1     : std_logic;
   SIGNAL s_stage2     : std_logic;
 
@@ -688,7 +690,8 @@ BEGIN
     rdreq_out           => smif_rdenable,
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
-  sr_areset_n <= s_reg1(0);             -- control reader with Register 1 bit 0
+  sr_areset_n <= s_event_read;             -- control reader with ddl fiber connect
+--  sr_areset_n <= s_reg1(0);             -- control reader with Register 1 bit 0
 
   -- connect the selected sync'd data to serdes_reader
   WITH s_serSel SELECT
@@ -749,7 +752,8 @@ BEGIN
     rdreqH => sh_smif_rdenable);
 
   -- ***************** Master-Serdes FPGA Interface Control **************************
-  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_reg1(0);
+--  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_reg1(0);
+  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_event_read;
   smif_inst : smif
     PORT MAP (
       clock       => globalclk,
@@ -827,6 +831,7 @@ BEGIN
     foTEN_N    => s_foTEN_N,
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
+    event_read => s_event_read,         -- indicates run in progress
     reset      => '0',                  -- reset,
     fifo_q     => ddl_data,       -- "data" from external FIFO with event data
     fifo_empty => ddlfifo_empty,        -- "empty" from external FIFO
