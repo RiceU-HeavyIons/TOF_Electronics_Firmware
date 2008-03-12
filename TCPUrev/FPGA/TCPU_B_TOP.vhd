@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.15 2008-03-03 16:45:19 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.16 2008-03-12 15:44:14 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-03-03
+-- Last update: 2008-03-06
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,6 +33,7 @@ LIBRARY lpm;
 USE lpm.lpm_components.ALL;
 LIBRARY altera;
 USE altera.altera_primitives_components.ALL;
+USE work.tcpu_new_primitives.ALL;
 
 -- ********************************************************************
 -- TOP LEVEL ENTITY
@@ -134,7 +135,7 @@ ENTITY TCPU_B_TOP IS
       mcu_pld_ctrl : IN    std_logic_vector (4 DOWNTO 0);  -- W14 thru Y14
 
 
-      --test_at_J9                : OUT std_logic; -- AA20
+      -- test_at_J9                : OUT std_logic; -- AA20
       test_at_J9 : IN std_logic;        -- AA20
 
 
@@ -177,7 +178,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"80";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"81";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -244,6 +245,45 @@ ARCHITECTURE a OF TCPU_B_TOP IS
       txfifo_rdreq : OUT std_logic;
       serdes_data  : OUT std_logic_vector (17 DOWNTO 0));
   END COMPONENT serdes_serializer;
+
+  --*****************************************************************************************************
+  -- multiplicity components
+
+  COMPONENT adder_4_by_4_bits
+    PORT
+      (
+        dataa  : IN  std_logic_vector (3 DOWNTO 0);
+        datab  : IN  std_logic_vector (3 DOWNTO 0);
+        cout   : OUT std_logic;
+        result : OUT std_logic_vector (3 DOWNTO 0)
+        );
+  END COMPONENT;
+
+  COMPONENT PLL_multiplier_4x
+    PORT
+      (
+        inclk0 : IN  std_logic := '0';
+        c0     : OUT std_logic;         -- input divided by 4
+        c1     : OUT std_logic          -- input divided by 4, different phase
+        );
+  END COMPONENT;
+
+
+
+  COMPONENT REG_5BIT
+    PORT
+      (
+        aclr  : IN  std_logic;
+        clock : IN  std_logic;
+        data  : IN  std_logic_vector (4 DOWNTO 0);
+        q     : OUT std_logic_vector (4 DOWNTO 0)
+        );
+  END COMPONENT;
+
+  --*****************************************************************************************************
+  -- end of multiplicity components
+  --
+  -- ****************************************************************************************************
 
   SIGNAL clk_40mhz       : std_logic;
   SIGNAL clk_20mhz       : std_logic;
@@ -351,6 +391,22 @@ ARCHITECTURE a OF TCPU_B_TOP IS
   SIGNAL s_mult_count : std_logic_vector (4 DOWNTO 0);
   SIGNAL s_ctr_reset  : std_logic;
 
+-- ******************** multiplicity signals
+
+  SIGNAL multiplicity_carry         : std_logic;
+  SIGNAL rhic_16x_locked, dummy     : std_logic;
+  SIGNAL phase1_10mhz, phase2_10mhz : std_logic;
+  SIGNAL c1_dmult_inv, c2_dmult_inv : std_logic_vector(3 DOWNTO 0);
+  SIGNAL final_sum                  : std_logic_vector(4 DOWNTO 0);
+
+  SIGNAL sel_phase_of_mult_clk_to_tray   : std_logic_vector(3 DOWNTO 0);
+  SIGNAL sel_phase_of_final_mult_reg_clk : std_logic_vector(3 DOWNTO 0);
+  SIGNAL rhic_clk_16x, rhic_clk_1x       : std_logic;
+  SIGNAL mult_clk_to_tray                : std_logic;
+  SIGNAL final_reg_clk_for_mult          : std_logic;
+  SIGNAL delayed_rhic_clk                : std_logic_vector(15 DOWNTO 0);
+  SIGNAL clock_delay                     : std_logic_vector(3 DOWNTO 0);
+
 ----------------------------------------------------------
 
 BEGIN
@@ -391,10 +447,10 @@ BEGIN
   -- GLOBAL CLOCK BUFFER
   global_clk_buffer1 : global PORT MAP (a_in => pld_clkin1, a_out => clk_40mhz);
   global_clk_buffer2 : global PORT MAP (a_in => pll_20mhz, a_out => clk_20mhz);
-  global_clk_buffer3 : global PORT MAP (a_in => trig_clk_in_clk, a_out => s_rhic_clk);
+--  global_clk_buffer3 : global PORT MAP (a_in => trig_clk_in_clk, a_out => s_rhic_clk);
 
-  c1_clk_10mhz <= s_rhic_clk;
-  c2_clk_10mhz <= s_rhic_clk;
+--  c1_clk_10mhz <= s_rhic_clk;
+--  c2_clk_10mhz <= s_rhic_clk;
 
   -- test header:
   test1 <= pld_clkin1;
@@ -485,6 +541,7 @@ BEGIN
   load_config1  <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(1);
   load_config2  <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(2);
   load_config3  <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(3);
+  load_config12 <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(12);
   load_config14 <= (NOT (mcu_read)) AND mcu_strobe AND addr_equ(14);
 
   -- Configuration Register Address 0x0
@@ -547,6 +604,20 @@ BEGIN
       enable => load_config3,
       aclr   => reg_clr,
       q      => config3_data);
+
+  -- Configuration register address 0xc
+  -- 4 lsbs are rhic clk delay selection: "clock_delay"
+  config12_register : lpm_ff
+    GENERIC MAP (
+      lpm_fftype => "DFF",
+      lpm_type   => "LPM_FF",
+      lpm_width  => 8)
+    PORT MAP (
+      clock  => clk_40mhz,
+      data   => mcu_input_data,
+      enable => load_config12,
+      aclr   => reg_clr,
+      q      => config12_data);         
 
   -- Configuration Register Address 0xe
   -- used for internal pulser (data = 0x8 - 0xf)
@@ -960,18 +1031,136 @@ BEGIN
     serdes_data  => s_serdes_data);
 
 ---------------------------------------------------------------------------
--- Multiplicity Code
+-- MULTIPLICITY
 ---------------------------------------------------------------------------
-  s_ctr_reset <= '1';
-  mult_ctr : PROCESS (s_rhic_clk, s_ctr_reset) IS
-  BEGIN
-    IF s_ctr_reset = '0' THEN           -- asynchronous reset (active low)
-      s_mult_count <= "00000";
-    ELSIF s_rhic_clk'event AND s_rhic_clk = '1' THEN  -- rising clock edge
-      s_mult_count <= s_mult_count + 1;
-    END IF;
-  END PROCESS mult_ctr;
+  -- code for testing the link
+--  s_ctr_reset <= '1';
+--  mult_ctr : PROCESS (s_rhic_clk, s_ctr_reset) IS
+--  BEGIN
+--    IF s_ctr_reset = '0' THEN           -- asynchronous reset (active low)
+--      s_mult_count <= "00000";
+--    ELSIF s_rhic_clk'event AND s_rhic_clk = '1' THEN  -- rising clock edge
+--      s_mult_count <= s_mult_count + 1;
+--    END IF;
+--  END PROCESS mult_ctr;
 
-  trig_data_out <= s_mult_count;
+--  trig_data_out <= s_mult_count;
+
+  --**************************************
+  -- multiplicity code from Lloyd
+
+  --****************************************************************************************
+  --    CREATE 2 PHASES OF INPUT CLOCK 
+  --            added 3/4/08
+  --     multiply rhic clk input by 16x
+  --            use 16x clock to sample slow clock using a shift register
+  --            select 2 delayed, sampled versions from shift register outputs using 2 muxes
+  --
+  --****************************************************************************************
+
+  -- This PLL uses the 40 mhz clock to generate a fake rhic clk in the absence of the 10mhz
+  -- from the multiplicity connector
+
+  --PLL_to_generate_10mhz_and_160mhz_from_40Mhz : PLL_multiplier_4x PORT MAP (
+  --inclk0     => pld_clkin2,          -- 40 mhz input clock
+  --c0          => rhic_clk_1x,            -- 10 mhz clock
+  --c1        => rhic_clk_16x );     -- 160 mhz clock with 90 deg phase shift                             
+
+  -- This PLL is for actual use when the rhic clk is available on the multiplicity connector 
+  PLL_1x_and_16x_inst : PLL_1x_and_16x PORT MAP (
+    inclk0 => trig_clk_in_clk,  -- rhic clk from multiplicity connector (J16)
+    c0     => rhic_clk_1x,              -- 1x output 
+    c1     => rhic_clk_16x);  -- 16x output with 90 deg phase shift           
+
+  clock_delay_shift_register : SHIFT_REG_16BITS PORT MAP (
+    aclr    => '0',
+    clock   => rhic_clk_16x,
+    shiftin => rhic_clk_1x,
+    q       => delayed_rhic_clk
+    );
+
+  clock_delay                   <= config12_data(3 DOWNTO 0);
+  -- this can be hooked to a configuration reg or hard coded with this line
+-- sel_phase_of_mult_clk_to_tray <= "0000";
+  sel_phase_of_mult_clk_to_tray <= clock_delay;
   
+  clk_to_tray_select : MUX_16TO1 PORT MAP (
+    data0  => delayed_rhic_clk(15),
+    data1  => delayed_rhic_clk(14),
+    data2  => delayed_rhic_clk(13),
+    data3  => delayed_rhic_clk(12),
+    data4  => delayed_rhic_clk(11),
+    data5  => delayed_rhic_clk(10),
+    data6  => delayed_rhic_clk(9),
+    data7  => delayed_rhic_clk(8),
+    data8  => delayed_rhic_clk(7),
+    data9  => delayed_rhic_clk(6),
+    data10 => delayed_rhic_clk(5),
+    data11 => delayed_rhic_clk(4),
+    data12 => delayed_rhic_clk(3),
+    data13 => delayed_rhic_clk(2),
+    data14 => delayed_rhic_clk(1),
+    data15 => delayed_rhic_clk(0),
+    sel    => sel_phase_of_mult_clk_to_tray,
+    result => mult_clk_to_tray
+    );                  
+
+  sel_phase_of_final_mult_reg_clk <= clock_delay;
+  -- sel_phase_of_final_mult_reg_clk <= "0000"; -- this depends on on delays within the tray
+                                                -- and can be hard coded
+  
+  clk_for_final_register_select : MUX_16TO1 PORT MAP (
+    data0  => delayed_rhic_clk(15),
+    data1  => delayed_rhic_clk(14),
+    data2  => delayed_rhic_clk(13),
+    data3  => delayed_rhic_clk(12),
+    data4  => delayed_rhic_clk(11),
+    data5  => delayed_rhic_clk(10),
+    data6  => delayed_rhic_clk(9),
+    data7  => delayed_rhic_clk(8),
+    data8  => delayed_rhic_clk(7),
+    data9  => delayed_rhic_clk(6),
+    data10 => delayed_rhic_clk(5),
+    data11 => delayed_rhic_clk(4),
+    data12 => delayed_rhic_clk(3),
+    data13 => delayed_rhic_clk(2),
+    data14 => delayed_rhic_clk(1),
+    data15 => delayed_rhic_clk(0),
+    sel    => sel_phase_of_final_mult_reg_clk,
+    result => final_reg_clk_for_mult
+    ); 
+
+  --********************************************************************************************************
+
+  -- global_clk_buffer4 : global PORT MAP (a_in => trig_clk_in_clk, a_out => s_rhic_clk);
+  -- global_clk_buffer4 : global PORT MAP (a_in => phase1_10mhz, a_out => s_rhic_clk);     
+
+
+  -- test_at_J9 <= mult_clk_to_tray;
+
+
+  c1_clk_10mhz <= mult_clk_to_tray;
+  c2_clk_10mhz <= mult_clk_to_tray;
+
+  c1_dspare_out1 <= '0';                -- clk_16x_to_downstream;
+  c2_dspare_out1 <= '0';                -- clk_16x_to_downstream;
+
+  c1_dmult_inv <= NOT c1_dmult;
+  c2_dmult_inv <= NOT c2_dmult;
+  
+  final_multiplicity_adder : adder_4_by_4_bits PORT MAP (
+    dataa  => c1_dmult_inv,
+    datab  => c2_dmult_inv,
+    cout   => multiplicity_carry,
+    result => final_sum(3 DOWNTO 0)
+    );
+  final_sum(4) <= multiplicity_carry;
+
+  final_multiplicity_register : REG_5BIT PORT MAP (
+    aclr  => '0',
+    clock => final_reg_clk_for_mult,
+    data  => final_sum,
+    q     => trig_data_out
+    );
+
 END ARCHITECTURE a;
