@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.2 2008-03-10 16:58:29 jschamba Exp $
+// $Id: TDIG-F.c,v 1.3 2008-03-13 18:21:46 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -255,7 +255,7 @@
 
 // Define the FIRMWARE ID
 //    #define FIRMWARE_ID_0 0xFA  //JS: to distinguish it from Bill's version
-    #define FIRMWARE_ID_0 0x49    //JS-11I
+    #define FIRMWARE_ID_0 'K'    //JS-11K: 0x11 0x4B
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -416,6 +416,7 @@ main()
 	unsigned int buttoncount = 0x0;
 	unsigned int tdcpowerbit = 0x0;
 	unsigned int ledbits = NO_LEDS;
+    unsigned int fpga_crc = 0;      // will get image of CRC Error bit from ECSR
 	unsigned int board_temp = 0;	// will get last-read board temperature word
     unsigned int replylength;       // will get length of reply message
     unsigned char bwork[10];     // scratchpad
@@ -493,7 +494,7 @@ main()
 
 /* Initialize Port F bits for UCONFIG_IN, DCONFIG_OUT */
     TRISF = PORTF_dirmask;      // bit 3 is output
-    DCONFIG_OUT = ~UCONFIG_IN;   // Bit 2 inverted and copied to output
+    DCONFIG_OUT = UCONFIG_IN;   // Bit 2 copied to output
 
 /* Initialize Port B bits for output */
     AD1PCFGH = ANALOG1716;  // ENABLE analog 17, 16 only
@@ -597,7 +598,8 @@ main()
 // Turn on power to HPTDC
 
 #endif                                  // DELAYPOWER conditional
-	tdcpowerbit |= ESCR_TDC_POWER;	    // Write the TDC Power-ON bit
+
+	tdcpowerbit |= ECSR_TDC_POWER;	    // Write the TDC Power-ON bit
     Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, tdcpowerbit);
 //		TDC Power is being turned on, delay a while
     ledbits = 0x7F;		// turn on orange LED
@@ -605,20 +607,9 @@ main()
 
     spin(5);
 // Make sure FPGA has configured and reset it
-//    waitfor_FPGA();
+    waitfor_FPGA();
     reset_FPGA();
-    init_regs_FPGA();
-
-    j = 0;
-
-// Do an HPTDC Reset
-    write_FPGA (CONFIG_2_RW, ~CONFIG_2_TDCRESET); // HPTDC_RESET = 0;  // lower HPTDC Reset bit
-    write_FPGA (CONFIG_2_RW,  CONFIG_2_TDCRESET); // HPTDC_RESET = 1; // raise "reset" bit
-	spin(0);
-    write_FPGA (CONFIG_2_RW, ~CONFIG_2_TDCRESET); // HPTDC_RESET = 0; // Lower RESET bit
-
-// Write Board-Position to FPGA Register
-    write_FPGA (CONFIG_12_W, board_posn);
+    init_regs_FPGA(board_posn);
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* ECAN1 Initialization
@@ -638,23 +629,6 @@ main()
     block_status = BLOCK_NOTSTARTED;    // no block transfer started yet
     block_bytecount = 0;
     block_checksum = 0L;
-
-/* 09-Feb-2007
-** Wait for a button press to start the next section
-*/
-//    buttoncount = 0;
-//    do {
-//        switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
-//		if ((switches & 0x1)==0x1) {
-//			buttoncount++;
-//		} else buttoncount = 0; // end else switch was not pressed
-//		tglbit ^= 1;		// toggle the bit in port
-//      MCU_TEST = tglbit;
-// #if defined (RC15_IO) // RC15 will be I/O (in TDIG-D-Board.h)
-//      LATCbits.LATC15 = tglbit;        // make it like RG15
-// #endif
-//        spin(5);
-//    } while (buttoncount != BUTTONLIMIT);
 
 
 // #define DOIDCODE 1
@@ -723,7 +697,7 @@ main()
         ledbits &= 0xBF;    //
         Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
     } // end if no error
-    reset_FPGA();
+//    reset_FPGA();
     spin(0);
 
 // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
@@ -734,11 +708,16 @@ main()
 
     spin(0);           // spin loop
 
-// Select this board as first in readout chain if it is board =0 or 4
-    write_FPGA (CONFIG_0_RW, 0);    // Configure FPGA readout normal
-    if ((board_posn==0) || (board_posn==4)) {
-        write_FPGA (CONFIG_0_RW, CONFIG_0_FIRSTR);    // Configure FPGA readout First board in chain
-    } // End if this is first board in chain
+    j = 0;
+
+// Do an HPTDC Reset
+    write_FPGA (CONFIG_2_RW, ~CONFIG_2_TDCRESET); // HPTDC_RESET = 0;  // lower HPTDC Reset bit
+    write_FPGA (CONFIG_2_RW,  CONFIG_2_TDCRESET); // HPTDC_RESET = 1; // raise "reset" bit
+	spin(0);
+    write_FPGA (CONFIG_2_RW, ~CONFIG_2_TDCRESET); // HPTDC_RESET = 0; // Lower RESET bit
+
+
+
 
 /* Read the HPTDC Status using the JTAG port, Send result via CAN */
 //    for (j=0; j<NBR_HPTDCS; j++) {
@@ -770,72 +749,20 @@ main()
     select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
     spin(5);           // spin loop
 
-// #define DODATATEST 1
-#if defined (DODATATEST)
-    write_FPGA (STROBE_9_W, 0);        // Reset local Readout state machine
-    write_FPGA (STROBE_10_W, 0);        // Reset MCU FIFO
-    write_FPGA (CONFIG_0_RW, CONFIG_0_TEST);    // set test mode
-    for (j=0; j<8; j++) write_FPGA (STROBE_11_W, 0);
-#endif
 
 /* Send an "Alert" message to say we are on-line */
 //    pld_ident = read_FPGA (IDENT_7_R);
     send_CAN1_alert (board_posn);
+
 /* Send a diagnostic message showing which clock we are running */
 //    l = OSCCON;         // read the OSCCON register
 //    send_CAN1_diagnostic (board_posn, 2, (unsigned char *)&l);  // send the OSCCON value
 
-#if defined (MCUREPROGRAM1)
-/* MCU REPROGRAMMING TEST #1
-** See if we can read from Processor ID String
-*/
-    read_MCU_pm ((unsigned char *)&block_buffer[0], 0xF80010L); // Read from ID field
-    read_MCU_pm ((unsigned char *)&block_buffer[1], 0xF80012L); // Read from ID field
-    read_MCU_pm ((unsigned char *)&block_buffer[2], 0xF80014L); // Read from ID field
-    read_MCU_pm ((unsigned char *)&block_buffer[3], 0xF80016L); // Read from ID field
-    send_CAN1_diagnostic (board_posn, 8, block_buffer);
-/* We saw the same value for processor ID bytes as was revealed by MPLAB */
-#endif // defined MCUREPROGRAM1
+// WB-11J
+// Get state of FPGA CRC_ERROR bit.
+    fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port
+// WB-11J end
 
-//#define MCUREPROGRAM2
-#if defined (MCUREPROGRAM2)
-/* MCU REPROGRAMMING TEST #2
-** See if we can read from program memory at 0x4000 and 0x4002
-*/
-    read_MCU_pm ((unsigned char *)&retbuf[0], 0x4000L); // Read from 0x4000
-    read_MCU_pm ((unsigned char *)&retbuf[4], 0x4002L); // Read from 0x4002
-    send_CAN1_diagnostic (board_posn, 8, retbuf);    // tell what we read.
-/* We saw the expected values of 0x00FFFFF 0x00FFFFFF for an erased device */
-#endif // defined (MCUREPROGRAM2)
-
-//#define MCUREPROGRAM3
-#if defined (MCUREPROGRAM3)
-/* MCU REPROGRAMMING TEST #3
-** See if we can program to memory at 0x4002
-*/
-    block_buffer[0] = 0x1;
-    block_buffer[1] = 0x2;
-    block_buffer[2] = 0x3;
-    block_buffer[3] = 0x4;
-    write_MCU_pm ((unsigned char *)&block_buffer[0], 0x4002L); // Write a word
-//
-    read_MCU_pm ((unsigned char *)&retbuf[0], 0x4000L); // Read from 0x4000
-    read_MCU_pm ((unsigned char *)&retbuf[4], 0x4002L); // Read from 0x4002
-//
-    send_CAN1_diagnostic (board_posn, 8, retbuf);
-/* We saw FF FF FF 00 01 02 03 00 which agrees with what we expected */
-#endif
-
-//#define MCUREPROGRAM4
-#if defined (MCUREPROGRAM4)
-/* MCU REPROGRAMMING TEST #4
-** read the memory at 0x200 and 0x202 and see if it agrees with manual HEX file
-*/
-    read_MCU_pm ((unsigned char *)&retbuf[0], 0x200L); // Read from 0x200
-    read_MCU_pm ((unsigned char *)&retbuf[4], 0x202L); // Read from 0x202
-    send_CAN1_diagnostic (board_posn, 8, retbuf);
-/* We saw 80 01 78 00 02 00 e0 00 ; just like original .hex file */
-#endif
 /* Look for Have-a-Message
 */
     do {                            // Do Forever
@@ -1028,7 +955,7 @@ main()
                                     } // end if had timeout
                                 } while ((i != 0) && (j != 0));       // try til either both were used or no error
                                 reset_FPGA();       // reset FPGA
-                                init_regs_FPGA();   // initialize FPGA
+                                init_regs_FPGA(board_posn);   // initialize FPGA
                                 pld_ident = read_FPGA (IDENT_7_R);
                                 retbuf[2] = pld_ident;  // tell the magic ID code value
                                 replylength = 3;
@@ -1072,11 +999,9 @@ main()
                                     sel_EE1;        // de-select EEPROM #2
                                     set_EENCS;      //
                                     MCU_CONFIG_PLD = 1; // re-enable FPGA
-//                                    waitfor_FPGA(); // wait for FPGA to reconfigure
+                                    waitfor_FPGA(); // wait for FPGA to reconfigure
                                     reset_FPGA();   // reset FPGA
-                                    init_regs_FPGA(); // initialize FPGA
-                                    // Write Board-Position to FPGA Register
-                                    write_FPGA (CONFIG_12_W, board_posn);
+                                    init_regs_FPGA(board_posn); // initialize FPGA
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -1359,8 +1284,17 @@ main()
 #define UDCONFIGBITS 1
 #if defined (UDCONFIGBITS)
 //          Copy UCONFIGI bit to DCONFIGO bit to allow testing of corresponding LVDS signals (define UDCONFIGBITS)
-            DCONFIG_OUT = ~UCONFIG_IN;
+            DCONFIG_OUT = UCONFIG_IN;
 #endif
+
+// WB-11J Mostly Idle, Check ECSR for change-of-state on PLD_CRC_ERROR bit
+            j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
+            if ( j != fpga_crc) {  // see if it has changed
+                fpga_crc = j;
+                j = C_ALERT_CKSUM_CODE;
+                send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&j);
+            }
+// WB-11J end
 
 // Mostly Idle, Check for change of switches/jumpers/button
             if ( (Read_MCP23008(SWCH_ADDR, MCP23008_GPIO)) != switches ) {        // if changed
@@ -1396,7 +1330,6 @@ main()
                 if ((i&1)==1) j |= 4;  // fix the 4 bit
                 if ((i&4)==4) j |= 1;  // fix the 1 bit
 #endif // defined (ECO14_SW4)
-                write_FPGA (CONFIG_12_W, j);        // write new switch to config_12 in FPGA
             } // end if something changed
 #if defined (DODATATEST)
         } // end else no data
