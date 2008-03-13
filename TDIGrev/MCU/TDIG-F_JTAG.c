@@ -1,4 +1,4 @@
-// $Id: TDIG-F_JTAG.c,v 1.2 2008-03-10 16:56:02 jschamba Exp $
+// $Id: TDIG-F_JTAG.c,v 1.3 2008-03-13 18:18:38 jschamba Exp $
 
 /* TDIG-F_JTAG.c
 ** This file defines the TDIG-F routines and interfaces for JTAG interface to the TDIG chips.
@@ -45,11 +45,11 @@
 
  #define REVISEDRESET 1
 #if defined (REVISEDRESET)      // Jo Schambach sequence
-    static unsigned char resetword1   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0xFF};
-    static unsigned char resetword2   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x3F};
-    static unsigned char resetword3   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F};
-    static unsigned char resetword4   [J_HPTDC_CONTROLBYTES] = {0xF4, 0xFF, 0xFF, 0xFF, 0x1F};
-    static unsigned char resetword5   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F};
+    static unsigned char reset_all    [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0xE0}; // 1st control
+    static unsigned char lock_pll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x20}; // 2nd control
+    static unsigned char lock_dll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x80}; // 3rd control
+    static unsigned char global_reset [J_HPTDC_CONTROLBYTES] = {0x14, 0x00, 0x00, 0x00, 0x00}; // 4th control
+    static unsigned char enable_all   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F}; // final control
 #else
     static unsigned char global_reset [J_HPTDC_CONTROLBYTES] = {0x14, 0x00, 0x00, 0x00, 0x00};
     static unsigned char lock_pll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x40};
@@ -149,32 +149,25 @@ void reset_hptdc(unsigned int tdcnbr, unsigned char *finalctrl) {
 #if defined (REVISEDRESET)
     if ((tdcnbr > 0) && (tdcnbr<= NBR_HPTDCS) ) {
         // Send first RESET word
-        control_hptdc ( tdcnbr, (unsigned char *)&resetword1);
+        control_hptdc ( tdcnbr, (unsigned char *)&reset_all);
         spin(1);
         // Send second RESET word
-        control_hptdc ( tdcnbr, (unsigned char *)&resetword2);
+        control_hptdc ( tdcnbr, (unsigned char *)&lock_pll);
         spin(1);
         // Send third RESET word
-        control_hptdc ( tdcnbr, (unsigned char *)&resetword3);
+        control_hptdc ( tdcnbr, (unsigned char *)&lock_dll);
         spin(1);
         //Send fourth RESET word
-        control_hptdc ( tdcnbr, (unsigned char *)&resetword4);
+        control_hptdc ( tdcnbr, (unsigned char *)&global_reset);
         spin(1);
-        // Send fifth RESET word
-        control_hptdc ( tdcnbr, (unsigned char *)&resetword5);
+        // Send final control word
+        control_hptdc ( tdcnbr, finalctrl);
         spin(0);
 
-//        spin(5);
-//
-        // Put out "Final" control string (40 bits)
-//        control_hptdc ( tdcnbr, finalctrl);
-//        spin(5);
-//        // Done with JTAG
         select_hptdc(JTAG_HDR, tdcnbr);        // select FPGA and which HPTDC
      } // end if valid HPTDC number
 // -----  end of routine reset_hptdc()
-#endif
-#if defined (ORIGRESET)
+#else
     if ((tdcnbr > 0) && (tdcnbr<= NBR_HPTDCS)) {
         select_hptdc(JTAG_MCU, tdcnbr);        // select MCU controlling which HPTDC
         reset_TAP();
