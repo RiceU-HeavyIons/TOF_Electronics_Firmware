@@ -1,4 +1,4 @@
-// $Id: TDIG-F_MCU_PLD.h,v 1.1 2008-02-13 17:16:12 jschamba Exp $
+// $Id: TDIG-F_MCU_PLD.h,v 1.2 2008-03-13 18:14:36 jschamba Exp $
 
 /* TDIG-D_MCU_PLD.h
 ** This header file defines the TDIG-D macros and interfaces for MCU data interface to FPGA.
@@ -43,4 +43,4 @@ unsigned int read_FPGA (unsigned int addr);
 void reset_FPGA (void);
 void configure_FPGA (unsigned int whicheeprom);
 unsigned int waitfor_FPGA (void);
-void init_regs_FPGA (void);
+void init_regs_FPGA (unsigned int board_posn);
