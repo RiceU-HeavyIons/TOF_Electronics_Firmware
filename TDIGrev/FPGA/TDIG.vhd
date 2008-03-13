@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.5 2008-03-05 21:43:16 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.6 2008-03-13 18:12:29 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -13,6 +13,7 @@ USE lpm.lpm_components.ALL;
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.ALL;
 USE work.TDIG_E_primitives.ALL;
+USE work.mult_primitives.ALL;
 
 -- ********************************************************************
 -- TOP LEVEL ENTITY
@@ -197,7 +198,7 @@ END TDIG;  -- end.entity
 
 ARCHITECTURE a OF TDIG IS
 
-  CONSTANT TDIG_VERSION : std_logic_vector := x"72";
+  CONSTANT TDIG_VERSION : std_logic_vector := x"73";
 
   SIGNAL global_40mhz                       : std_logic;  -- global clock signal
   SIGNAL byteblaster_tdi                    : std_logic;
@@ -218,12 +219,12 @@ ARCHITECTURE a OF TDIG IS
   SIGNAL input_data                                       : std_logic_vector(7 DOWNTO 0);
   SIGNAL output_data, config0_data                        : std_logic_vector(7 DOWNTO 0);
   SIGNAL config1_data, config2_data, config3_data         : std_logic_vector(7 DOWNTO 0);
-  SIGNAL config12_data, config14_data                     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL config12_data, config13_data                     : std_logic_vector(7 DOWNTO 0);
   SIGNAL output_sel                                       : std_logic_vector(3 DOWNTO 0);
   SIGNAL adr_equ                                          : std_logic_vector(15 DOWNTO 0);
   SIGNAL enable_data_out_to_mcu, enable_data_in_from_mcu  : std_logic;
   SIGNAL config0_clk_en, config1_clk_en, config2_clk_en   : std_logic;
-  SIGNAL config3_clk_en, config12_clk_en, config14_clk_en : std_logic;
+  SIGNAL config3_clk_en, config12_clk_en, config13_clk_en : std_logic;
   SIGNAL strobe, strobe_clocked                           : std_logic;
   SIGNAL mcu_read, read_clocked, clock                    : std_logic;
   SIGNAL mcu_adr                                          : std_logic_vector(3 DOWNTO 0);
@@ -264,6 +265,15 @@ ARCHITECTURE a OF TDIG IS
   SIGNAL sig_ddaisy_data, sig_ddaisy_tok_out                : std_logic;
   SIGNAL data_to_first_TDC, token_in_to_first_TDC           : std_logic;
 
+  -- new multiplicity signals
+  SIGNAL rhic_clk_16x, buffered_rhic_clk_16x    : std_logic;
+  SIGNAL dummy1, multiplicity_overflow          : std_logic;
+  SIGNAL buffered_rhic_clkin, rhic_clk_from_pll : std_logic;
+  SIGNAL view_mult_gate, overflow_gate_width    : std_logic;
+  SIGNAL dmult_after_mux, dmult_inv             : std_logic_vector(3 DOWNTO 0);
+  SIGNAL board_position                         : std_logic_vector(2 DOWNTO 0);
+  SIGNAL gate_delay, gate_width                 : std_logic_vector(3 DOWNTO 0);
+  SIGNAL end_of_gate_value, prog_gate_width     : std_logic_vector(3 DOWNTO 0);
 
   CONSTANT zero_byte      : std_logic_vector := x"00";
   CONSTANT five_five_byte : std_logic_vector := x"55";
@@ -336,10 +346,10 @@ BEGIN
   inv_udaisy_tok_out <= NOT sig_udaisy_tok_out;
   inv_ustatus        <= NOT sig_ustatus;
   inv_ustrobe_out    <= NOT sig_ustrobe_out;
-  inv_umult(3)       <= NOT sig_umult(3);
-  inv_umult(2)       <= NOT sig_umult(2);
-  inv_umult(1)       <= NOT sig_umult(1);
-  inv_umult(0)       <= NOT sig_umult(0);
+--  inv_umult(3)       <= NOT sig_umult(3);
+--  inv_umult(2)       <= NOT sig_umult(2);
+--  inv_umult(1)       <= NOT sig_umult(1);
+--  inv_umult(0)       <= NOT sig_umult(0);
 
   -- TDIG-D:
 --  inv_udaisy_data    <= sig_udaisy_data;
@@ -355,10 +365,12 @@ BEGIN
   sig_udaisy_data    <= h3_ser_out;
   sig_ustatus        <= '0';
   sig_ustrobe_out    <= h3_strobe_out;
-  sig_umult(3)       <= dmult(3);
-  sig_umult(2)       <= dmult(2);
-  sig_umult(1)       <= dmult(1);
-  sig_umult(0)       <= dmult(0);
+
+--  sig_umult(3)       <= dmult(3);
+--  sig_umult(2)       <= dmult(2);
+--  sig_umult(1)       <= dmult(1);
+--  sig_umult(0)       <= dmult(0);
+
   sig_ddaisy_clk     <= sig_udaisy_clk;
   sig_dspare_out     <= sig_uspare_in;
   sig_flex_reset_out <= sig_flex_reset_in;
@@ -373,10 +385,10 @@ BEGIN
   udaisy_tok_out <= inv_udaisy_tok_out;
   ustatus        <= inv_ustatus;
   ustrobe_out    <= inv_ustrobe_out;
-  umult(3)       <= inv_umult(3);
-  umult(2)       <= inv_umult(2);
-  umult(1)       <= inv_umult(1);
-  umult(0)       <= inv_umult(0);
+--  umult(3)       <= inv_umult(3);
+--  umult(2)       <= inv_umult(2);
+--  umult(1)       <= inv_umult(1);
+--  umult(0)       <= inv_umult(0);
 
   -- INPUT signals going DOWNSTREAM (from TCPU or another TDIG)  to TDIG
 
@@ -403,10 +415,6 @@ BEGIN
   global_clk_buffer : global PORT MAP (
     a_in  => pld_clkin1,
     a_out => global_40mhz);
-
-
-  -- test output
-  test_at_j9 <= '0';
 
   ----------------------------------------------------------------------------------------------
   -- 2.         MCU INTERFACE : BIDIR BUFFER AND ADDRESS DECODE
@@ -456,12 +464,12 @@ BEGIN
 --      3. MCU INTERFACE : CONFIGURATION REGISTERS
 --***************************************************************************************
 
-  config0_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(0);
-  config1_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(1);
-  config2_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(2);
-  config3_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(3);
---  config12_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(12);
---  config14_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(14);
+  config0_clk_en  <= (NOT (mcu_read)) AND strobe AND adr_equ(0);
+  config1_clk_en  <= (NOT (mcu_read)) AND strobe AND adr_equ(1);
+  config2_clk_en  <= (NOT (mcu_read)) AND strobe AND adr_equ(2);
+  config3_clk_en  <= (NOT (mcu_read)) AND strobe AND adr_equ(3);
+  config12_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(12);
+  config13_clk_en <= (NOT (mcu_read)) AND strobe AND adr_equ(13);
 
   config0_register : lpm_ff
     GENERIC MAP (
@@ -525,33 +533,37 @@ BEGIN
       q      => config3_data
       );
 
---  config12_register : lpm_ff
---    GENERIC MAP (
---      lpm_fftype => "DFF",
---      lpm_type   => "LPM_FF",
---      lpm_width  => 8
---      )
---    PORT MAP (
---      enable => config12_clk_en,
---      sclr   => reset,
---      clock  => clock,
---      data   => input_data,
---      q      => config12_data
---      );
+  config12_register : lpm_ff
+    GENERIC MAP (
+      lpm_fftype => "DFF",
+      lpm_type   => "LPM_FF",
+      lpm_width  => 8
+      )
+    PORT MAP (
+      enable => config12_clk_en,
+      sclr   => reset,
+      clock  => clock,
+      data   => input_data,
+      q      => config12_data
+      );
 
---  config14_register : lpm_ff
---    GENERIC MAP (
---      lpm_fftype => "DFF",
---      lpm_type   => "LPM_FF",
---      lpm_width  => 8
---      )
---    PORT MAP (
---      enable => config14_clk_en,
---      sclr   => reset,
---      clock  => clock,
---      data   => input_data,
---      q      => config14_data
---      );
+  board_position <= config12_data(2 DOWNTO 0);  -- low 3 bits are board position
+
+  config13_register : lpm_ff
+    GENERIC MAP (
+      lpm_fftype => "DFF",
+      lpm_type   => "LPM_FF",
+      lpm_width  => 8
+      )
+    PORT MAP (
+      enable => config13_clk_en,
+      sclr   => reset,
+      clock  => clock,
+      data   => input_data,
+      q      => config13_data
+      );
+
+  prog_gate_width <= config13_data(3 DOWNTO 0);  -- low 4 bits are gate width
 
   -- DATA READ MUX FOR DATA FROM FPGA TO MCU
 
@@ -568,13 +580,15 @@ BEGIN
 
   WITH mcu_adr SELECT
     output_data <=
-    config0_data WHEN x"0",
-    config1_data WHEN x"1",
-    config2_data WHEN x"2",
-    config3_data WHEN x"3",
-    TDIG_VERSION WHEN x"7",             -- THIS VALUE GIVES THE CODE VERSION #
-    data15x      WHEN x"F",
-    zero_byte    WHEN OTHERS;
+    config0_data  WHEN x"0",
+    config1_data  WHEN x"1",
+    config2_data  WHEN x"2",
+    config3_data  WHEN x"3",
+    TDIG_VERSION  WHEN x"7",            -- THIS VALUE GIVES THE CODE VERSION #
+    config12_data WHEN x"C",
+    config13_data WHEN x"D",
+    data15x       WHEN x"F",
+    zero_byte     WHEN OTHERS;
 
 -- END OF CONFIGURATION REGISTERS ****************************************
 
@@ -816,5 +830,75 @@ BEGIN
   -- BANK 8, Schematic Sheet 1, MCU Interface -- 
   --
   pld_serout <= '0';
+
+-------------------------------------------------------------------------------------------------
+-- 10. MULTIPLICITY
+--
+-------------------------------------------------------------------------------------------------
+
+  -- Generate 16x rhic clk. Input is from upstream signal pair "ULV_N16 / P16",
+  -- which is converted TTL signal "CLK_10MHZ" and is an input to the FPGA
+  -- at dedicated input clock pin  M22 (CLK6). Schematic name is "CLK_10MHZ".
+  -- NOTE: THIS SIGNAL HAS CORRECT POLARITY BECAUSE IT IS INVERTED 
+  -- BY THE UPSTREAM CONNECTOR, AND THEN AGAIN AT THE INPUT TO THE LVDS BUFFER.
+
+  PLL_multiplier_16x_inst : PLL_multiplier_16x PORT MAP (
+    inclk0 => rhic_clkin,
+    c0     => rhic_clk_16x,
+    c1     => rhic_clk_from_pll
+    );          
+
+  --test_at_j9 <= rhic_clkin;
+  test_at_j9 <= view_mult_gate;
+
+  -- Undriven dmult inputs will float high. At the same time, downstream outputs that do drive
+  -- dmult will invert the signals. So dmult inputs are always inverted.
+
+  dmult_inv(3) <= NOT dmult(3);
+  dmult_inv(2) <= NOT dmult(2);
+  dmult_inv(1) <= NOT dmult(1);
+  dmult_inv(0) <= NOT dmult(0);
+
+  -- gate_delay based on board position
+
+  WITH board_position SELECT
+    gate_delay <=
+    x"2" WHEN "000",
+    x"3" WHEN "001",
+    x"4" WHEN "010",
+    x"5" WHEN "011",
+    x"3" WHEN "100",
+    x"4" WHEN "101",
+    x"5" WHEN "110",
+    x"6" WHEN "111",
+    x"0" WHEN OTHERS;
+
+  -- gate_width can be hard-coded, as below, or taken from the 4 lsbs of reg13 with the following statement:
+
+  --gate_width <= prog_gate_width;
+  gate_width <= "1000";
   
+  add_gate_width_to_gate_delay : adder_2by4bit PORT MAP (
+    dataa    => gate_delay,
+    datab    => gate_width,
+    overflow => overflow_gate_width,
+    result   => end_of_gate_value);
+
+  multiplicity_gated_adder : multiplicity_ver2 PORT MAP (
+    rhic_clk   => rhic_clk_from_pll,
+    rhic16x    => rhic_clk_16x,
+    reset      => reset,
+    gate_delay => gate_delay,           -- 4 bit input from register
+    gate_width => end_of_gate_value,  -- 4 bit input from adder: gate_delay + gate_width
+    mult_a     => multa,
+    mult_b     => multb,
+    mult_c     => multc,
+    dmult      => dmult_inv,
+    result     => umult,
+    overflow   => multiplicity_overflow,
+    view_gate  => view_mult_gate
+    );
+
+-------------------------------------------------------------------------------------------------
+
 END ARCHITECTURE a;
