@@ -1,4 +1,4 @@
-// $Id: TDIG-F_CAN_HLP3.h,v 1.2 2008-03-10 16:52:38 jschamba Exp $
+// $Id: TDIG-F_CAN_HLP3.h,v 1.3 2008-03-13 18:15:20 jschamba Exp $
 
 /* TDIG-D_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
@@ -131,3 +131,7 @@
 
 // Length of message to change oscillator must be correct
     #define OSCSRCSEL_LEN 3             // 3 payload bytes
+
+// WB-11J Checksum ALERT message contents
+    #define C_ALERT_CKSUM_LEN 1
+    #define C_ALERT_CKSUM_CODE 0x04
