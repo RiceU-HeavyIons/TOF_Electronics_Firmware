@@ -1,4 +1,4 @@
-// $Id: TDIG-F_MCU_PLD.c,v 1.1 2008-02-13 17:16:11 jschamba Exp $
+// $Id: TDIG-F_MCU_PLD.c,v 1.2 2008-03-13 18:17:06 jschamba Exp $
 
 /* TDIG-F_MCU_PLD.c
 ** This file defines the TDIG-D routines and interfaces for MCU iterface to the FPGA.
@@ -170,7 +170,7 @@ unsigned int waitfor_FPGA (void){
     if (timeout == 0) { return (1); } else return (0);
 }
 
-void init_regs_FPGA() {
+void init_regs_FPGA(unsigned int board_posn) {
 /* Write default initial values into FPGA registers (MCU_PLD_xx).
 ** For now, Registers address 0 thru 3 are initialized to zero.
 ** 06-Sep-07 Reg 14 set to zero to select data.
@@ -180,4 +180,12 @@ void init_regs_FPGA() {
         write_FPGA (i, 0);
     }
     write_FPGA (14, 0);
+
+// Write Board-Position to FPGA Register
+    write_FPGA (CONFIG_12_W, board_posn);
+// Select this board as first in readout chain if it is board =0 or 4
+    if ((board_posn==0) || (board_posn==4)) {
+        write_FPGA (CONFIG_0_RW, CONFIG_0_FIRSTR);    // Configure FPGA readout First board in chain
+    } // End if this is first board in chain
+
 }
