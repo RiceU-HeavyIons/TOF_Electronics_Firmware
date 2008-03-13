@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.2 2008-03-10 16:54:33 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.3 2008-03-13 18:16:01 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -179,7 +179,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'I' )       // "I"
+    _FUID0( 'K' )       // "K"
     _FUID1( 0x11)       // 0x11
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
@@ -243,16 +243,16 @@
 // 36  0x44x   MCP23008  INT             EXPANDER_INT       output, interrupt generated when change-of-state on GP2
      #define ECSR_ADDR 0x44          		// I2C Addrs of chip    Extended Control-Status Register
      #define MCP23008_IODIR   0x0        	// I/O Direction Control 1=in, 0=out
-	 #define ESCR_IODIR 0x9F             	// 1001 1111 1=in, 0=out
-     #define ESCR_SPARE_PLD 0x80        	// Spare bit
-     #define ESCR_TINO_TEST_MCU 0x40        // Test Pulse to TINO
-     #define ESCR_TDC_POWER 0x20        	// enable TDC power bit
-     #define ESCR_TDC_POWER_ERROR_B 0x10    // TDC power error status
-     #define ESCR_PLD_NSTATUS 0x08        	// PLD (FPGA) nSTATUS bit
-     #define ESCR_PLD_CRC_ERROR 0x04        // PLD (FPGA) CRC Error bit
-     #define ESCR_PLD_INIT_DONE 0x02        // PLD (FPGA) INIT_DONE bit
-     #define ESCR_PLD_CONFIG_DONE 0x01      // PLD (FPGA) CONFIG_DONE bit
-     #define PLD_READY (ESCR_PLD_INIT_DONE | ESCR_PLD_CONFIG_DONE)
+	 #define ECSR_IODIR 0x9F             	// 1001 1111 1=in, 0=out
+     #define ECSR_SPARE_PLD 0x80        	// Spare bit
+     #define ECSR_TINO_TEST_MCU 0x40        // Test Pulse to TINO
+     #define ECSR_TDC_POWER 0x20        	// enable TDC power bit
+     #define ECSR_TDC_POWER_ERROR_B 0x10    // TDC power error status
+     #define ECSR_PLD_NSTATUS 0x08        	// PLD (FPGA) nSTATUS bit
+     #define ECSR_PLD_CRC_ERROR 0x04        // PLD (FPGA) CRC Error bit
+     #define ECSR_PLD_INIT_DONE 0x02        // PLD (FPGA) INIT_DONE bit
+     #define ECSR_PLD_CONFIG_DONE 0x01      // PLD (FPGA) CONFIG_DONE bit
+     #define PLD_READY (ECSR_PLD_INIT_DONE | ECSR_PLD_CONFIG_DONE)
      #define MCP23008_ALL     0xFF       // All GP bits
      #define MCP23008_NONE    0x00       // None
      #define MCP23008_IPOL    0x1        // Input Polarity Control 1=invert, 0=normal
