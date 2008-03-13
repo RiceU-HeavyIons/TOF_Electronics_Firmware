@@ -1,4 +1,4 @@
-// $Id: TDIG-F_I2C.c,v 1.1 2008-02-13 17:16:11 jschamba Exp $
+// $Id: TDIG-F_I2C.c,v 1.2 2008-03-13 18:19:18 jschamba Exp $
 
 /* TDIG-F_I2C.c ---------------------------------------------------------------------
 **
@@ -141,8 +141,8 @@ This routine initializes MCP9801 Temperature Sensor
 extern void Initialize_ECSR(){
 // This routine initializes CSR at address ECSR_ADDR
 //  initialize_MCP23008 (     addr,     (0)iodir,      (1)ipol,    (2)gpinten,     (3)defval,     (4)intcon,      (5)iocon,      (6)gppu)
-    Initialize_MCP23008 (ECSR_ADDR,   ESCR_IODIR, MCP23008_NONE, MCP23008_NONE, MCP23008_NONE, MCP23008_NONE, MCP23008_ALL, MCP23008_ALL);
-    Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, ~ESCR_TDC_POWER);     // led_off(NO_LEDS);
+    Initialize_MCP23008 (ECSR_ADDR,   ECSR_IODIR, MCP23008_NONE, MCP23008_NONE, MCP23008_NONE, MCP23008_NONE, MCP23008_ALL, MCP23008_ALL);
+    Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, ~ECSR_TDC_POWER);     // led_off(NO_LEDS);
 }
 
 
