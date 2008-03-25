@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.16 2008-03-12 15:44:14 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.17 2008-03-25 20:11:26 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-03-06
+-- Last update: 2008-03-25
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"81";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"82";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
