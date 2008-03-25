@@ -1,4 +1,4 @@
--- $Id: serdes_if.vhd,v 1.2 2007-12-28 20:25:23 jschamba Exp $
+-- $Id: serdes_if.vhd,v 1.3 2008-03-25 20:11:02 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_IF
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-11-14
--- Last update: 2007-12-28
+-- Last update: 2008-03-25
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -129,7 +129,11 @@ BEGIN
       dff3_q <= '0';
       
     ELSIF clk'event AND clk = '1' THEN
-      dff1_q <= rxd(17) AND (NOT rxd(12));
+      IF rxd(15 DOWNTO 12) = "0000" THEN
+        dff1_q <= rxd(17);
+      ELSE
+        dff1_q <= '0';
+      END IF;
       dff2_q <= dff1_q;
       dff3_q <= dff2_q;
     END IF;
@@ -147,7 +151,11 @@ BEGIN
       dff7_q <= '0';
       
     ELSIF clk'event AND clk = '1' THEN
-      dff4_q <= rxd(17) AND rxd(12);
+      IF rxd(15 DOWNTO 12) = "0001" THEN
+        dff4_q <= rxd(17);
+      ELSE
+        dff4_q <= '0';
+      END IF;
       dff5_q <= dff4_q;
       dff6_q <= dff5_q;
       dff7_q <= dff6_q;
