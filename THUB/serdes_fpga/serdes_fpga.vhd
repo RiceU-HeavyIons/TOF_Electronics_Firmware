@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.22 2008-01-25 14:33:42 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.23 2008-04-18 19:26:57 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-01-24
+-- Last update: 2008-02-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -73,6 +73,7 @@ ENTITY serdes_fpga IS
       -- ***** LEDs *****
       led                                                : OUT   std_logic_vector(1 DOWNTO 0);
       -- ***** test points *****
+      dummy                                              : IN    std_logic;
       tp                                                 : IN    std_logic_vector(15 DOWNTO 2)
 
       );
