@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.12 2008-01-29 17:09:51 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.13 2008-04-18 19:20:10 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-01-29
+-- Last update: 2008-03-11
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -90,6 +90,7 @@ ARCHITECTURE a OF serdes_reader IS
     SRdSerA,
     SChgChannel,
     SDelay,
+    STrgEvt,
     SRdTrg,
     SEnd
     );
@@ -102,7 +103,7 @@ BEGIN  -- ARCHITECTURE a
 
   rdsel_out <= ser_selector(1 DOWNTO 0);  -- lowest two bits = Serdes Channel
   serSel    <= ser_selector(4 DOWNTO 2);  -- upper 3 bits = Serdes Number
-  
+
   -- create a delayed latch signal
   serdesLatch : PROCESS (clk80mhz, sl_areset_n) IS
   BEGIN
@@ -130,9 +131,12 @@ BEGIN  -- ARCHITECTURE a
 
   -- use a state machine to control the Serdes read process
   rdoutControl : PROCESS (clk80mhz, areset_n) IS
-    VARIABLE delayCtr : integer RANGE 0 TO 2047 := 0;
-    VARIABLE chCtr    : integer RANGE 0 TO 3    := 0;
-    VARIABLE serCtr   : integer RANGE 0 TO 31   := 0;
+    VARIABLE delayCtr     : integer RANGE 0 TO 2047 := 0;
+    VARIABLE chCtr        : integer RANGE 0 TO 3    := 0;
+    VARIABLE serCtr       : integer RANGE 0 TO 31   := 0;
+    VARIABLE timeout_r1   : std_logic;
+    VARIABLE timeout_r2   : std_logic;
+    VARIABLE timeout_edge : std_logic;
   BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
       s_outdata      <= (OTHERS => '0');
@@ -146,6 +150,7 @@ BEGIN  -- ARCHITECTURE a
       ser_selector   <= (OTHERS => '0');
       chCtr          := 0;
       serCtr         := 0;
+      delayCtr       := 0;
       timeout_clr    <= '1';
       
     ELSIF clk80mhz'event AND clk80mhz = '1' THEN  -- rising clock edge
@@ -156,7 +161,7 @@ BEGIN  -- ARCHITECTURE a
       sl_areset_n    <= '0';
       shift_areset_n <= '1';
       timeout_clr    <= '1';
-      
+
       CASE TState IS
 
         -- wait for trigger
@@ -165,9 +170,21 @@ BEGIN  -- ARCHITECTURE a
           chCtr        := 0;
           serCtr       := 0;
           busy         <= '1';          -- "not busy" until trigger
+          timeout_clr  <= '0';          -- run timeout ctr
+
+          IF timeout_edge = '1' THEN
+            delayCtr := delayCtr + 1;
+          END IF;
 
           IF evt_trg = '1' THEN
             TState <= SLatchTrig;
+
+            -- timeout, if no event within 100ms, and send the
+            -- content of the trigger FIFO
+            -- timeout pulse has a period of about 205 us, so this is
+            -- about 100 ms
+          ELSIF ((delayCtr = 488) AND (trgFifo_empty = '0')) THEN
+            TState <= STrgEvt;
           END IF;
 
           -- strobe current trigger word into FIFO
@@ -208,7 +225,7 @@ BEGIN  -- ARCHITECTURE a
           rdreq_out   <= '1';           -- start reading
           sl_areset_n <= '1';
           timeout_clr <= s_slatch;      -- clear timeout on latch
-          
+
           -- Condition for last word from that channel:
           IF (s_shiftout(15 DOWNTO 8) = X"E0") AND (s_prelatch = '1') THEN
             block_end <= true;
@@ -243,8 +260,17 @@ BEGIN  -- ARCHITECTURE a
             TState <= SRdTrg;
           END IF;
 
+          -- strobe  trigger word = 0 into FIFO
+        WHEN STrgEvt =>
+          s_outdata   <= X"A0000000";   -- trigger word
+          s_wrreq_out <= '1';
+
+          TState <= SRdTrg;
+
           -- emtpy the trigger FIFO into the DDL FIFO 
         WHEN SRdTrg =>
+          delayCtr := 0;
+
           s_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
           s_outdata(19 DOWNTO 0)  <= trgFifo_q;
 
@@ -268,6 +294,12 @@ BEGIN  -- ARCHITECTURE a
           TState <= SWaitTrig;
           
       END CASE;
+
+      -- get timeout signal edge
+      timeout_edge := timeout_r1 AND NOT timeout_r2;
+      timeout_r2   := timeout_r1;
+      timeout_r1   := timeout;
+
     END IF;
   END PROCESS rdoutControl;
   
