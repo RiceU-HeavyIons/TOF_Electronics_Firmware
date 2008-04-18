@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.29 2008-03-11 16:00:29 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.30 2008-04-18 19:22:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-03-07
+-- Last update: 2008-03-11
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -83,16 +83,6 @@ END master_fpga;
 
 ARCHITECTURE a OF master_fpga IS
 
---  COMPONENT pll
---    PORT
---      (
---        inclk0 : IN  std_logic := '0';
---        c0     : OUT std_logic;
---        locked : OUT std_logic
---        );
---  END COMPONENT;
-
-  -- this one for testing only:
   COMPONENT pll
     PORT
       (
@@ -314,6 +304,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg3       : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg4       : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg5       : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg5_stat  : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg6       : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7       : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg8       : std_logic_vector(7 DOWNTO 0);
@@ -690,7 +681,7 @@ BEGIN
     rdreq_out           => smif_rdenable,
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
-  sr_areset_n <= s_event_read;             -- control reader with ddl fiber connect
+  sr_areset_n <= s_event_read;  -- control reader with ddl fiber connect
 --  sr_areset_n <= s_reg1(0);             -- control reader with Register 1 bit 0
 
   -- connect the selected sync'd data to serdes_reader
@@ -914,6 +905,10 @@ BEGIN
       reg4_out => s_reg4,
       reg5_out => s_reg5);
 
+  -- use a read to reg5 as status register
+  s_reg5_stat(7 DOWNTO 1) <= s_reg5(7 DOWNTO 1);
+  s_reg5_stat(0)          <= s_tcd_busy_n;  -- busy status (active low)
+
   -- Micro - FPGA interface state machine
   uc_fpga_inst : uc_fpga_interface
     PORT MAP (
@@ -927,7 +922,7 @@ BEGIN
       reg2          => s_reg2,
       reg3          => s_reg3,
       reg4          => s_reg4,
-      reg5          => s_reg5,
+      reg5          => s_reg5_stat,
       reg6          => s_reg6,
       reg7          => s_reg7,
       reg8          => s_reg8,
