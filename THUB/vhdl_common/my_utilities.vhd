@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: my_utilities.vhd,v 1.1 2007-04-27 19:26:37 jschamba Exp $
+-- $Id: my_utilities.vhd,v 1.2 2008-04-18 19:08:36 jschamba Exp $
 --******************************************************************************
 --*
 --* Package         : MY_UTILITIES
@@ -22,6 +22,7 @@ package my_utilities is
   function "-" (l : std_logic_vector; r : integer) return std_logic_vector;
   function inc (v : std_logic_vector) return std_logic_vector;
   function dec (v : std_logic_vector) return std_logic_vector;
+  function parity (a: std_logic_vector) return std_logic;
 end my_utilities;
 
 library ieee;
@@ -54,4 +55,13 @@ package body my_utilities is
   begin
     return unsigned(v) - unsigned'("1");
   end;
+  function parity (a: std_logic_vector) return std_logic is
+    variable y : std_logic := '0';
+  begin
+    for i in a'RANGE loop
+      y := y xor a(i);
+    end loop;
+    return y;
+  end;
+
 end my_utilities;
