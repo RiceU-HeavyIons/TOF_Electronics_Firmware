@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.20 2008-02-20 21:25:24 jschamba Exp $
+; $Id: CANHLP.asm,v 1.21 2008-04-18 19:12:30 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -154,7 +154,6 @@ TofHandleWrite:
     btfss   RxData, 7           ; test if bit 7 in RxData[0] is set
     bra     is_it_MCU_RDOUT_MODE    ; false: test next command
     call    TofWriteReg             ; true: write PLD register
-    call    HLPSendWriteResponseOK  ; send response    
     return
 is_it_MCU_RDOUT_MODE:
     ;**************************************************************
@@ -365,6 +364,8 @@ TofWriteReg:
     ;**************************************************************
     ;****** Write Register ****************************************
     ;**************************************************************
+    btfsc   RxDtLngth,0     ; test if data length is odd (bit 0 set)
+    goto    unknown_message ; send unknown message response
     movff   RxData, uc_fpga_DATA   ; put first byte as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
@@ -374,9 +375,13 @@ TofWriteReg:
     movff   RxData+1, uc_fpga_DATA ; second byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
-    btfss   RxDtLngth,2     ; test if data length == 4
-    return                  ; if not, back to receiver loop
+    btfsc   RxDtLngth,2     ; test if data length bit 2 is set (RxDtLngth = 4 or 6)
+    bra     moreWriteReg
+    call    HLPSendWriteResponseOK  ; if not, send response    
+    return                  ; back to receiver loop
+
     ; otherwise, repeat the same for the next two data items
+moreWriteReg:
     btfss   RxData+2, 7     ; first, test again, if bit 7 in RxData[2] is set
     return                  ; if not, return
     movff   RxData+2, uc_fpga_DATA   ; put third byte as register address on DATA PORT
@@ -388,6 +393,7 @@ TofWriteReg:
     movff   RxData+3, uc_fpga_DATA ; fourth byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
+    call    HLPSendWriteResponseOK  ; send response    
     return                  ; back to receiver loop
 
 TofProgramPLD:
