@@ -323,7 +323,8 @@ set_location_assignment PIN_G23 -to sra_bw[2]
 set_location_assignment PIN_G24 -to sra_bw[3]
 set_location_assignment PIN_F26 -to sra_clk
 set_location_assignment PIN_M22 -to sra_d[0]
-set_location_assignment PIN_D18 -to sra_d[1]
+set_location_assignment PIN_M21 -to dummy
+#set_location_assignment PIN_M21 -to sra_d[1]
 set_location_assignment PIN_N20 -to sra_d[2]
 set_location_assignment PIN_M20 -to sra_d[3]
 set_location_assignment PIN_M19 -to sra_d[4]
@@ -417,6 +418,8 @@ set_location_assignment PIN_Y13 -to srb_d[30]
 set_location_assignment PIN_AA13 -to srb_d[31]
 set_location_assignment PIN_AB20 -to srb_oe_n
 set_location_assignment PIN_AA20 -to srb_rw
+#set_location_assignment PIN_D18 -to tp[1]
+set_location_assignment PIN_D18 -to sra_d[1]
 set_location_assignment PIN_E18 -to tp[2]
 set_location_assignment PIN_F18 -to tp[3]
 set_location_assignment PIN_G18 -to tp[4]
