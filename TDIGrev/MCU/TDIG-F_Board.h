@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.3 2008-03-13 18:16:01 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.4 2008-04-22 19:12:07 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -425,4 +425,4 @@
 // #endif  // Not NEWTDCNUMBER (old method)
 
 // Default to turn on local header for Boards 0,4 TDC 1
-	#define LOCAL_HEADER_BOARD0
+//	#define LOCAL_HEADER_BOARD0
