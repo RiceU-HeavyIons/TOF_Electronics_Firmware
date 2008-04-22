@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.3 2008-03-13 18:21:46 jschamba Exp $
+// $Id: TDIG-F.c,v 1.4 2008-04-22 19:19:18 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -254,8 +254,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-//    #define FIRMWARE_ID_0 0xFA  //JS: to distinguish it from Bill's version
-    #define FIRMWARE_ID_0 'K'    //JS-11K: 0x11 0x4B
+#define FIRMWARE_ID_0 'L'    //JS-11L: 0x11 0x4C
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -265,68 +264,52 @@
 // WB-11H end
 
 // Define implementation on the TDIG board (I/O ports, etc)
-	#define CONFIG_CPU 1		// Make TDIG-D_Board.h define the CPU options
-    #include "TDIG-F_Board.h"
+#define CONFIG_CPU 1		// Make TDIG-D_Board.h define the CPU options
+#include "TDIG-F_Board.h"
 
-	#define RC15_TOGGLE 1		// Make a toggle bit on RC15/OSC2
+#define RC15_TOGGLE 1		// Make a toggle bit on RC15/OSC2
 
 // Define the library includes
-    #include "ecan.h"           // Include for E-CAN peripheral
-    #include "i2c.h"            // Include for I2C peripheral library
-    #include "stddef.h"         // Standard definitions
-    #include "string.h"         // Definitions for string functions
+#include "ecan.h"           // Include for E-CAN peripheral
+#include "i2c.h"            // Include for I2C peripheral library
+#include "stddef.h"         // Standard definitions
+#include "string.h"         // Definitions for string functions
 
 // Define our routine includes
-	#include "TDIG-F_I2C.h"		// Include prototypes for our I2C routines
-
-    #include "TDIG-F_JTAG.h"    // Include for our JTAG macros
-
-    #include "TDIG-F_SPI.h"     // Include for our SPI (EEPROM) macros
-
-    #include "TDIG-F_MCU_PLD.h" // Include for our parallel interface to FPGA
+#include "rtspApi.h"		// Definitions of reprogramming routines
+#include "TDIG-F_I2C.h"		// Include prototypes for our I2C routines
+#include "TDIG-F_JTAG.h"    // Include for our JTAG macros
+#include "TDIG-F_SPI.h"     // Include for our SPI (EEPROM) macros
+#include "TDIG-F_MCU_PLD.h" // Include for our parallel interface to FPGA
 
 /* define the CAN HLP Packet Format and function codes */
-    #include "TDIG-F_CAN_HLP3.h"
+#include "TDIG-F_CAN_HLP3.h"
 
 /* This conditional determines whether to actually send CAN packets */
-    #define SENDCAN 1           // Define to send
-
+#define SENDCAN 1           // Define to send
 
 // Define the cycle count for toggling TDC Power.
 // Button S1 must be pressed for BUTTONLIMIT trips thru main loop before
 // ENABLE_TDC_POWER bit is toggled
-    #define BUTTONLIMIT 6
+#define BUTTONLIMIT 6
 
 // Spin Counter
-	#define SPINLIMIT 20
+#define SPINLIMIT 20
 
 /* ECAN1 stuff */
-	#define NBR_ECAN_BUFFERS 4
+#define NBR_ECAN_BUFFERS 4
 
-    typedef unsigned int ECAN1MSGBUF [NBR_ECAN_BUFFERS][8];
-    ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma)));  // Buffer to TRANSMIT
+typedef unsigned int ECAN1MSGBUF [NBR_ECAN_BUFFERS][8];
+ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma)));  // Buffer to TRANSMIT
 
-    void ecan1Init(unsigned int board_id);
-    void dma0Init(void);
-    void dma2Init(void);
-//	void ecan1WriteRxAcptFilter(int n, long identifier, unsigned int exide,
-//    	unsigned int bufPnt,unsigned int maskSel);
-//	void ecan1WriteRxAcptMask (int m, long identifier, unsigned int mide);
-//    void ecan1WriteMessage (unsigned int word);
-//	void ecan1WriteTxMsgBufId (unsigned int buf, long txIdentifier,
-//    	unsigned int ide, unsigned int remoteTransmit);
-//	void ecan1WriteTxMsgBufData (unsigned int buf, unsigned int dataLength,
-//    	unsigned int data1, unsigned int data2, unsigned int data3,
-//    	unsigned int data4);
-
+void ecan1Init(unsigned int board_id);
+void dma0Init(void);
+void dma2Init(void);
 
 // Routines Defined in this module:
 // MCU configuration / control
-// WB-11H
-// void Initialize_OSC();                  // initialize the CPU oscillator
 int Initialize_OSC(unsigned int oscsel);              // initialize the CPU oscillator
 void Switch_OSC(unsigned int mcuoscsel);               // Switch CPU oscillator (low level)
-// WB-11H end
 void spin(int cycle);		// delay
 void clearIntrflags(void);	// Clear interrupt flags
 // CAN message routines
@@ -334,8 +317,8 @@ void clearIntrflags(void);	// Clear interrupt flags
 void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
 void send_CAN1_alert   (unsigned int board_id);
 void send_CAN1_diagnostic (unsigned int board_id, unsigned int bytes, unsigned char *buf);
-// void send_CAN1_write_reply (unsigned int board_id);
-void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno, unsigned int index, unsigned char expectedbyte, unsigned char gotbyte);
+void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno, 
+							unsigned int index, unsigned char expectedbyte, unsigned char gotbyte);
 void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 /* MCU Memory and Reprogramming */
@@ -358,29 +341,26 @@ void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
 
-// HPTDC and JTAG routines
-unsigned char basic_setup[J_HPTDC_SETUPBYTES] = {
-//    The HPTDC-specific array gets JTAG'd to the desired HPTDC.
-//    See HPTDC Manual Version 2.2, Section 17.5, pages 30-37.
-//   [7]    [0] [15]    [8] = bit position
-//    |      |    |      |
-    #include "HPTDC.inc"
-//     |     |
-//  [646] [640]              = bit position
-//   646=parity gets overwritten by insert_parity()
+//JS: put HPTDC setup bits into program memory, three sets of configurations
+#define PM_ROW	__attribute__((space(prog), aligned(1024)))
+unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
+    #include "HPTDC.inc"	// TDC 1
+	,
+    #include "HPTDC.inc"	// TDC 2
+	,
+    #include "HPTDC.inc"	// TDC 3
 };
 
-unsigned char enable_final [J_HPTDC_CONTROLBYTES] = {
-//    The HPTDC-specific control-word array gets JTAG'd to the desired HPTDC.
-//    See HPTDC Manual Version 2.2, Section 17.6, page 37.
-//   [7]    [0] [15]    [8] = bit position
-//    |      |    |      |
-    #include "HPTDC_ctrl.inc"
-//  [40]   [32]              = bit position
-//   40 = parity must be included (it is not recomputed)
+unsigned char PM_ROW enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
+    #include "HPTDC_ctrl.inc"	// TDC 1
+	,
+    #include "HPTDC_ctrl.inc"	// TDC 2
+	,
+    #include "HPTDC_ctrl.inc"	// TDC 3
 };
 
-
+unsigned char basic_setup [NBR_HPTDCS][J_HPTDC_SETUPBYTES];
+unsigned char enable_final [NBR_HPTDCS][J_HPTDC_CONTROLBYTES];
 
 unsigned char readback_control[J_HPTDC_CONTROLBYTES];
 unsigned char readback_setup  [J_HPTDC_SETUPBYTES];
@@ -425,8 +405,6 @@ main()
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
 
-
-// WB-11H
 // This applies to first-image code, does not apply to second "download" image.
 #if !defined (DOWNLOAD_CODE)
 // Configure the oscillator for MCU internal (until we get going)
@@ -445,7 +423,6 @@ main()
 // We will want to run at priority 0 mostly
     SR &= 0x011F;          // Lower CPU priority to allow interrupts
     CORCONbits.IPL3=0;     // Lower CPU priority to allow user interrupts
-// WB-11H end
 
 #if defined (RC15_IO) // RC15 will be I/O (in TDIG-D-Board.h)
 	TRISC = 0x7FFF;		// make RC15 an output
@@ -511,10 +488,10 @@ main()
     I2CA_RESETB = 1;      // Raise I2CA_RESETB
 
 // Initialize and Set Threshhold DAC
-	#if defined (DAC_ADDR)	// if address defined, it exists
+#if defined (DAC_ADDR)	// if address defined, it exists
     current_dac = DAC_INITIAL;	// defined in TDIG-F_Board.h
     current_dac = Write_DAC((unsigned char *)&current_dac);       // Set it to 2500 mV
-	#endif // defined (DAC_ADDR)
+#endif // defined (DAC_ADDR)
 
 // Initialize Extended CSR (to PLD, etc)
 	Initialize_ECSR();		// I2C == write4C = 00 00
@@ -571,15 +548,10 @@ main()
 ** Installing the jumper forces low on MCU_...OSC
 ** disabling it.
  --------------------------------------------------*/
-// WB-11H - Osc selection
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc.
-//        MCU_SEL_LOCAL_OSC = 0;          // turns off sel-local-osc
-//        MCU_EN_LOCAL_OSC = 0;          // turns off en-local-osc
         Initialize_OSC (OSCSEL_TRAY);       //  Use TRAY clock
     } else {                        // Jumper OUT (use local osc)
-//        MCU_SEL_LOCAL_OSC = 1;          // turns on sel-local-osc
-//        MCU_EN_LOCAL_OSC = 1;          // turns on en-local-osc
         Initialize_OSC (OSCSEL_BOARD);       //  Use BOARD clock
     }                               // end else turn ON local osc
 
@@ -594,11 +566,9 @@ main()
         spin(DELAYPOWER);               // delay approx 1 second per 36 counts
         --j;
     }                                   // end while spinning 1 sec per board posn
-
-// Turn on power to HPTDC
-
 #endif                                  // DELAYPOWER conditional
 
+// Turn on power to HPTDC
 	tdcpowerbit |= ECSR_TDC_POWER;	    // Write the TDC Power-ON bit
     Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, tdcpowerbit);
 //		TDC Power is being turned on, delay a while
@@ -630,40 +600,35 @@ main()
     block_bytecount = 0;
     block_checksum = 0L;
 
-
-// #define DOIDCODE 1
-#if defined (DOIDCODE)
-/* Read the HPTDC ID code using the JTAG routines, Send result via CAN */
-    for (j=1; j<=NBR_HPTDCS; j++) {
-      read_hptdc_id (j, (unsigned char *)&retbuf, (sizeof(retbuf)/sizeof(unsigned char)));
-      send_CAN1_diagnostic (board_posn, 4, (unsigned char *)&retbuf);
-    } // end loop over all NBR_HPTDCS (3)
-#endif
-
-
 /* Configure the HPTDCs */
+	unsigned int nvmAdru, nvmAdr;
+	int temp;
+
+	// first retrieve the configuration bits from program memory
+	nvmAdru=__builtin_tblpage(basic_setup_pm);
+	nvmAdr=__builtin_tbloffset(basic_setup_pm);
+	// Read the page and place the data into readback_buffer array 
+	temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+	memcpy ((unsigned char *)basic_setup, (unsigned char *)readback_buffer, J_HPTDC_SETUPBYTES*NBR_HPTDCS);
+
+	// retrieve control bits from program memory
+	nvmAdru=__builtin_tblpage(enable_final_pm);
+	nvmAdr=__builtin_tbloffset(enable_final_pm);
+	temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+	memcpy ((unsigned char *)enable_final, (unsigned char *)readback_buffer, J_HPTDC_CONTROLBYTES*NBR_HPTDCS);
+
     for (j=1; j<=NBR_HPTDCS; j++) {
         select_hptdc(JTAG_MCU, j);        // select MCU controlling which HPTDC
         // Copy "base" initialization to working inititalization
-//        for (i=0; i<J_HPTDC_SETUPBYTES; i++) {hptdc_setup[j][i] = basic_setup[i];}
-        memcpy (&hptdc_setup[j][0], &basic_setup[0], J_HPTDC_SETUPBYTES);
+        memcpy (&hptdc_setup[j][0], &basic_setup[j-1][0], J_HPTDC_SETUPBYTES);
         hptdc_setup[j][5] &= 0xFFF0;    // clear old TDC ID value
-#if defined (REVTDCNUMBER)              // if defined, use revised method (J.Schambach 6-Sep-07)
-        // Fix up HPTDC ID byte in working initialization (Revised method)
+	    // Fix up HPTDC ID byte in working initialization (Revised method)
         // board_posn 0,4 have TDCs 0x0,0x1,0x2
         // board_posn 1,5 have TDCs 0x4,0x5,0x6
         // board_posn 2,6 have TDCs 0x8,0x9,0xA
         // board_posn 3,7 have TDCs 0xC,0xD,0xE
         // ((lo 2 bits of board posn) << 2 bits) or'd with (lo 2 bits of (index-1))
         hptdc_setup[j][5] |= ((board_posn&0x3)<<2) | ((j-1)&0x3); // compute and insert new value
-#else
-        // Fix up HPTDC ID byte in working initialization (Original method)
-        // board_posn 0,4 have TDCs 0x0,0x1,0x2
-        // board_posn 1,5 have TDCs 0x3,0x4,0x5
-        // board_posn 2,6 have TDCs 0x6,0x7,0x8
-        // board_posn 3,7 have TDCs 0x9,0xA,0xB
-        hptdc_setup[j][5] |= ((((board_posn&0x3)*NBR_HPTDCS)+(j-1))&0xF); // compute and insert new value
-#endif                                  // Not NEWTDCNUMBER (old method)
 #ifdef LOCAL_HEADER_BOARD0
 		if (((board_posn&0x3) == 0) && (j == 1)) {
 			hptdc_setup[j][4] |= 0x1; // turn on local header for board 0 and 4, TDC 1
@@ -678,7 +643,6 @@ main()
         for (i=0; i<J_HPTDC_SETUPBYTES;i++){ // checking readback
             if (i == (J_HPTDC_SETUPBYTES-1)) maskoff = 0x7F;     // don't need last bit!
             if ((unsigned char)hptdc_setup[j][i] != ((unsigned char)readback_setup[i])&maskoff) {
-//                send_CAN1_hptdcmismatch (board_posn, j, i, (unsigned char)hptdc_setup[j][i], (unsigned char)readback_setup[i]);
                 if ((ledbits & 0x10) != 0) {
                     ledbits &= 0xEF;    //
                     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
@@ -688,7 +652,7 @@ main()
             } // end if got a mismatch
         } // end loop over checking readback
         // LED 4 SET if there was an error
-        memcpy (&hptdc_control[j][0], &enable_final, J_HPTDC_CONTROLBYTES);
+        memcpy (&hptdc_control[j][0], &enable_final[j-1][0], J_HPTDC_CONTROLBYTES);
         reset_hptdc (j, &hptdc_control[j][0]);                    // JTAG the hptdc reset sequence
     } // end loop over all NBR_HPTDCS(3)
 
@@ -697,7 +661,6 @@ main()
         ledbits &= 0xBF;    //
         Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
     } // end if no error
-//    reset_FPGA();
     spin(0);
 
 // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
@@ -716,55 +679,21 @@ main()
 	spin(0);
     write_FPGA (CONFIG_2_RW, ~CONFIG_2_TDCRESET); // HPTDC_RESET = 0; // Lower RESET bit
 
-
-
-
-/* Read the HPTDC Status using the JTAG port, Send result via CAN */
-//    for (j=0; j<NBR_HPTDCS; j++) {
-//        read_hptdc_status (j, (unsigned char *)&retbuf, 10);
-//        send_CAN1_diagnostic (board_posn, 8, (unsigned char *)&retbuf);
-//    } // end loop over all 3 HPTDCs
-
 /* -------------------------------------------------------------------------------------------------------------- */
 	switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
     jumpers = (switches & JUMPER_MASK)>>JUMPER_SHIFT;
-
-// WB-11H
-// CLOCK SWITCHING IS NOT DYNAMIC - Clock Jumper is read once at start-up and not examined thereafter.
-/* -----------------12/9/2006 11:39AM----------------
-** Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC
-** and MCU_EN_LOCAL_OSC
-** Installing the jumper forces low on MCU_...OSC
-** disabling it.
- --------------------------------------------------*/
-//    if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) {    // See if jumper IN
-//        MCU_SEL_LOCAL_OSC = 0;          // turns off sel-local-osc
-//        MCU_EN_LOCAL_OSC  = 0;          // turns off en-local-osc
-//    } else {                        // Jumper OUT (use local osc)
-//        MCU_SEL_LOCAL_OSC = 1;          // turns on sel-local-osc
-//        MCU_EN_LOCAL_OSC  = 1;          // turns on en-local-osc
-//    }                               // end else turn ON local osc
 
 // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
     select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
     spin(5);           // spin loop
 
-
 /* Send an "Alert" message to say we are on-line */
-//    pld_ident = read_FPGA (IDENT_7_R);
     send_CAN1_alert (board_posn);
 
-/* Send a diagnostic message showing which clock we are running */
-//    l = OSCCON;         // read the OSCCON register
-//    send_CAN1_diagnostic (board_posn, 2, (unsigned char *)&l);  // send the OSCCON value
-
-// WB-11J
 // Get state of FPGA CRC_ERROR bit.
     fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port
-// WB-11J end
 
-/* Look for Have-a-Message
-*/
+/* Look for Have-a-Message */
     do {                            // Do Forever
         if ( C1RXFUL1bits.RXFUL1 ) {
 // Dispatch to Message Code handlers.
@@ -785,16 +714,14 @@ main()
                         case C_WS_FPGARESET:        // Issue an FPGA Reset
                             memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length is correct and constant agrees
-                            //JS if ((ecan1msgBuf[1][2] == FPGARESET_LEN) && (lwork == FPGARESET_CONST)) {
-                            if ((rcvmsglen == FPGARESET_LEN) && (lwork == FPGARESET_CONST)) { //JS
+                            if ((rcvmsglen == FPGARESET_LEN) && (lwork == FPGARESET_CONST)) {
                                 reset_FPGA();       // do the reset if all is ok
                             } else retbuf[1] = C_STATUS_INVALID;    // else mark invalid
                             break;
 
                         case C_WS_FPGAREG:          // Write to FPGA Register(s)
                             i = 3;
-                            //JS while (i <= ecan1msgBuf[1][2]) { // for length of message (1, 2, or 3 reg,val pairs)
-                            while (i <= rcvmsglen) { // for length of message (1, 2, or 3 reg,val pairs) //JS
+                            while (i <= rcvmsglen) { // for length of message (1, 2, or 3 reg,val pairs)
                                 j = *wps++;
                                 write_FPGA (j, (*wps++));
                                 i+=2;
@@ -807,8 +734,7 @@ main()
                             block_checksum = 0L;    // clear block buffer checksum
                             wpd = (unsigned char *)&block_buffer[0];    // point destination to buffer
                             // Copy any data from message.  We don't need to check buffer length since it was just set "empty"
-                            //JS for (i=1; i<ecan1msgBuf[1][2]; i++) {   // copy any remaining bytes
-                            for (i=1; i<rcvmsglen; i++) {   // copy any remaining bytes //JS
+                            for (i=1; i<rcvmsglen; i++) {   // copy any remaining bytes
                                     *wpd++ = *wps;        // copy byte into buffer
                                     block_checksum += (*wps++)&0xFF;
                                     block_bytecount++;
@@ -817,8 +743,7 @@ main()
 
                         case C_WS_BLOCKDATA:        // Block Data Download
                             if (block_status == BLOCK_INPROGRESS) {
-                                //JS for (i=1; i<ecan1msgBuf[1][2]; i++) {
-                                for (i=1; i<rcvmsglen; i++) { //JS
+                                for (i=1; i<rcvmsglen; i++) {
                                     if (block_bytecount < BLOCK_BUFFERSIZE) {
                                         *wpd++ = *wps;        // copy byte into buffer
                                         block_checksum += (*wps++)&0xFF;
@@ -845,6 +770,43 @@ main()
                             } // end else block was not in progress
                             break;
 
+                        case C_WS_TARGETCFGS:
+                        case C_WS_TARGETCFG1:
+                        case C_WS_TARGETCFG2:
+                        case C_WS_TARGETCFG3:
+                            if (block_status == BLOCK_ENDED) {
+                                if (block_bytecount == J_HPTDC_SETUPBYTES) {    // if bytecount OK
+									// first retrieve the configuration bits from program memory
+									nvmAdru=__builtin_tblpage(basic_setup_pm);
+									nvmAdr=__builtin_tbloffset(basic_setup_pm);
+									// Read the page and place the data into readback_buffer array 
+									temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+                                    if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
+										i = 0;
+										k = NBR_HPTDCS;
+									} else {
+                                        i = (retbuf[0]&0x3)-1;       // set first and last to be the one
+                                        k = i+1;          			// set first and last to be the one
+									}
+							
+                                    for (j=i; j<k; j++) {   // put the data into the readback buffer
+										memcpy ((unsigned char *)&readback_buffer[j*J_HPTDC_SETUPBYTES], block_buffer, J_HPTDC_SETUPBYTES);
+									}
+
+									// Erase the page in Flash
+									temp = flashPageErase(nvmAdru,nvmAdr);
+
+									// Program the page with modified data
+									temp = flashPageWrite(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+                                } else {  // Length is not right
+                                    retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                                } // end else length was not OK
+                            } else {        // else block was not ended, send error reply
+                                retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
+                            } // end else block was not in progress
+
+							break;
+
                         case C_WS_TARGETHPTDCS:
                         case C_WS_TARGETHPTDC1:
                         case C_WS_TARGETHPTDC2:
@@ -863,7 +825,6 @@ main()
                                         // Copy the received buffer into the setup buffer
                                         memcpy (&hptdc_setup[j][0], &block_buffer[0], J_HPTDC_SETUPBYTES);
                                         hptdc_setup[j][5] &= 0xFFF0;    // clear old TDC ID value
-                                        #if defined (REVTDCNUMBER)              // if defined, use revised method (J.Schambach 6-Sep-07)
                                         // Fix up HPTDC ID byte in working initialization (Revised method)
                                         // board_posn 0,4 have TDCs 0x0,0x1,0x2
                                         // board_posn 1,5 have TDCs 0x4,0x5,0x6
@@ -871,14 +832,6 @@ main()
                                         // board_posn 3,7 have TDCs 0xC,0xD,0xE
                                         // ((lo 2 bits of board posn) << 2 bits) or'd with (lo 2 bits of (index-1))
                                         hptdc_setup[j][5] |= ((board_posn&0x3)<<2) | ((j-1)&0x3); // compute and insert new value
-                                        #else
-                                        // Fix up HPTDC ID byte in working initialization
-                                        // board_posn 0,4 have TDCs 0x0,0x1,0x2
-                                        // board_posn 1,5 have TDCs 0x3,0x4,0x5
-                                        // board_posn 2,6 have TDCs 0x6,0x7,0x8
-                                        // board_posn 3,7 have TDCs 0x9,0xA,0xB
-                                        hptdc_setup[j][5] |= ((((board_posn&0x3)*NBR_HPTDCS)+(j-1))&0xF); // compute and insert new value
-                                        #endif                                  // Not NEWTDCNUMBER (old method)
                                         // Fix up Parity bit in working initialization
                                         insert_parity (&hptdc_setup[j][0], J_HPTDC_SETUPBITS);
                                         write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)&readback_setup);
@@ -893,7 +846,6 @@ main()
                                                     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
                                                 // set LED 4 if there was an error
                                                 } // end if have not already seen 1 error
-//                                                send_CAN1_hptdcmismatch (board_posn, j, l, (unsigned char)hptdc_setup[j][l], (unsigned char)readback_setup[l]);
                                             } // end if got a mismatch
                                         } // end loop over checking readback
                                         // LED 4 SET if there was an error
@@ -934,11 +886,10 @@ main()
                         case C_WS_RECONFIGEE2:              // Reconfigure FPGA using EEPROM #2
                             memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length and have proper code
-                            //JS if ((ecan1msgBuf[1][2] == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) {
-                            if ((rcvmsglen == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) { //JS
+                            if ((rcvmsglen == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) {
                                 i = ecan1msgBuf[1][3] & 0x3;    // get which EEPROM we are doing
                                 retbuf[1] = C_STATUS_OK;        // assume FPGA configuration OK
-// loop here if it failed the first time
+								// loop here if it failed the first time
                                 do {
                                     MCU_CONFIG_PLD = 0; // disable FPGA configuration
                                     if (i==2) {
@@ -1014,8 +965,7 @@ main()
                         case C_WS_TARGETMCU:
                             if (block_status == BLOCK_ENDED) {
                                 // check for correct length of stored block and incoming message
-                                //JS if ( (block_bytecount != 0) && (ecan1msgBuf[1][2] == 6) ) {
-                                if ( (block_bytecount != 0) && (rcvmsglen == 6) ) { //JS
+                                if ( (block_bytecount != 0) && (rcvmsglen == 6) ) {
                                     // lengths OK, set parameters for doing this block
                                     j = 0;          // assume start is begin of buffer
                                     k = block_bytecount;        // assume just going block
@@ -1070,6 +1020,32 @@ main()
                             retbuf[1] = C_STATUS_INVALID;
                             break;
 
+                        case C_WS_TARGETCTRLS:           // Copy Control word to ALL TDCs PM
+                        case C_WS_TARGETCTRL1:           // Copy Control word to TDC #1 PM
+                        case C_WS_TARGETCTRL2:           // Copy Control word to TDC #2 PM
+                        case C_WS_TARGETCTRL3:           // Copy Control word to TDC #3 PM
+							// first retrieve the configuration bits from program memory
+							nvmAdru=__builtin_tblpage(enable_final_pm);
+							nvmAdr=__builtin_tbloffset(enable_final_pm);
+							// Read the page and place the data into readback_buffer array 
+							temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+                            if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
+                                i = 0;                  // yes, set first is number 1
+                                k = NBR_HPTDCS;         // yes, set last is NBR_HPTDCS
+                            } else {                    // Not all 3,
+                                i = (retbuf[0]&0x3) - 1;    // set first to be the one specified
+                                k = i+1;                  // and last to be the one specified
+                            } // end if one or all 3 HPTDCs.
+                            for (j=i; j<k; j++) {   // put the data into one or more HPTDCs
+								memcpy ((unsigned char *)&readback_buffer[j*J_HPTDC_CONTROLBYTES], wps, J_HPTDC_CONTROLBYTES);
+                            } // end loop over one or more HPTDCs
+							// Erase the page in Flash
+							temp = flashPageErase(nvmAdru,nvmAdr);
+
+							// Program the page with modified data
+							temp = flashPageWrite(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+                            break; // end of C_WS_CONTROLTDCx
+
                         case C_WS_CONTROLTDCS:           // Copy Control word to ALL TDCs
                         case C_WS_CONTROLTDC1:           // Copy Control word to TDC #1
                         case C_WS_CONTROLTDC2:           // Copy Control word to TDC #2
@@ -1101,8 +1077,7 @@ main()
                             replylength = 2;
                             memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length is 5 and have proper code
-                            //JS if ((ecan1msgBuf[1][2] == MCURESET_LEN) && (lwork == MCURESET_CONST)) {
-                            if ((rcvmsglen == MCURESET_LEN) && (lwork == MCURESET_CONST)) { //JS
+                            if ((rcvmsglen == MCURESET_LEN) && (lwork == MCURESET_CONST)) {
                                 retbuf[1] = C_STATUS_OK;            // acknowledge we are going to do it
                                 send_CAN1_message (board_posn, (C_TDIG | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
                                 while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
@@ -1112,7 +1087,7 @@ main()
                                     CORCONbits.IPL3=1;     // WB-11H Raise CPU priority to lock out user interrupts
                                     save_SR = SR;          // save the Status Register
                                     SR |= 0xE0;            // Raise CPU priority to lock out interrupts
-// be sure we are running from alternate interrupt vector
+									// be sure we are running from alternate interrupt vector
                                     INTCON2 |= 0x8000;     // This is the ALTIVT bit
                                     jumpto();    // jump to new code
 #endif
@@ -1140,22 +1115,9 @@ main()
                         case (C_RS_STATUS3):              // READ STATUS #3
                             /* Read the HPTDC Status using the JTAG port, Send result via CAN */
                             i = ecan1msgBuf[1][3] & 0x3;            // LOW 2 bits are TDC#
-// WB-11H - Use read_hptdc_status() routine instead of code duplicated here
                             read_hptdc_status (i, (unsigned char *)&retbuf[1], (sizeof(retbuf)-1));
-//                            memset (&retbuf[1], 0, (sizeof(retbuf))-1); // clear before reading but save first byte of reply
-//                            select_hptdc(JTAG_MCU, i);        // select which HPTDC
-//                            reset_TAP();                    // WB-11H
-//                            IRScan ((unsigned char)J_HPTDC_STATUS);       // 0x0A = parity + status instruction
-//                            DRScan ((unsigned char *)&sendbuf, J_HPTDC_STATUSBITS, J_RETURN_DATA, (unsigned char *)&retbuf[1]);
-//                            reset_TAP();                    // WB-11H
-//                            select_hptdc(JTAG_HDR, i);        // de-select HPTDC
-// WB-11H end
                             // send the first part of the reply
                             replylength = 8;
-// WB-11H testing of Status Reply
-//      - If the following is #defined, only the low-order part of the status is sent (so we can see it in PCANView)
-// #define HPTDCS_LOW 1
-#if !defined (HPTDCS_LOW)
                             send_CAN1_message (board_posn, (C_TDIG | C_READ_REPLY), 8, (unsigned char *)&retbuf);
                             // send the second part of the reply
                             retbuf[1] = retbuf[8];      // copy last byte for sending
@@ -1163,12 +1125,10 @@ main()
                             // second part gets sent at end of Switch statement.
 							//JS: wait a little, so TCPU can receive this:
 							spin(0);
-#endif
                             break; // end case C_RS_STATUSx
 
                         case (C_RS_MCUMEM ):            // Return MCU Memory 4-bytes
-                            //JS if (ecan1msgBuf[1][2] == 5) { // check for correct length of incoming message
-                            if (rcvmsglen == 5) { // check for correct length of incoming message //JS
+                            if (rcvmsglen == 5) { // check for correct length of incoming message
                                 memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             } else {        // allow continued reads w/o address
                                 lwork += 2L;
@@ -1212,8 +1172,7 @@ main()
                         case (C_RS_FPGAREG):          // Read from FPGA Register(s)
                             replylength = 1;
                             i = 2;
-                            //JS while (i <= (ecan1msgBuf[1][2]&0xFF)) { // for length of message (1, 2, or 3 reg,val pairs)
-                            while (i <= rcvmsglen) { // for length of message (1, 2, or 3 reg,val pairs) //JS
+                            while (i <= rcvmsglen) { // for length of message (1, 2, or 3 reg,val pairs)
                                 retbuf[replylength] = *wps++;
                                 retbuf[replylength+1] = read_FPGA((unsigned int)(retbuf[replylength]&0xFF));
                                 replylength +=2;
@@ -1244,96 +1203,51 @@ main()
 // Mark Receive buffer 1 OK to reuse
             C1RXFUL1bits.RXFUL1 = 0;
         } // end if have a message to process
-#if defined (DODATATEST)
-//        j = 0;
-// See if we have data to send
-          j = read_FPGA (FIFO_STATUS_R);
-          if ((j & FIFO_WORDS_MASK) != 0) {
-//        if ((j & FIFO_EMPTY_BIT) == 0) {
-            memcpy ((unsigned char *)&sendbuf[4], (unsigned char *)&j, 2);      // send status at start
-//        if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) != 0) {  // Do we have data to send?
-            // bit was not 0, we have data, send it
-            sendbuf[0] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
-            sendbuf[1] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
-            sendbuf[2] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
-            sendbuf[3] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
-//            j += 4;
-            read_FPGA (FIFO_STATUS_R);          // extra read-status
-            j = read_FPGA (FIFO_STATUS_R);      // get final status
-            memcpy ((unsigned char *)&sendbuf[6], (unsigned char *)&j, 2);          // send status at end
-//            // Check again for more data
-//            if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) != 0) {
-//                sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
-//                sendbuf[5] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
-//                sendbuf[6] = (unsigned char)read_FPGA (FIFO_BYTE2_R);
-//                sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
-//                j += 4;
-//                read_FPGA (FIFO_STATUS_R);          // extra read-status
-//            } // end if had more, send message regardless
-            send_CAN1_data (board_posn, 8, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
-//            j = 0;
-        } else { // No data to send, do the other stuff
-            for (j=0; j<8; j++) write_FPGA (STROBE_11_W, 0);        // Generate some data
-#endif
 // Mostly Idle
             tglbit ^= 1;        // toggle the bit in port
-            MCU_TEST = tglbit;
+		MCU_TEST = tglbit;
 #if defined (RC15_IO) // RC15 will be I/O (in TDIG-D-Board.h)
-            LATCbits.LATC15 = tglbit;        // make it like RG15
+		LATCbits.LATC15 = tglbit;        // make it like RG15
 #endif
 #define UDCONFIGBITS 1
 #if defined (UDCONFIGBITS)
-//          Copy UCONFIGI bit to DCONFIGO bit to allow testing of corresponding LVDS signals (define UDCONFIGBITS)
-            DCONFIG_OUT = UCONFIG_IN;
+		// Copy UCONFIGI bit to DCONFIGO bit to allow testing of corresponding LVDS signals (define UDCONFIGBITS)
+		DCONFIG_OUT = UCONFIG_IN;
 #endif
 
 // WB-11J Mostly Idle, Check ECSR for change-of-state on PLD_CRC_ERROR bit
-            j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
-            if ( j != fpga_crc) {  // see if it has changed
-                fpga_crc = j;
-                j = C_ALERT_CKSUM_CODE;
-                send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&j);
-            }
+		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
+		if ( j != fpga_crc) {  // see if it has changed
+			fpga_crc = j;
+			j = C_ALERT_CKSUM_CODE;
+			send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&j);
+		}
 // WB-11J end
 
 // Mostly Idle, Check for change of switches/jumpers/button
-            if ( (Read_MCP23008(SWCH_ADDR, MCP23008_GPIO)) != switches ) {        // if changed
-                switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
-                if ((switches & BUTTON)==BUTTON) {            // if Button
-                    spin(0);
-                    switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
-                    if ((switches & BUTTON)==BUTTON) {        // still button?
+		if ( (Read_MCP23008(SWCH_ADDR, MCP23008_GPIO)) != switches ) {        // if changed
+			switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
+			if ((switches & BUTTON)==BUTTON) {            // if Button
+				spin(0);
+				switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
+				if ((switches & BUTTON)==BUTTON) {        // still button?
 //                      write_FPGA (STROBE_12_W, 0);
-                    } // end if have second switch
-                } // end if have first switch
-                jumpers = (switches & JUMPER_MASK)>>JUMPER_SHIFT;
-// WB-11H
-// CLOCK SELECTION IS NOT DYNAMIC - JUMPER IS EXAMINED ONLY AT POWER-ON
-//                if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
-//                                            // Jumper INSTALLED inhibits local osc.
-//                    MCU_SEL_LOCAL_OSC = 0;          // turns off sel-local-osc
-//                    MCU_EN_LOCAL_OSC = 0;          // turns off en-local-osc
-//                } else {                        // Jumper OUT (use local osc)
-//                    MCU_SEL_LOCAL_OSC = 1;          // turns on sel-local-osc
-//                    MCU_EN_LOCAL_OSC = 1;          // turns on en-local-osc
-//                }                               // end else turn ON local osc
+				} // end if have second switch
+			} // end if have first switch
+			jumpers = (switches & JUMPER_MASK)>>JUMPER_SHIFT;
 
 // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
-                select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
-                ledbits = (ledbits|0x0F) ^ (jumpers & 0x0F);    //
-                Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
-//
-                i = (switches & 0xF)>>1;   // position 0..7
+			select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
+			ledbits = (ledbits|0x0F) ^ (jumpers & 0x0F);    //
+			Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
+			i = (switches & 0xF)>>1;   // position 0..7
 // IF ECO14_SW4 is defined, we need to compensate for the bit0<-->bit2 swap error
 #if defined (ECO14_SW4)
-                j = i & 2; // save the center bit
-                if ((i&1)==1) j |= 4;  // fix the 4 bit
-                if ((i&4)==4) j |= 1;  // fix the 1 bit
+			j = i & 2; // save the center bit
+			if ((i&1)==1) j |= 4;  // fix the 4 bit
+			if ((i&4)==4) j |= 1;  // fix the 1 bit
 #endif // defined (ECO14_SW4)
-            } // end if something changed
-#if defined (DODATATEST)
-        } // end else no data
-#endif
+		} // end if something changed
     } while (1); // end do forever
 }
 
@@ -1366,7 +1280,6 @@ int Initialize_OSC (unsigned int selectosc){
             CLKDIVbits.PLLPOST=0;       /* N1=2 */
             CLKDIVbits.PLLPRE=0;        /* N2=2 */
             OSCTUN=0;                   /* Tune FRC oscillator, if FRC is used */
-//          OSCTUN=0x11;                /* Tune FRC oscillator upwards to 40 MHz */
             while(OSCCONbits.LOCK!=1) {}; /* Wait for PLL to lock */
             break;
         default:
@@ -1392,7 +1305,6 @@ void Switch_OSC(unsigned int mcuoscsel) {         /* Switch Clock Oscillator */
 ** TDIG- uses (1)FRC+PLL and (2)Primary=EC
 ** WARNING: NO ERROR CHECKING ON mcuoscsel !
 */
-//    __asm__ volatile ("mov #OSCCONH,W1");   // set up unlock sequence
     __asm__ volatile ("mov #OSCCON+1,W1");   // set up unlock sequence
     __asm__ volatile ("disi #6");           // Disable interrupts
     __asm__ volatile ("mov #0x78,W2");      //
@@ -1402,7 +1314,6 @@ void Switch_OSC(unsigned int mcuoscsel) {         /* Switch Clock Oscillator */
     __asm__ volatile ("mov.b W0,[W1]");
 
     __asm__ volatile ("mov #0x01,W0");    // 0x01 = Switch Oscillators
-    //__asm__ volatile ("mov #OSCCONL,W1");   // set up unlock sequence
     __asm__ volatile ("mov #OSCCON,W1");   // set up unlock sequence
     __asm__ volatile ("disi #6");           // Disable interrupts
     __asm__ volatile ("mov #0x46,W2");      //
@@ -1554,8 +1465,7 @@ void dma0Init(void){
      DMA0REQ=0x0046;
 
 /* point DMA0STA to start address of data-to-transmit buffer */
-     //JS DMA0STA=  __builtin_dmaoffset(&ecan1msgBuf[0][0]);
-     DMA0STA=  __builtin_dmaoffset(ecan1msgBuf); //JS
+     DMA0STA=  __builtin_dmaoffset(ecan1msgBuf);
 
 /* Enable DMA2 channel */
      DMA0CONbits.CHEN=1;
@@ -1581,8 +1491,7 @@ void dma2Init(void){
 	 DMA2REQ=0x0022;	/* ECAN 1 Receive */
 
 /* point DMA2STA to start address of receive-data buffer */
-     //JS DMA2STA= __builtin_dmaoffset(&ecan1msgBuf[1][0]);
-     DMA2STA= __builtin_dmaoffset(ecan1msgBuf); //JS
+     DMA2STA= __builtin_dmaoffset(ecan1msgBuf);
 
 /* Enable DMA2 channel */
      DMA2CONbits.CHEN=1;
@@ -1610,8 +1519,6 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
  -------------------------------------------------- */
     ecan1msgBuf[0][2] += 4;       // message length 4
     ecan1msgBuf[0][3] = 0x00FF;
-//    ecan1msgBuf[0][3] = 0b1111000010010100; // this was a bit-order test
-//    ecan1msgBuf[0][4] = extrabyte;      // gets filled in by PLD read
     ecan1msgBuf[0][4] = 0;
     ecan1msgBuf[0][5] = 0;
     ecan1msgBuf[0][6] = 0;
@@ -1663,7 +1570,6 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     if (bytes <= 8) {
         while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
         msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-//        msg_id |= (C_TDIG | C_ALERT);    // reply constant part
         msg_id |= (C_TDIG);
         ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
         ecan1msgBuf[0][1] = 0;
@@ -1703,7 +1609,6 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     if (i > 8) i=8;         // at most 8 bytes of payload
     while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
     msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-//        msg_id |= (C_TDIG | C_ALERT);    // reply constant part
     msg_id |= message_type;
     ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     ecan1msgBuf[0][1] = 0;
@@ -1738,7 +1643,6 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 	    while (C1TR01CONbits.TXREQ0==1); 	// wait for transmit to complete
         msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
         msg_id |= (C_TDIG | C_DATA);    // reply constant part
-//      msg_id |= (C_TDIG);
         ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
         ecan1msgBuf[0][1] = 0;
         ecan1msgBuf[0][2] = 0;
@@ -1751,8 +1655,6 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 		for (i=0; i<bytes; i++) {
 			*cp++ = *wp++;
 		}
-//		ecan1msgBuf[0][3] = *wp++;
-//		ecan1msgBuf[0][3] |= (*wp++)<<8;
 
 /* Request the message be transmitted */
         C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
@@ -1817,7 +1719,6 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 */
     unsigned long retval;
     retval = get_MCU_pm ((unsigned)(addrs>>16), (unsigned)(addrs&0xFFFF));
-//    retval = 0x030201L;
     *buf = retval & 0xFF;   // LSByte
     retval>>= 8;
     *(buf+1) = retval & 0xFF; // 2nd Byte
@@ -1907,7 +1808,6 @@ jumpto(void) {
 
     for ( ; ; )
      __asm__ volatile ("nop");
-//    __asm__ volatile ("goto 0x4000");
 
 }
 #endif
