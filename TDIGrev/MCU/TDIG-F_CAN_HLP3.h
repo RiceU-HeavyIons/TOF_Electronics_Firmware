@@ -1,4 +1,4 @@
-// $Id: TDIG-F_CAN_HLP3.h,v 1.3 2008-03-13 18:15:20 jschamba Exp $
+// $Id: TDIG-F_CAN_HLP3.h,v 1.4 2008-04-22 19:11:23 jschamba Exp $
 
 /* TDIG-D_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
@@ -66,6 +66,14 @@
     #define C_WS_TARGETHPTDC1 0x41      // Target is HPTDC 1
     #define C_WS_TARGETHPTDC2 0x42      // Target is HPTDC 2
     #define C_WS_TARGETHPTDC3 0x43      // Target is HPTDC 3
+    #define C_WS_TARGETCFGS   0x44      // Target is all 3 HPTDCs basic config (PM)
+    #define C_WS_TARGETCFG1   0x45      // Target is HPTDC 1 basic config (PM)
+    #define C_WS_TARGETCFG2   0x46      // Target is HPTDC 2 basic config (PM)
+    #define C_WS_TARGETCFG3   0x47      // Target is HPTDC 3 basic config (PM)
+    #define C_WS_TARGETCTRLS  0x48      // Target is all 3 HPTDCs basic control (PM)
+    #define C_WS_TARGETCTRL1  0x49      // Target is HPTDC 1 basic control (PM)
+    #define C_WS_TARGETCTRL2  0x4A      // Target is HPTDC 2 basic control (PM)
+    #define C_WS_TARGETCTRL3  0x4B      // Target is HPTDC 3 basic control (PM)
     #define C_WS_TARGETMCU    0x4C      // Target is MCU
     #define C_WS_TARGETEEPROM2 0x4E     // Target is EEPROM #2
     #define C_WS_BLOCKCKSUM   0x50      // Block Data Checksum
