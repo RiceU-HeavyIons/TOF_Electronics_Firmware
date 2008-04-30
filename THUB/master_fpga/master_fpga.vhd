@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.30 2008-04-18 19:22:27 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.31 2008-04-30 15:26:30 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-03-11
+-- Last update: 2008-04-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -286,43 +286,55 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_fiCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (IN)
   SIGNAL s_foCTRL_N : std_logic;        -- corresponds to ddl_fbctrl_N (OUT)
 
+  SIGNAL s_l2fiD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (IN)
+  SIGNAL s_l2foD      : std_logic_vector (31 DOWNTO 0);  -- corresponds to ddl_fbd (OUT)
+  SIGNAL s_l2fiTEN_N  : std_logic;      -- corresponds to ddl_fbten_N (IN)
+  SIGNAL s_l2foTEN_N  : std_logic;      -- corresponds to ddl_fbten_N (OUT)
+  SIGNAL s_l2fiCTRL_N : std_logic;      -- corresponds to ddl_fbctrl_N (IN)
+  SIGNAL s_l2foCTRL_N : std_logic;      -- corresponds to ddl_fbctrl_N (OUT)
+
   -- ********************************************************************************
   -- uc_fpga signals
   -- ********************************************************************************
-  SIGNAL s_ucDIR      : std_logic;
-  SIGNAL s_ucCTL      : std_logic;
-  SIGNAL s_ucDS       : std_logic;
-  SIGNAL s_uc_o       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_uc_i       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg_addr   : std_logic_vector(2 DOWNTO 0);
-  SIGNAL s_sreg_addr  : std_logic_vector(3 DOWNTO 0);
-  SIGNAL s_reg_load   : std_logic;
-  SIGNAL s_sreg_load  : std_logic;
-  SIGNAL s_reg_clr    : std_logic;
-  SIGNAL s_reg1       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg2       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg3       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg4       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg5       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg5_stat  : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg6       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg7       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg8       : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_serdes_reg : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_trigger    : std_logic;
-  SIGNAL s_evt_trg    : std_logic;
-  SIGNAL s_tcdevt_trg : std_logic;
-  SIGNAL s_plsevt_trg : std_logic;
-  SIGNAL s_runReset   : std_logic;
-  SIGNAL s_event_read : std_logic;
-  SIGNAL s_stage1     : std_logic;
-  SIGNAL s_stage2     : std_logic;
+  SIGNAL s_ucDIR        : std_logic;
+  SIGNAL s_ucCTL        : std_logic;
+  SIGNAL s_ucDS         : std_logic;
+  SIGNAL s_uc_o         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_uc_i         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg_addr     : std_logic_vector(2 DOWNTO 0);
+  SIGNAL s_sreg_addr    : std_logic_vector(3 DOWNTO 0);
+  SIGNAL s_reg_load     : std_logic;
+  SIGNAL s_sreg_load    : std_logic;
+  SIGNAL s_reg_clr      : std_logic;
+  SIGNAL s_reg1         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg2         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg3         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg4         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg5         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg5_stat    : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg6         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg7         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg8         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_serdes_reg   : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_trigger      : std_logic;
+  SIGNAL s_evt_trg      : std_logic;
+  SIGNAL s_tcdevt_trg   : std_logic;
+  SIGNAL s_plsevt_trg   : std_logic;
+  SIGNAL s_runReset     : std_logic;
+  SIGNAL s_l2runReset   : std_logic;
+  SIGNAL s_event_read   : std_logic;
+  SIGNAL s_l2event_read : std_logic;
+  SIGNAL s_stage1       : std_logic;
+  SIGNAL s_stage2       : std_logic;
 
   SIGNAL ddl_data            : std_logic_vector (31 DOWNTO 0);
+  SIGNAL l2ddl_data          : std_logic_vector (31 DOWNTO 0);
   SIGNAL ddlfifo_usedw       : std_logic_vector (12 DOWNTO 0);
   SIGNAL ddlfifo_aclr        : std_logic;
   SIGNAL ddlfifo_empty       : std_logic;
+  SIGNAL l2ddlfifo_empty     : std_logic;
   SIGNAL rd_ddl_fifo         : std_logic;
+  SIGNAL rd_l2ddl_fifo       : std_logic;
   SIGNAL ddlfifo_almost_full : boolean;
 
   SIGNAL s_triggerword   : std_logic_vector(19 DOWNTO 0);
@@ -774,14 +786,51 @@ BEGIN
       areset_n    => arstn);
 
   -- ********************************************************************************
-  -- Level-2 DDL Interface
+  -- Level-2 DDL Interface (currently, just the test patterns are implemented)
   -- ********************************************************************************
-  -- not yet implemented, set all signals to reasonable defaults
-  l2_fbten_n  <= 'Z';
-  l2_fbctrl_n <= 'Z';
-  l2_fbd      <= (OTHERS => 'Z');
-  l2_foclk    <= '0';
-  l2_fobsy_n  <= '0';
+  l2_foclk     <= globalclk;
+  s_l2fiTEN_N  <= l2_fbten_n;
+  s_l2fiCTRL_N <= l2_fbctrl_n;
+  s_l2fiD      <= l2_fbd;
+
+  -- bi-directional signals state machine
+  l2ddlbus : PROCESS (l2_fiben_n, l2_fidir, s_l2foTEN_N, s_l2foCTRL_N, l2_fbd, s_l2foD)
+  BEGIN
+    IF (l2_fiben_n = '1') OR (l2_fidir = '0') THEN
+      l2_fbten_n  <= 'Z';
+      l2_fbctrl_n <= 'Z';
+      l2_fbd      <= (OTHERS => 'Z');
+    ELSE
+      l2_fbten_n  <= s_l2foTEN_N;
+      l2_fbctrl_n <= s_l2foCTRL_N;
+      l2_fbd      <= s_l2foD;
+    END IF;
+  END PROCESS;
+
+  -- DDL state machines
+  l2ddl_inst : ddl PORT MAP (
+    fiD        => s_l2fiD,
+    foD        => s_l2foD,
+    foBSY_N    => l2_fobsy_n,
+    fiCLK      => globalclk,
+    fiDIR      => l2_fidir,
+    fiBEN_N    => l2_fiben_n,
+    fiLF_N     => l2_filf_n,
+    fiCTRL_N   => s_l2fiCTRL_N,
+    foCTRL_N   => s_l2foCTRL_N,
+    fiTEN_N    => s_l2fiTEN_N,
+    foTEN_N    => s_l2foTEN_N,
+    ext_trg    => '0',                  -- external trigger (for testing)
+    run_reset  => s_l2runReset,         -- external logic reset at run start
+    event_read => s_l2event_read,       -- indicates run in progress
+    reset      => '0',                  -- reset,
+    fifo_q     => l2ddl_data,           -- "data" from external FIFO with event data
+    fifo_empty => l2ddlfifo_empty,      -- "empty" from external FIFO
+    fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
+    );
+
+  l2ddl_data      <= (OTHERS => '0');
+  l2ddlfifo_empty <= '1';
 
   -- ********************************************************************************
   -- DAQ DDL Interface
