@@ -1,4 +1,4 @@
--- $Id: TCPU_B_TOP.vhd,v 1.17 2008-03-25 20:11:26 jschamba Exp $
+-- $Id: TCPU_B_TOP.vhd,v 1.18 2008-04-30 18:12:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU B TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-03-25
+-- Last update: 2008-04-30
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -178,7 +178,7 @@ END TCPU_B_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_B_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"82";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"83";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -772,17 +772,17 @@ BEGIN
 
   WITH config14_data(7) SELECT
     c1Sel_ser_out <=
-    c1_ddaisy_data WHEN '0',            -- signal from FPGA
+    c1_ddaisy_data WHEN '1',            -- signal from FPGA
     c1_ser_out     WHEN OTHERS;         -- signal from Aux path
 
   WITH config14_data(7) SELECT
     c1Sel_token_out <=
-    c1_ddaisy_tok_out WHEN '0',         -- signal from FPGA
+    c1_ddaisy_tok_out WHEN '1',         -- signal from FPGA
     c1_token_out      WHEN OTHERS;      -- signal from Aux path
 
   WITH config14_data(7) SELECT
     c1Sel_strob_out <=
-    c1_dstatus(0) WHEN '0',             -- signal from FPGA
+    c1_dstatus(0) WHEN '1',             -- signal from FPGA
     c1_strobe_out WHEN OTHERS;          -- signal from Aux path
 
 
@@ -791,11 +791,10 @@ BEGIN
 ---------------------------------------------------------------------------
 
   c1_trigger       <= s_c1_trigger;
-  c1_ddaisy_tok_in <= c1Sel_token_in AND (NOT config14_data(7));
-  c1_tray_token    <= c1Sel_token_in AND config14_data(7);
+  c1_ddaisy_tok_in <= c1Sel_token_in AND config14_data(7);  -- signal to FPGA
+  c1_tray_token    <= c1Sel_token_in AND (NOT config14_data(7));  -- signal to Aux path
   c1_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c1_sm_reset      <= sm_reset;
---  c1_rdout_en       <= test_pulse;
   c1_rdout_en      <= config2_data(0) AND trigger_pulse;
   
   c1_ser_rdo_inst : ser_rdo PORT MAP (
@@ -842,17 +841,17 @@ BEGIN
 
   WITH config14_data(7) SELECT
     c2Sel_ser_out <=
-    c2_ddaisy_data WHEN '0',            -- signal from FPGA
+    c2_ddaisy_data WHEN '1',            -- signal from FPGA
     c2_ser_out     WHEN OTHERS;         -- signal from Aux path
 
   WITH config14_data(7) SELECT
     c2Sel_token_out <=
-    c2_ddaisy_tok_out WHEN '0',         -- signal from FPGA
+    c2_ddaisy_tok_out WHEN '1',         -- signal from FPGA
     c2_token_out      WHEN OTHERS;      -- signal from Aux path
 
   WITH config14_data(7) SELECT
     c2Sel_strob_out <=
-    c2_dstatus(0) WHEN '0',             -- signal from FPGA
+    c2_dstatus(0) WHEN '1',             -- signal from FPGA
     c2_strobe_out WHEN OTHERS;          -- signal from Aux path
 
 
@@ -861,11 +860,10 @@ BEGIN
 ---------------------------------------------------------------------------
   
   c2_trigger       <= s_c2_trigger;
-  c2_ddaisy_tok_in <= c2Sel_token_in AND (NOT config14_data(7));
-  c2_tray_token    <= c2Sel_token_in AND config14_data(7);
+  c2_ddaisy_tok_in <= c2Sel_token_in AND config14_data(7);  -- signal to FPGA
+  c2_tray_token    <= c2Sel_token_in AND (NOT config14_data(7));  -- signal to Aux path
   c2_bunch_rst     <= config14_data(4) OR serdes_b_rst;
   c2_sm_reset      <= sm_reset;
---  c2_rdout_en       <= test_pulse;
   c2_rdout_en      <= config2_data(0) AND trigger_pulse;
   
   c2_ser_rdo_inst : ser_rdo PORT MAP (
@@ -1106,8 +1104,9 @@ BEGIN
     );                  
 
   sel_phase_of_final_mult_reg_clk <= clock_delay;
-  -- sel_phase_of_final_mult_reg_clk <= "0000"; -- this depends on on delays within the tray
-                                                -- and can be hard coded
+-- sel_phase_of_final_mult_reg_clk <= "0000";
+  -- this depends on on delays within the tray
+  -- and can be hard coded
   
   clk_for_final_register_select : MUX_16TO1 PORT MAP (
     data0  => delayed_rhic_clk(15),
