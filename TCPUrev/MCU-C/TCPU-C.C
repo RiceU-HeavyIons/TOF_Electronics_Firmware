@@ -1,8 +1,18 @@
-// $Id: TCPU-C.C,v 1.2 2008-03-05 19:59:36 jschamba Exp $
+// $Id: TCPU-C.C,v 1.3 2008-05-09 18:11:17 jschamba Exp $
 
 // TCPU-C.c
+// Version for build TCPU-C_2C
 // main program for PIC24HJ256GP610 as used on TCPU-B rev 0 board
+// Program # 2C -
+//      09-May-08, W. Burton
+//          Renumbered versions per Jo Schambach request.
+//          Made sending of 2-word data messages conditional on definition of SENDTWO
+// Program # 2B -
+//      08-May-08, W. Burton
+//          Rework CAN2<==>CAN1 transfers to avoid hang-up; fix spurious retransmit of CAN2 messages to CAN1.
 // Program # 2A -
+//      14-Mar-08, W. Burton
+//          More rework of clock initialization
 //      29-Feb-08, W. Burton
 //          For TCPU-C board.
 //          JU2 pins 1-2 jumpered select EXTERNAL clock.
@@ -147,12 +157,12 @@
 //JS    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-    #define FIRMWARE_ID_0 'B'   // JS version 2B
+    #define FIRMWARE_ID_0 'C'   // WB version 2C
 // WB-1L make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
-    #define FIRMWARE_ID_1 0x81
+    #define FIRMWARE_ID_1 0x82  // WB version 2 download
 #else
-    #define FIRMWARE_ID_1 0x2   // JS version 2B
+    #define FIRMWARE_ID_1 0x2   // WB version 2
 #endif
 // WB-11H end
 
@@ -346,7 +356,7 @@ main()
 ** Initialize PORTD bits[0..3,4..9] pins [72, 76, 77, 78, 81, 82, 83, 84, 68, 69]
 ** for control/monitoring of PLL and EEPROM
 */
-// Make D0 an output (pin 72 = PLL_RESET, initialize H)
+// Make D0 an output (pin 72 = PLL_RESET, initialize L)
 // Make D1 an input  (pin 76 = PLL_LOS)
 // Make D2 an input  (pin 77 = DH_ACTV)
 // Make D3 an input  (pin 78 = CAL_ACTV)
@@ -616,10 +626,11 @@ main()
 	*/
     do {                            // Do Forever
         rcvmsgfrom = 0;
-        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive TDIG message on CAN#1 */
+        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive TDIG message on Tray CAN#1 */
+                                                    // Add Extended Address and transmit on CAN#2
             i = 0xFFF;                              // WB-1L add timeout
 //            while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
-            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete
+            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
                                                     // copy the message from CAN#1 Receive buffer #2 to
                                                     // CAN#2 transmit buffer#0
             //JS for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[3][i];
@@ -629,30 +640,35 @@ main()
             ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
             ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
             ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
-            C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
+            C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+
         } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 */
-            while (C1TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#1 to complete
-                                                    // copy the message from CAN#2 Receive buffer #2 to
-                                                    // CAN#1 transmit buffer#0
+            if ( (ecan2msgBuf[2][0] & C_EXT_ID_BIT) != 0) {  // It must be an "extended" message in order to be retransmitted
+                i = 0xFFF;                      // WB-1M add timeout
+                while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
+//                while (C1TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#1 to complete
+                                                        // copy the message from CAN#2 Receive buffer #2 to
+                                                        // CAN#1 transmit buffer#0
             //JS for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[3][i];
-            for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i]; //JS
+                for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i]; //JS
+                                                // Mark CAN#1 Buffer #0 for standard ID
+                                                // Strip off extended ID bits etc.
+                ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit
+                ecan1msgBuf[0][1] = 0;          // clear extended ID
+                ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
+                C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
+            } // end if it was an extended message
             C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
-                                            // Mark CAN#1 Buffer #0 for standard ID
-                                            // Strip off extended ID bits etc.
-            ecan1msgBuf[0][0] &= 0x1FFC;      // extended ID =0, no remote xmit
-            ecan1msgBuf[0][1] = 0;          // clear extended ID
-            ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
-            C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-        } else if ( C2RXFUL1bits.RXFUL1 ) {    //  Receive message on CAN#2
-            rcvmsgfrom = 2;                 // source of message is CAN#2
-            rcvmsgtype = ecan2msgBuf[1][0]; // Save message type code
-            //JS rcvmsglen= ecan2msgBuf[1][2];   // Save message length
+        } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2
+            rcvmsgfrom = 2;                     // source of message is CAN#2
+            rcvmsgtype = ecan2msgBuf[1][0];     // Save message type code
+            //JS rcvmsglen= ecan2msgBuf[1][2];  // Save message length
             rcvmsglen= ecan2msgBuf[1][2] & 0x000F;   // Save message length //JS
             wps = (unsigned char *)&ecan2msgBuf[1][3];  // pointer to source buffer (message data)
-        } else if ( C1RXFUL1bits.RXFUL1 ) {        // Receive standard msg via CAN#1
-            rcvmsgfrom = 1;                 // source of message is CAN#1
-            rcvmsgtype = ecan1msgBuf[1][0]; // Save message type code
-            //JS rcvmsglen= ecan1msgBuf[1][2];   // Save message length
+        } else if ( C1RXFUL1bits.RXFUL1 ) {     // Receive standard msg via CAN#1
+            rcvmsgfrom = 1;                     // source of message is CAN#1
+            rcvmsgtype = ecan1msgBuf[1][0];     // Save message type code
+            //JS rcvmsglen= ecan1msgBuf[1][2];  // Save message length
             rcvmsglen= ecan1msgBuf[1][2] & 0x000F;   // Save message length
             wps = (unsigned char *)&ecan1msgBuf[1][3];  // pointer to source buffer
         } // end checking for messages
@@ -1109,6 +1125,9 @@ main()
                     sendbuf[3] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
                     j += 4;
                     read_FPGA (FIFO_STATUS_R);          // extra read-status
+
+#define SENDTWO 1
+#if defined (SENDTWO)
                     // Check again for more data
                     if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {
                         sendbuf[4] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
@@ -1118,6 +1137,8 @@ main()
                         j += 4;
                         read_FPGA (FIFO_STATUS_R);          // extra read-status
                     } // end if had more, send message
+#endif          // endif defined SENDTWO
+
                     if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                     j = 0;
                 } // end if have data to send
@@ -1165,7 +1186,7 @@ int Initialize_OSC (unsigned int selectosc){
             MCU_SEL_LOCAL_CLK = 1;      // turns on EXT_CLK at mux U101
             MCU_EN_LOCAL_OSC = 0;       // turns off en-local-osc to U25
             retstat = 0;                // ok
-        } else if ((selectosc&OSCSEL_BOARD)==OSCSEL_BOARD) { // Selecting BOARD clock (Int_Clock) w/ or w/o PLL
+        } else {                        // Else Selecting BOARD clock (Int_Clock) w/ or w/o PLL
             MCU_EN_LOCAL_OSC = 1;       // turns on en-local-osc to U25
             spin(0);                    // wait for local osc to turn on
             MCU_SEL_LOCAL_CLK = 0;      // selects LOCAL_CLK at U101
@@ -1178,7 +1199,7 @@ int Initialize_OSC (unsigned int selectosc){
             PLL_RESET = 0;          // Make sure it is Low
             spin(0);                // (this is 20 mSec)
             PLL_RESET = 1;          // Make it High, starts Calibration
-
+            spin(0);                // (this is 20 mSec)
             while (CAL_ACTV==1) {}  // Wait for PLL to lock
 
             MCU_SEL_BYPASS = 1;         // Turns ON PLL process (U100)
