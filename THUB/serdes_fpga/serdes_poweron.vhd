@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.3 2007-11-14 16:52:11 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.4 2008-05-09 16:15:33 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2007-11-14
+-- Last update: 2008-05-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -68,7 +68,7 @@ ARCHITECTURE a OF serdes_poweron IS
     PO_LOCKED
     );
 
-  SIGNAL counter_q       : std_logic_vector (16 DOWNTO 0);
+  SIGNAL counter_q       : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_ctr_aclr      : std_logic;
   SIGNAL s_serdes_tx_sel : std_logic;
   SIGNAL s_serdes_start  : std_logic_vector(17 DOWNTO 0);
@@ -76,8 +76,8 @@ ARCHITECTURE a OF serdes_poweron IS
 
 BEGIN
 
-  counter17b : lpm_counter GENERIC MAP (
-    LPM_WIDTH     => 17,
+  counter8b : lpm_counter GENERIC MAP (
+    LPM_WIDTH     => 8,
     LPM_TYPE      => "LPM_COUNTER",
     LPM_DIRECTION => "UP")
     PORT MAP (
@@ -105,6 +105,7 @@ BEGIN
       sync            <= '0';           -- sync turned off
       ch_ready        <= '0';
       s_serdes_tx_sel <= '1';
+      s_ctr_aclr      <= '1';           -- timeout ctr reset
       
     ELSIF clk'event AND clk = '1' THEN  -- rising clock edge
 
@@ -113,43 +114,61 @@ BEGIN
       sync            <= '0';
       ch_ready        <= '0';
       s_serdes_tx_sel <= '1';           -- default: lock pattern
+      s_ctr_aclr      <= '0';           -- default: no timeout ctr reset
 
       CASE poweron_present IS
+        -- wait for clock to be stable (PLL is locked)
         WHEN PO_INIT =>
-          s_ctr_aclr <= '1';
-          IF pll_locked = '1' THEN      -- wait for clock lock
-            poweron_next := PO_SYNC;
+          IF pll_locked = '1' THEN
+            IF counter_q(4) = '1' THEN  -- wait a little
+              poweron_next := PO_SYNC;
+            END IF;
+          ELSE
+            s_ctr_aclr <= '1';
+            poweron_next := PO_INIT;
           END IF;
+
+          -- start sync'ing and wait for lock from TCPU
         WHEN PO_SYNC =>
-          s_ctr_aclr <= '0';            -- hold timeout ctr in reset
           tpwdn_n    <= '1';            -- tx powered on
           rpwdn_n    <= '1';            -- rx powered on
           sync       <= '1';            -- sync turned on
 
           IF ch_lock_n = '0' THEN       -- wait for SERDES lock
-            poweron_next := PO_PATTERN;
-            s_ctr_aclr   <= '1';        -- reset timeout counter
-          ELSIF counter_q(16) = '1' THEN   -- long timeout
-            poweron_next := PO_INIT;
+            IF counter_q(7) = '1' THEN  -- wait a little
+              s_ctr_aclr <= '1';
+              poweron_next := PO_PATTERN;
+            END IF;
+          ELSE
+            s_ctr_aclr <= '1';            -- reset timeout counter
+            poweron_next := PO_SYNC;
           END IF;
+
+          -- Send Pattern and wait for response from TCPU
         WHEN PO_PATTERN =>
-          s_ctr_aclr <= '0';            -- release timeout ctr reset
-          tpwdn_n    <= '1';            -- tx powered on
-          rpwdn_n    <= '1';            -- rx powered on
+          tpwdn_n <= '1';                  -- tx powered on
+          rpwdn_n <= '1';                  -- rx powered on
           IF rxd = LOCK_PATTERN_TCPU THEN  -- look for pattern to be sent back
             poweron_next := PO_LOCKED;
-          ELSIF counter_q(4) = '1' THEN    -- timeout after 16 clocks
+          ELSIF counter_q(7) = '1' THEN    -- timeout after 128 clocks
             poweron_next := PO_INIT;
+          ELSE
+            poweron_next := PO_PATTERN;
           END IF;
+
+          -- Now we are connected! Watch if we loose lock
         WHEN PO_LOCKED =>
           tpwdn_n         <= '1';       -- tx powered on
           rpwdn_n         <= '1';       -- rx powered on
           ch_ready        <= '1';       -- signal that we are locked and  ready
           s_serdes_tx_sel <= '0';       -- send "normal" data
-
+          s_ctr_aclr      <= '1';
+          
           IF (ch_lock_n = '1') THEN     -- if we ever loose lock
             poweron_next := PO_INIT;    -- start all over
           END IF;
+
+          -- This state shouldn't happen, so assume we are still locked
         WHEN OTHERS =>
           rpwdn_n <= '1';               -- rx powered on
           tpwdn_n <= '1';               -- tx powered on
