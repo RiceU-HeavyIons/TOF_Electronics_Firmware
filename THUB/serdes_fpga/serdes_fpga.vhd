@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.23 2008-04-18 19:26:57 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.24 2008-05-12 21:09:40 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-02-21
+-- Last update: 2008-05-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -418,31 +418,31 @@ BEGIN
   -----------------------------------------------------------------------------
 
   -- channel 0
-  ch0_den     <= s_serdes_reg(0);       -- tx enabled by serdes register bit 0
-  ch0_ren     <= s_serdes_reg(0);       -- rx enabled by serdes register bit 0
+  ch0_den     <= s_serdes_reg(2);       -- tx enabled by serdes register bit 0
+  ch0_ren     <= s_serdes_reg(2);       -- rx enabled by serdes register bit 0
   ch0_loc_le  <= '0';                   -- local loopback disabled
   ch0_line_le <= '0';                   -- line loopback disabled
   ch0_txd     <= s_ch0_txd;
   led(0)      <= ch0_lock_n;
 
   -- channel 1
-  ch1_den     <= s_serdes_reg(1);       -- tx enabled by serdes register bit 1
-  ch1_ren     <= s_serdes_reg(1);       -- rx enabled by serdes_register bit 1
+  ch1_den     <= s_serdes_reg(3);       -- tx enabled by serdes register bit 1
+  ch1_ren     <= s_serdes_reg(3);       -- rx enabled by serdes_register bit 1
   ch1_loc_le  <= '0';                   -- local loopback disabled
   ch1_line_le <= '0';                   -- line loopback disabled
   ch1_txd     <= s_ch1_txd;
   led(1)      <= ch1_lock_n;
 
   -- channel 2
-  ch2_den     <= s_serdes_reg(2);       -- tx enabled by serdes register bit 2
-  ch2_ren     <= s_serdes_reg(2);       -- rx enabled by serdes register bit 2
+  ch2_den     <= s_serdes_reg(0);       -- tx enabled by serdes register bit 2
+  ch2_ren     <= s_serdes_reg(0);       -- rx enabled by serdes register bit 2
   ch2_loc_le  <= '0';
   ch2_line_le <= '0';
   ch2_txd     <= s_ch2_txd;
 
   -- channel 3
-  ch3_den     <= s_serdes_reg(3);       -- tx enabled by serdes register bit 3
-  ch3_ren     <= s_serdes_reg(3);       -- rx enabled by serdes register bit 3
+  ch3_den     <= s_serdes_reg(1);       -- tx enabled by serdes register bit 3
+  ch3_ren     <= s_serdes_reg(1);       -- rx enabled by serdes register bit 3
   ch3_loc_le  <= '0';
   ch3_line_le <= '0';
   ch3_txd     <= s_ch3_txd;
@@ -652,20 +652,20 @@ BEGIN
   rdreq_decode : decoder PORT MAP (
     input_sig => s_smif_rdenable,
     adr       => s_smif_select,
-    y(0)      => s_ch0fifo_rdreq,
-    y(1)      => s_ch1fifo_rdreq,
-    y(2)      => s_ch2fifo_rdreq,
-    y(3)      => s_ch3fifo_rdreq);
+    y(0)      => s_ch2fifo_rdreq,
+    y(1)      => s_ch3fifo_rdreq,
+    y(2)      => s_ch0fifo_rdreq,
+    y(3)      => s_ch1fifo_rdreq);
 
   rxmux_inst : mux17x4 PORT MAP (
-    data0x(15 DOWNTO 0) => s_ch0fifo_q,
-    data0x(16)          => s_ch0fifo_empty,
-    data1x(15 DOWNTO 0) => s_ch1fifo_q,
-    data1x(16)          => s_ch1fifo_empty,
-    data2x(15 DOWNTO 0) => s_ch2fifo_q,
-    data2x(16)          => s_ch2fifo_empty,
-    data3x(15 DOWNTO 0) => s_ch3fifo_q,
-    data3x(16)          => s_ch3fifo_empty,
+    data0x(15 DOWNTO 0) => s_ch2fifo_q,
+    data0x(16)          => s_ch2fifo_empty,
+    data1x(15 DOWNTO 0) => s_ch3fifo_q,
+    data1x(16)          => s_ch3fifo_empty,
+    data2x(15 DOWNTO 0) => s_ch0fifo_q,
+    data2x(16)          => s_ch0fifo_empty,
+    data3x(15 DOWNTO 0) => s_ch1fifo_q,
+    data3x(16)          => s_ch1fifo_empty,
     sel                 => s_smif_select,
     result(15 DOWNTO 0) => s_rxfifo_out,
     result(16)          => s_smif_fifo_empty);
@@ -685,10 +685,10 @@ BEGIN
   END PROCESS latcher;
 
   s_smif_dataout(9)  <= '0';
-  s_smif_dataout(10) <= s_ch0_locked;
-  s_smif_dataout(11) <= s_ch1_locked;
-  s_smif_dataout(12) <= s_ch2_locked;
-  s_smif_dataout(13) <= s_ch3_locked;
+  s_smif_dataout(10) <= s_ch2_locked;
+  s_smif_dataout(11) <= s_ch3_locked;
+  s_smif_dataout(12) <= s_ch0_locked;
+  s_smif_dataout(13) <= s_ch1_locked;
   s_smif_dataout(14) <= '0';
   s_smif_dataout(15) <= pll_80mhz;
 
@@ -707,7 +707,7 @@ BEGIN
     rxd         => ch0_rxd,
     serdes_data => serdes_data,
     txd         => s_ch0_txd,
-    areset_n    => s_serdes_reg(0));
+    areset_n    => s_serdes_reg(2));
 
 
   poweron_ch1 : serdes_poweron PORT MAP (
@@ -721,7 +721,7 @@ BEGIN
     rxd         => ch1_rxd,
     serdes_data => serdes_data,
     txd         => s_ch1_txd,
-    areset_n    => s_serdes_reg(1));
+    areset_n    => s_serdes_reg(3));
 
   poweron_ch2 : serdes_poweron PORT MAP (
     clk         => globalclk,
@@ -734,7 +734,7 @@ BEGIN
     rxd         => ch2_rxd,
     serdes_data => serdes_data,
     txd         => s_ch2_txd,
-    areset_n    => s_serdes_reg(2));
+    areset_n    => s_serdes_reg(0));
 
   poweron_ch3 : serdes_poweron PORT MAP (
     clk         => globalclk,
@@ -747,7 +747,7 @@ BEGIN
     rxd         => ch3_rxd,
     serdes_data => serdes_data,
     txd         => s_ch3_txd,
-    areset_n    => s_serdes_reg(3));
+    areset_n    => s_serdes_reg(1));
 
   -----------------------------------------------------------------------------
   -- SRAM control
