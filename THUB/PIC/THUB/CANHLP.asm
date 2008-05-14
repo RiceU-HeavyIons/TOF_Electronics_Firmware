@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.22 2008-05-14 19:03:37 jschamba Exp $
+; $Id: CANHLP.asm,v 1.23 2008-05-14 20:49:16 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -366,6 +366,8 @@ TofWriteReg:
     ;**************************************************************
     btfsc   RxDtLngth,0     ; test if data length is odd (bit 0 set)
     goto    unknown_message ; send unknown message response
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
     movff   RxData, uc_fpga_DATA   ; put first byte as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
@@ -377,6 +379,8 @@ TofWriteReg:
     bcf     uc_fpga_DS      ; DS back low
     btfsc   RxDtLngth,2     ; test if data length bit 2 is set (RxDtLngth = 4 or 6)
     bra     moreWriteReg
+    setf    uc_fpga_DATADIR ; set PORT D as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     call    HLPSendWriteResponseOK  ; if not, send response    
     return                  ; back to receiver loop
 
@@ -393,6 +397,8 @@ moreWriteReg:
     movff   RxData+3, uc_fpga_DATA ; fourth byte as register data on DATA PORT
     bsf     uc_fpga_DS      ; put DS hi
     bcf     uc_fpga_DS      ; DS back low
+    setf    uc_fpga_DATADIR ; set PORT D as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     call    HLPSendWriteResponseOK  ; send response    
     return                  ; back to receiver loop
 
@@ -790,6 +796,8 @@ TofReadReg:
 	bra		$ - 2
 
     banksel uc_fpga_DATA
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
     movff   RxData, uc_fpga_DATA    ; put first byte as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
     bsf     uc_fpga_DS      ; put DS hi
@@ -797,7 +805,7 @@ TofReadReg:
     bcf     uc_fpga_CTL     ; CTL back low
     
     setf    uc_fpga_DATADIR ; set DATA PORT as input
-    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     bsf     uc_fpga_DS      ; DS hi
     movff   uc_fpga_DATA, POSTINC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
