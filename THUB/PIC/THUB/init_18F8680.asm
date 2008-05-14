@@ -1,4 +1,4 @@
-; $Id: init_18F8680.asm,v 1.5 2008-02-13 22:47:03 jschamba Exp $
+; $Id: init_18F8680.asm,v 1.6 2008-05-14 19:01:54 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -135,11 +135,11 @@ InitMicro:
 ;               4 : UC_CPLD4	(o) (as_NCE)
 ;               5 : UC_CPLD5	(o) (as_NCONFIG)
 ;               6 : UC_CPLD6	(o) (as_enable)
-;               7 : UC_CPLD7	(o)
+;               7 : UC_CPLD7	(i) (as_CONFIG_DONE)
 
 	clrf    PORTD	; clear output data latches
 
-	movlw   0x01    ; bit 0 input, others output
+	movlw   0x81    ; bit 0 and 7 input, others output
 	movwf   TRISD
 
 
@@ -158,6 +158,25 @@ InitMicro:
 
 	movlw   0x03    ; bits 0,1 inputs, others output
 	movwf   TRISE
+
+; make sure port H is cleared first, so we don't accidentally write data
+; port H is 8 bits wide
+; PORTH bit#:   0 : UC_FPGA0	(o)
+;               1 : UC_FPGA1	(o)
+;               2 : UC_FPGA2	(o)
+;               3 : UC_FPGA3	(o)
+;               4 : UC_FPGA4	(o)
+;               5 : UC_FPGA5	(o)
+;               6 : UC_FPGA6	(o)
+;               7 : UC_FPGA7	(o)
+;
+; This port is used as a bi-directional data port
+; between UC and FPGA. Set the port as output to
+; start with:
+
+	clrf    PORTH   ; clear output data latches
+
+	clrf    TRISH   ; all outputs initially
 
 ; port F is 8 bits wide
 ; PORTF bit#:   0 : UC_FPGA8	(o) (DS)
@@ -188,24 +207,6 @@ InitMicro:
 
 	movlw   0x1E    ; bit 0 output, all others input 
 	movwf   TRISG
-
-; port H is 8 bits wide
-; PORTH bit#:   0 : UC_FPGA0	(o)
-;               1 : UC_FPGA1	(o)
-;               2 : UC_FPGA2	(o)
-;               3 : UC_FPGA3	(o)
-;               4 : UC_FPGA4	(o)
-;               5 : UC_FPGA5	(o)
-;               6 : UC_FPGA6	(o)
-;               7 : UC_FPGA7	(o)
-;
-; This port is used as a bi-directional data port
-; between UC and FPGA. Set the port as output to
-; start with:
-
-	clrf    PORTH   ; clear output data latches
-
-	clrf    TRISH   ; all outputs initially
 
 ; PORTJ bit#:   0 : UC_CPLD8	(o) (as_Clk)
 ;               1 : UC_CPLD9	(o) (as_Rst)
