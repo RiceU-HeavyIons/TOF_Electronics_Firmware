@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.25 2008-02-14 17:07:13 jschamba Exp $
+; $Id: main.asm,v 1.26 2008-05-14 19:05:29 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -123,11 +123,21 @@ temp_2          RES     1
 ;******************************************************************************
 ;EEPROM data
 ; Data to be programmed into the Data EEPROM is defined here
-
-
-;DATA_EEPROM	CODE	0xf00000
+;DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
 ;
 ;		DE	"Test Data",0,1,2,3,4,5
+
+;; use the first 32 EEPROM entries as the geographical IDs to be programmed into
+;; the SerDes FPGAs
+DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
+		DE	0x66,0x67,0x68,0x69     ; FPGA A
+        DE  0x6a,0x6b,0x6c,0x6d     ; FPGA B
+		DE	0x00,0x01,0x02,0x03     ; FPGA C
+        DE  0x04,0x05,0x06,0x07     ; FPGA D
+        DE  0x08,0x09,0x0A,0x0B     ; FPGA E
+        DE  0x0C,0x0D,0x0E,0x0F     ; FPGA F
+        DE  0x10,0x11,0x12,0x13     ; FPGA G
+        DE  0x14,0x15,0x16,0x17     ; FPGA H 
 
 #ifdef THUB_is_upper
 ;   upper memory code has redefined vector locations:
@@ -224,7 +234,7 @@ MAIN_START	CODE
 Main:
 
 	call InitMicro  	;  Initialize all features / IO ports
-    mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
+    mAsSelect 0         ;  Set FPGA progamming lines to FPGA M (0)
     setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
     clrf CANTestDelay,0 ;  Initially don't send CAN test messages (CANTestDelay = 0)
 
@@ -235,7 +245,7 @@ Main:
     movwf   temp_2          ; should be about 100ms
     call    delay_XCycles   ; at least 1 us, here: 100ms
     bcf     PLL_CAL         ; set PLL_CAL low again to initiate PLL calibration
-    movlw   0x83
+    movlw   0xff
     movwf   temp_2          ; should be about 100ms
     call    delay_XCycles   ; wait another 100ms to make sure clock is stable
     
@@ -244,6 +254,74 @@ Main:
 
     call    I2CMPolInit     ; Initialise MSSP Module
 
+;;;;;;;;;;;;; program the EEPROM data into the Serdes FPGAs ;;;;;;;;;;;;;;;;;;;;;;
+    ;;; first wait a while for FPGAs to initialize
+    movlw   0x87
+    movwf   T0CON           ; initialize TIMER0
+    bcf     INTCON, TMR0IF  ; clear Timer 1 interrupt flag
+    movlw   0xf0            ; ~210ms
+    movwf   TMR0H           ; load timer register
+    clrf    TMR0L
+
+    btfss   INTCON, TMR0IF  ; wait for timer1 overflow
+    bra     $ - 2
+
+    clrf    T0CON           ; turn off timer
+    bcf     INTCON, TMR0IF  ; clear Timer 1 interrupt flag
+
+    ;;; Check that FPGAs are initialized
+    mAsSelect 0         ;  Set FPGA progamming lines to FPGA M (0)
+;    movff   asPORT, TXB0D4
+    btfss   as_CONFIG_DONE  ; check if FPGA M is configured
+	bra		$ - 2
+    mAsSelect 1             ;  Set FPGA progamming lines to FPGA A (1)
+;    movff   asPORT, TXB0D5
+    btfss   as_CONFIG_DONE  ; check if FPGA A is configured
+	bra		$ - 2
+    
+    ;;; Now setup the EEPROM address
+    clrf    EECON1
+    clrf    EEADR           ; Point to first location of EEDATA
+    clrf    EEADRH
+
+    ;; read EEPROM data at address 0 - 3 and write to FPGA register 0x91
+    ;; set bit 7 in  the data to indicate writing to GEO registers
+    movlw   0x91            
+    movwf   TXB0D0          ; "mis-use" TXB0D0 to hold the FPGA register address
+
+    movlw   8               ; loop over 8 Serdes FPGAs
+    movwf   temp_2
+eeloop2:
+    movlw   4               ; loop over 4 values
+    movwf   temp_1          
+eeloop1:
+    movff   TXB0D0, uc_fpga_DATA    ; register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+    
+    bsf     EECON1, RD      ; Read EEPROM
+
+    movff   EEDATA, uc_fpga_DATA ; register data on DATA PORT
+    bsf     uc_fpga_DATA, 7 ; raise bit 7 for GEO_DATA write
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+
+    incf    EEADR,F         ; increase EEPROM address
+    decfsz  temp_1
+    bra     eeloop1
+
+    incf    TXB0D0, F       ; next Serdes FPGA
+    decfsz  temp_2
+    bra     eeloop2
+
+    ;;; finished with EEPROM writing to Serdes FPGA
+    ;;; reset FPGA select
+;    movff   asPORT, TXB0D7
+    mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
+
+    ; finished with init   
 ;-------------------------------
 ;Startup Message, Data ff,00,00,00, ID 0x407
 	banksel	TXB0CON
@@ -259,8 +337,10 @@ Main:
     movwf   POSTINC0
 ; Send ALERT message (command = 7, msgID = 0x407)
     mCANSendAlert  4
+;    mCANSendAlert  8
 
 	bcf		RXB0CON, RXFUL			; Clear the receive flag
+
 
 
 ;**************************************************************
@@ -490,10 +570,10 @@ DEFAULT_RST CODE    0x4018
 Reset_EEPROM
     setf    EEADR           ; Point to the last byte in EEPROM
     setf    EEADRH
-    setf    EEDATA          ; Boot mode control byte
-    movlw   b'00000100'     ; Setup for EEData
+    setf    EEDATA          ; Boot mode control byte = 0xFF
+    movlw   b'00000100'     ; Enable writes to EEData
     movwf   EECON1
-    movlw   0x55            ; Unlock
+    movlw   0x55            ; Unlock with "magic sequence"
     movwf   EECON2
     movlw   0xAA
     movwf   EECON2
