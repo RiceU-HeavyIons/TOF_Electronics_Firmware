@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.26 2008-05-14 19:05:29 jschamba Exp $
+; $Id: main.asm,v 1.27 2008-05-14 20:50:27 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -291,6 +291,10 @@ Main:
 
     movlw   8               ; loop over 8 Serdes FPGAs
     movwf   temp_2
+
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
+
 eeloop2:
     movlw   4               ; loop over 4 values
     movwf   temp_1          
@@ -315,6 +319,9 @@ eeloop1:
     incf    TXB0D0, F       ; next Serdes FPGA
     decfsz  temp_2
     bra     eeloop2
+
+    setf    uc_fpga_DATADIR ; DATA PORT as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
 
     ;;; finished with EEPROM writing to Serdes FPGA
     ;;; reset FPGA select
@@ -444,6 +451,8 @@ getPLDData:
     banksel uc_fpga_DATA
 
     ; read register 0x87, contains the trigger command
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
     movlw   0x87   
     movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -452,12 +461,10 @@ getPLDData:
     bcf     uc_fpga_CTL     ; CTL back low
 
     setf    uc_fpga_DATADIR ; set DATA PORT as input
-    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     bsf     uc_fpga_DS      ; DS hi
     movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
-    bsf     uc_fpga_DIR     ; DIR hi
-    clrf    uc_fpga_DATADIR ; DATA PORT as output again
 
 ;    banksel TXB0D2
     ; test if trigger command not zero:
@@ -466,6 +473,8 @@ getPLDData:
 
     ; now write to register 0x87 to advance the TCD FIFO
     ; banksel uc_fpga_DATA
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
     movlw   0x87   
     movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -475,6 +484,8 @@ getPLDData:
 
     bsf     uc_fpga_DS      ; DS hi
     bcf     uc_fpga_DS      ; DS lo
+    setf    uc_fpga_DATADIR ; set DATA PORT as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
 
     return                  ; false: back to loop
 
@@ -482,6 +493,8 @@ getPLDData:
 readToken:
     ; banksel uc_fpga_DATA
 
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
     movlw   0x86            ; DAQ cmd, token[11:8]  
     movwf   uc_fpga_DATA    ; put WREG as register address on data port
     bsf     uc_fpga_CTL     ; put CTL hi
@@ -490,11 +503,11 @@ readToken:
     bcf     uc_fpga_CTL     ; CTL back low
 
     setf    uc_fpga_DATADIR ; set PORT D as input
-    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     bsf     uc_fpga_DS      ; DS hi
     movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
-    bsf     uc_fpga_DIR     ; DIR hi
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA 
     clrf    uc_fpga_DATADIR ; Data PORT as output again
 
     movlw   0x85            ; token[7:0]
@@ -505,12 +518,15 @@ readToken:
     bcf     uc_fpga_CTL     ; CTL back low
 
     setf    uc_fpga_DATADIR ; set DATA PORT as input
-    bcf     uc_fpga_DIR     ; DIR low
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     bsf     uc_fpga_DS      ; DS hi
     movff   uc_fpga_DATA, POSTDEC0 ; move DATA PORT data to CAN TX buffer
     bcf     uc_fpga_DS      ; DS lo
-    bsf     uc_fpga_DIR     ; DIR hi
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
     clrf    uc_fpga_DATADIR ; PORT D as output again
+
+    ; send a DATA packet, command = 1, msgID = 0x401, Data Length = 4
+	mCANSendData 4
 
     ; now write to register 0x87 to advance the TCD FIFO
     movlw   0x87   
@@ -522,9 +538,9 @@ readToken:
 
     bsf     uc_fpga_DS      ; DS hi
     bcf     uc_fpga_DS      ; DS lo
+    setf    uc_fpga_DATADIR ; set PORT D as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
 
-    ; send a DATA packet, command = 1, msgID = 0x401, Data Length = 4
-	mCANSendData 4
     return
 
 ;******************************************************************************
