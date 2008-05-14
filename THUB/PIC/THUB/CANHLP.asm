@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.21 2008-04-18 19:12:30 jschamba Exp $
+; $Id: CANHLP.asm,v 1.22 2008-05-14 19:03:37 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -550,7 +550,7 @@ is_it_reprogram64:
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x25
-    bnz     is_it_resetToNewProgram
+    bnz     is_it_writeEEPROM
     lfsr    FSR0, RxData+1
     movf    RxDtLngth,W
     decfsz  WREG,W
@@ -568,40 +568,50 @@ programMCU:
     mCANSendWrResponse_IDL   RxDtLngth
     return
 
-is_it_resetToNewProgram:
+is_it_writeEEPROM:
     ;**************************************************************
     ;****** Set EEPROM and Reset **********************************
     ;* msgID = 0x402
     ;* RxData[0] = 0x26
-    ;* RxData[1] = EEPROM data byte
+    ;* RxData[1] = EEPROM address low byte
+    ;* RxData[2] = EEPROM address high byte
+    ;* RxData[3] = EEPROM data byte
+    ;* RxData[4] = RESET Boolean (0xa5 = reset, all others: don't)
     ;*
     ;* Effect: set last location of EEPROM data to "EEPROM data 
     ;*           byte" and reset
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x26
-    bz      resetToNewProgram
+    bz      writeEEPROM
     call    unknown_message
     return
 
-resetToNewProgram:
-    setf    EEADR           ; Point to the last byte in EEPROM
-    setf    EEADRH
-    movff   RxData+1,EEDATA ; Boot mode control byte = RxData[1]
-    movlw   b'00000100'     ; Setup for EEData
+writeEEPROM:
+    movff   RxData+1, EEADR     ; EEPROM address low byte
+    movff   RxData+2, EEADRH    ; EEPROM address low byte
+    movff   RxData+3,EEDATA     ; EEPROM data byte = RxData[3]
+    movlw   b'00000100'     ; Enable writes to EEData
     movwf   EECON1
-    movlw   0x55            ; Unlock
+    movlw   0x55            ; Unlock with "magic sequence"
     movwf   EECON2
     movlw   0xAA
     movwf   EECON2
     bsf     EECON1, WR      ; Start the write
     nop
-    btfsc   EECON1, WR      ; Wait
+    btfsc   EECON1, WR      ; Wait for write to finish
     bra     $ - 2
 
     ; EEPROM is written, send a CAN writeResponse
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
+
+    movf    RxData+4,W        ; WREG = RxData[4]
+    sublw   0xA5
+    bz      resetToNewProgram
+    return
+
+resetToNewProgram:
     ; waste a little time
     banksel hlpCtr1
     movlw   0xff
