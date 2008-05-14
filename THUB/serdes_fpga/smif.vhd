@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.4 2008-01-25 14:34:30 jschamba Exp $
+-- $Id: smif.vhd,v 1.5 2008-05-14 19:10:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : serdes-master-if
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-14
--- Last update: 2008-01-24
+-- Last update: 2008-05-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_arith.ALL;
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.ALL;
 LIBRARY lpm;
@@ -38,7 +39,11 @@ ENTITY smif IS
       datain     : IN  std_logic_vector(11 DOWNTO 0);
       data_type  : IN  std_logic_vector(3 DOWNTO 0);
       serdes_out : OUT std_logic_vector(17 DOWNTO 0);
-      serdes_reg : OUT std_logic_vector(7 DOWNTO 0);
+      serdes_reg : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id0    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id1    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id2    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id3    : OUT std_logic_vector(6 DOWNTO 0);
       trigger    : OUT std_logic;
       areset     : IN  std_logic
 
@@ -47,6 +52,11 @@ END smif;
 
 
 ARCHITECTURE a OF smif IS
+
+  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(121, 7);  -- tray 121
+  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 77, 7);  -- tray 77
+  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 78, 7);  -- tray 78
+  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 79, 7);  -- tray 79
 
   TYPE State_type IS (State0, State1, State2, State3, State4, State7);
   SIGNAL state        : State_type;
@@ -61,12 +71,19 @@ BEGIN
   -- use the same 40 MHz clock to transmit and receive the
   -- smif data
   trg_sm : PROCESS (clk40mhz, areset) IS
+    VARIABLE reg_no : integer RANGE 0 TO 3 := 0;
+    
   BEGIN
     IF areset = '1' THEN                -- asynchronous reset (active high)
       state        <= State0;
       s_serdes_out <= (OTHERS => '0');
       serdes_reg   <= (OTHERS => '0');
       trigger      <= '0';
+      reg_no       := 0;
+      geo_id0      <= GEO_ID_CH0;
+      geo_id1      <= GEO_ID_CH1;
+      geo_id2      <= GEO_ID_CH2;
+      geo_id3      <= GEO_ID_CH3;
       
     ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- leading clock edge
       trigger <= '0';
@@ -116,7 +133,22 @@ BEGIN
         WHEN State4 =>
           -- latch the lowest 8 bits of the incoming data into
           -- "serdes_reg" (which has implied memory)
-          serdes_reg <= s_datain(7 DOWNTO 0);     -- implied memory
+          IF s_datain(7) = '0' THEN
+            serdes_reg <= s_datain(6 DOWNTO 0);     -- implied memory
+          ELSE
+            CASE reg_no IS
+              WHEN 0 =>
+                geo_id0 <= s_datain(6 DOWNTO 0);
+              WHEN 1 =>
+                geo_id1 <= s_datain(6 DOWNTO 0);
+              WHEN 2 =>
+                geo_id2 <= s_datain(6 DOWNTO 0);
+              WHEN OTHERS => 
+                geo_id3 <= s_datain(6 DOWNTO 0);
+            END CASE;
+            reg_no := reg_no + 1;
+          END IF;
+
           state      <= State7;
           
         -- *************** wait state *******************************
