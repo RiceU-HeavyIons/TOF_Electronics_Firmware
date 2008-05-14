@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.24 2008-05-12 21:09:40 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.25 2008-05-14 19:07:28 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -117,7 +117,11 @@ ARCHITECTURE a OF serdes_fpga IS
       datain     : IN  std_logic_vector(11 DOWNTO 0);
       data_type  : IN  std_logic_vector(3 DOWNTO 0);
       serdes_out : OUT std_logic_vector(17 DOWNTO 0);
-      serdes_reg : OUT std_logic_vector(7 DOWNTO 0);
+      serdes_reg : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id0    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id1    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id2    : OUT std_logic_vector(6 DOWNTO 0);
+      geo_id3    : OUT std_logic_vector(6 DOWNTO 0);
       trigger    : OUT std_logic;
       areset     : IN  std_logic);
   END COMPONENT smif;
@@ -262,7 +266,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch1_txd         : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_ch2_txd         : std_logic_vector(17 DOWNTO 0);
   SIGNAL s_ch3_txd         : std_logic_vector(17 DOWNTO 0);
-  SIGNAL s_serdes_reg      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_serdes_reg      : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_smif_trigger    : std_logic;
 
   SIGNAL s_ch0fifo_rdreq : std_logic;
@@ -286,6 +290,11 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_rxfifo_out : std_logic_vector(15 DOWNTO 0);
 
+  SIGNAL s_geo_id_ch0 : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id_ch1 : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id_ch2 : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_geo_id_ch3 : std_logic_vector(6 DOWNTO 0);
+  
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
@@ -365,8 +374,12 @@ BEGIN
     data_type  => s_smif_datatype,
     serdes_out => s_serdes_out,
     serdes_reg => s_serdes_reg,
+    geo_id0    => s_geo_id_ch0,
+    geo_id1    => s_geo_id_ch1,
+    geo_id2    => s_geo_id_ch2,
+    geo_id3    => s_geo_id_ch3,
     trigger    => s_smif_trigger,
-    areset     => '0');
+    areset     => m_all(1));
 
   -----------------------------------------------------------------------------
   -- Mictors
@@ -470,7 +483,7 @@ BEGIN
   mux_inst : mux18x2 PORT MAP (
     data0x => serdes_tst_data,          -- test data
     data1x => s_serdes_out,             -- "real" data
-    sel    => s_serdes_reg(7),
+    sel    => s_serdes_reg(4),
     result => serdes_data);             -- goes to poweron sm first to be muxed
                                         -- with poweron data
 
@@ -594,7 +607,7 @@ BEGIN
       fifo_aclr  => s_ch0fifo_aclr,
       ch_rclk    => ch0_rclk,
       ch_rxd     => ch0_rxd,
-      geo_id     => GEO_ID_CH0,
+      geo_id     => s_geo_id_ch0,
       dataout    => s_ch0fifo_q,
       fifo_empty => s_ch0fifo_empty);
 
@@ -610,7 +623,7 @@ BEGIN
       fifo_aclr  => s_ch1fifo_aclr,
       ch_rclk    => ch1_rclk,
       ch_rxd     => ch1_rxd,
-      geo_id     => GEO_ID_CH1,
+      geo_id     => s_geo_id_ch1,
       dataout    => s_ch1fifo_q,
       fifo_empty => s_ch1fifo_empty);
 
@@ -626,7 +639,7 @@ BEGIN
       fifo_aclr  => s_ch2fifo_aclr,
       ch_rclk    => ch2_rclk,
       ch_rxd     => ch2_rxd,
-      geo_id     => GEO_ID_CH2,
+      geo_id     => s_geo_id_ch2,
       dataout    => s_ch2fifo_q,
       fifo_empty => s_ch2fifo_empty);
 
@@ -642,7 +655,7 @@ BEGIN
       fifo_aclr  => s_ch3fifo_aclr,
       ch_rclk    => ch3_rclk,
       ch_rxd     => ch3_rxd,
-      geo_id     => GEO_ID_CH3,
+      geo_id     => s_geo_id_ch3,
       dataout    => s_ch3fifo_q,
       fifo_empty => s_ch3fifo_empty);
 
