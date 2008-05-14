@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.31 2008-04-30 15:26:30 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.32 2008-05-14 20:45:24 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-04-30
+-- Last update: 2008-05-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -921,9 +921,11 @@ BEGIN
   s_uc_i  <= uc_fpga_lo;
 
   -- bi-directional signals
+  -- DIR = 0: uc -> FPGA
+  -- DIR = 1: FPGA -> uc
   uc_bus : PROCESS (s_ucDIR, s_uc_o) IS
   BEGIN  -- PROCESS uc_bus
-    IF (s_ucDIR = '1') THEN
+    IF (s_ucDIR = '0') THEN
       uc_fpga_lo <= (OTHERS => 'Z');
     ELSE
       uc_fpga_lo <= s_uc_o;
