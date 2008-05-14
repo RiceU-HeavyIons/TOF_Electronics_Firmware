@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.5 2008-01-03 17:41:14 jschamba Exp $
+-- $Id: cpld.vhd,v 1.6 2008-05-14 19:14:41 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2008-01-03
+-- Last update: 2008-05-13
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -38,8 +38,11 @@ ENTITY cpld IS
       tdo_fp                 : IN  std_logic;  -- JTAG Input
       -- buses to micro and master FPGA
       cpld                   : OUT std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus
-      uc_cpld                : IN  std_logic_vector(9 DOWNTO 1);  -- CPLD/Micro bus
       uc_cpld0               : OUT std_logic;  -- CPLD/Micro bus
+      uc_cpld                : IN  std_logic_vector(6 DOWNTO 1);  -- CPLD/Micro bus
+      uc_cpld7               : OUT std_logic;  -- CPLD/Micro bus
+      uc_cpld8               : IN  std_logic;  -- CPLD/Micro bus
+      uc_cpld9               : IN  std_logic;  -- CPLD/Micro bus
       uc_cpld10              : OUT std_logic;  -- CPLD/Micro bus
       -- switch, button and LEDs
       cpld_sw                : IN  std_logic_vector(3 DOWNTO 0);  -- switch
@@ -78,6 +81,7 @@ ARCHITECTURE a OF cpld IS
   SIGNAL uc_tdi      : std_logic;
   SIGNAL uc_tms      : std_logic;
   SIGNAL s_crc_error : std_logic;
+  SIGNAL s_conf_done : std_logic;
   SIGNAL count       : integer RANGE 0 TO 9;
   
 BEGIN
@@ -97,9 +101,10 @@ BEGIN
   uc_nce     <= uc_cpld(4);
   uc_nconfig <= uc_cpld(5);
   as_enable  <= uc_cpld(6);
-  s_ctrClk   <= uc_cpld(8);
-  s_ctrRst   <= uc_cpld(9);
+  s_ctrClk   <= uc_cpld8;
+  s_ctrRst   <= uc_cpld9;
   uc_cpld10  <= s_crc_error;            -- output
+  uc_cpld7   <= s_conf_done;             -- output
 
   -- counter to select the FPGA to operate ON
   -- increased by pulsing uc_cpld(8) (s_ctrClk)
@@ -128,6 +133,7 @@ BEGIN
   -- output signals
   uc_data     <= tdo_fp WHEN count = 9 ELSE datao(count);
   s_crc_error <= '0' WHEN count = 9    ELSE crc_error(count);
+  s_conf_done <= '0' WHEN count = 9    ELSE conf_done(count);
 
   -- SERDES FPGAs A,B,C,D (1,2,3,4) are on nce and nconfig
   -- SERDES FPGAs E,F,G,H (5,6,7,8) are on nce_2 and nconfig_2
