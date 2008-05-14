@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.6 2008-01-14 20:52:16 jschamba Exp $
+-- $Id: uc_fpga_interface.vhd,v 1.7 2008-05-14 20:45:43 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-06-27
--- Last update: 2008-01-14
+-- Last update: 2008-05-14
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -70,8 +70,8 @@ ARCHITECTURE SYN OF uc_fpga_interface IS
 
 BEGIN  -- ARCHITECTURE SYN
 
-  is_address <= (ctl = '1') AND (ds = '1') AND (dir = '1');
-  is_data_w  <= (ctl = '0') AND (ds = '1') AND (dir = '1');
+  is_address <= (ctl = '1') AND (ds = '1') AND (dir = '0');
+  is_data_w  <= (ctl = '0') AND (ds = '1') AND (dir = '0');
 
   reg_addr  <= addr(2 DOWNTO 0);
   sreg_addr <= addr(3 DOWNTO 0);
