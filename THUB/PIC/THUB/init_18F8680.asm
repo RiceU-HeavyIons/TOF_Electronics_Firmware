@@ -1,4 +1,4 @@
-; $Id: init_18F8680.asm,v 1.6 2008-05-14 19:01:54 jschamba Exp $
+; $Id: init_18F8680.asm,v 1.7 2008-05-14 20:47:45 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      init_18F4680.asm                                          *
@@ -161,14 +161,14 @@ InitMicro:
 
 ; make sure port H is cleared first, so we don't accidentally write data
 ; port H is 8 bits wide
-; PORTH bit#:   0 : UC_FPGA0	(o)
-;               1 : UC_FPGA1	(o)
-;               2 : UC_FPGA2	(o)
-;               3 : UC_FPGA3	(o)
-;               4 : UC_FPGA4	(o)
-;               5 : UC_FPGA5	(o)
-;               6 : UC_FPGA6	(o)
-;               7 : UC_FPGA7	(o)
+; PORTH bit#:   0 : UC_FPGA0	(i)
+;               1 : UC_FPGA1	(i)
+;               2 : UC_FPGA2	(i)
+;               3 : UC_FPGA3	(i)
+;               4 : UC_FPGA4	(i)
+;               5 : UC_FPGA5	(i)
+;               6 : UC_FPGA6	(i)
+;               7 : UC_FPGA7	(i)
 ;
 ; This port is used as a bi-directional data port
 ; between UC and FPGA. Set the port as output to
@@ -176,7 +176,7 @@ InitMicro:
 
 	clrf    PORTH   ; clear output data latches
 
-	clrf    TRISH   ; all outputs initially
+	setf    TRISH   ; all inputs initially
 
 ; port F is 8 bits wide
 ; PORTF bit#:   0 : UC_FPGA8	(o) (DS)
@@ -188,7 +188,7 @@ InitMicro:
 ;               6 : TP348   	(i)
 ;               7 : TP347   	(i)
 
-    movlw   0x04    ; DIR = 1  
+    movlw   0x04    ; initially DIR = 1: FPGA -> uc  
     movwf   PORTF
 
     movlw   0xF8
