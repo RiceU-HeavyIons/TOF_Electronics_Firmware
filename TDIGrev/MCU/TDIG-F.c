@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.4 2008-04-22 19:19:18 jschamba Exp $
+// $Id: TDIG-F.c,v 1.5 2008-05-27 15:59:42 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -254,7 +254,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'L'    //JS-11L: 0x11 0x4C
+#define FIRMWARE_ID_0 'M'    //JS-11M: 0x11 0x4D
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -637,7 +637,7 @@ main()
 
         // Fix up Parity bit in working initialization
 		insert_parity (&hptdc_setup[j][0], J_HPTDC_SETUPBITS);
-        write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)&readback_setup);
+        write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)readback_setup);
         // check for match between working and read-back initialization
         maskoff = 0xFF;
         for (i=0; i<J_HPTDC_SETUPBYTES;i++){ // checking readback
@@ -652,8 +652,7 @@ main()
             } // end if got a mismatch
         } // end loop over checking readback
         // LED 4 SET if there was an error
-        memcpy (&hptdc_control[j][0], &enable_final[j-1][0], J_HPTDC_CONTROLBYTES);
-        reset_hptdc (j, &hptdc_control[j][0]);                    // JTAG the hptdc reset sequence
+        reset_hptdc (j, &enable_final[j-1][0]);                    // JTAG the hptdc reset sequence
     } // end loop over all NBR_HPTDCS(3)
 
 // If no error, turn on LED 6
@@ -834,7 +833,7 @@ main()
                                         hptdc_setup[j][5] |= ((board_posn&0x3)<<2) | ((j-1)&0x3); // compute and insert new value
                                         // Fix up Parity bit in working initialization
                                         insert_parity (&hptdc_setup[j][0], J_HPTDC_SETUPBITS);
-                                        write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)&readback_setup);
+                                        write_hptdc_setup (j, (unsigned char *)&hptdc_setup[j][0], (unsigned char *)readback_setup);
                                         // check for match between working and read-back initialization
                                         maskoff = 0xFF;
                                         for (l=0; l<J_HPTDC_SETUPBYTES;l++){ // checking readback
@@ -849,7 +848,7 @@ main()
                                             } // end if got a mismatch
                                         } // end loop over checking readback
                                         // LED 4 SET if there was an error
-                                        reset_hptdc (j, &hptdc_control[j][0]);                    // JTAG the hptdc reset sequence
+                                        reset_hptdc (j, &enable_final[j-1][0]);                    // JTAG the hptdc reset sequence
                                     } // end loop over one or all HPTDCs
                                     // restore Test header access to JTAG
                                     // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
@@ -875,7 +874,7 @@ main()
                             } // end if one or all 3 HPTDCs.
                             for (j=i; j<=k; j++) {   // put the data into an HPTDC
                                select_hptdc(JTAG_MCU, j);        // select MCU controlling which HPTDC
-                               reset_hptdc (j, &hptdc_control[j][0]);  // JTAG the hptdc reset sequence
+                               reset_hptdc (j, &enable_final[j-1][0]);  // JTAG the hptdc reset sequence
                             } // end loop over one or all HPTDCs
                             // restore Test header access to JTAG
                             // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
