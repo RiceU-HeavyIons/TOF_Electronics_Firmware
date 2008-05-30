@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.2 2008-01-14 20:53:47 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.3 2008-05-30 19:44:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-01-14
+-- Last update: 2008-05-29
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -120,7 +120,7 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk             => ch_rclk,
+      wrclk             => NOT ch_rclk,
       rdreq             => s_fifo_rdreq,
       aclr              => fifo_aclr,
       rdclk             => clk40mhz,
