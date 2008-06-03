@@ -516,3 +516,4 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch0_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch1_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch2_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch3_lock_n
+set_global_assignment -name SMART_RECOMPILE ON
