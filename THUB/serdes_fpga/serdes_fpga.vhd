@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.26 2008-06-02 20:40:02 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.27 2008-06-03 16:46:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-06-02
+-- Last update: 2008-06-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -193,7 +193,6 @@ ARCHITECTURE a OF serdes_fpga IS
     PORT (
       areset_n   : IN  std_logic;
       clk40mhz   : IN  std_logic;
-      clk80mhz   : IN  std_logic;
       rdreq_in   : IN  std_logic;
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
@@ -215,6 +214,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL globalclk         : std_logic;
   SIGNAL pll_20mhz         : std_logic;
   SIGNAL pll_80mhz         : std_logic;
+  SIGNAL s_pll_80mhz       : std_logic;
   SIGNAL pll_160mhz        : std_logic;  -- PLL 4x output
   SIGNAL pll_160mhz_p      : std_logic;  -- PLL 4x output with phase shift
   SIGNAL clk20mhz          : std_logic;
@@ -284,6 +284,10 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch3fifo_aclr  : std_logic;
   SIGNAL s_ch3fifo_empty : std_logic;
   SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch0_rclk      : std_logic;
+  SIGNAL s_ch1_rclk      : std_logic;
+  SIGNAL s_ch2_rclk      : std_logic;
+  SIGNAL s_ch3_rclk      : std_logic;
 
   SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
@@ -326,11 +330,17 @@ BEGIN
     inclk0 => clk,
     c0     => pll_160mhz,
     c1     => pll_160mhz_p,
-    c2     => pll_80mhz,
+    c2     => s_pll_80mhz,
     locked => pll_locked);
 
   global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
   global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
+  global_clk_buffer3 : global PORT MAP (a_in => s_pll_80mhz, a_out => pll_80mhz);
+
+  ch0_clk_buffer : global PORT MAP (a_in => ch0_rclk, a_out => s_ch0_rclk);
+  ch1_clk_buffer : global PORT MAP (a_in => ch1_rclk, a_out => s_ch1_rclk);
+  ch2_clk_buffer : global PORT MAP (a_in => ch2_rclk, a_out => s_ch2_rclk);
+  ch3_clk_buffer : global PORT MAP (a_in => ch3_rclk, a_out => s_ch3_rclk);
 
   serdes_clk <= clk20mhz;
   -- serdes_clk <= '0';
@@ -533,7 +543,7 @@ BEGIN
       wrclk   => serdes_clk,
       rdreq   => s_txfifo_rdreq,
       aclr    => s_txfifo_aclr,
-      rdclk   => ch0_rclk,
+      rdclk   => s_ch0_rclk,
       wrreq   => serdes_tst_data(17),
       data    => serdes_tst_data(16 DOWNTO 0),
       rdempty => s_txfifo_empty,
@@ -557,7 +567,7 @@ BEGIN
     PORT MAP (
       rdreq => s_rxfifo_rdreq,
       aclr  => s_rxfifo_aclr,
-      clock => ch0_rclk,
+      clock => s_ch0_rclk,
       wrreq => s_rxfifo_wrreq,
       data  => ch0_rxd(16 DOWNTO 0),
       empty => s_rxfifo_empty,
@@ -601,10 +611,9 @@ BEGIN
     PORT MAP (
       areset_n   => s_ch0_locked,
       clk40mhz   => globalclk,
-      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch0fifo_rdreq,
       fifo_aclr  => s_ch0fifo_aclr,
-      ch_rclk    => ch0_rclk,
+      ch_rclk    => s_ch0_rclk,
       ch_rxd     => ch0_rxd,
       geo_id     => s_geo_id_ch0,
       dataout    => s_ch0fifo_q,
@@ -617,10 +626,9 @@ BEGIN
     PORT MAP (
       areset_n   => s_ch1_locked,
       clk40mhz   => globalclk,
-      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch1fifo_rdreq,
       fifo_aclr  => s_ch1fifo_aclr,
-      ch_rclk    => ch1_rclk,
+      ch_rclk    => s_ch1_rclk,
       ch_rxd     => ch1_rxd,
       geo_id     => s_geo_id_ch1,
       dataout    => s_ch1fifo_q,
@@ -633,10 +641,9 @@ BEGIN
     PORT MAP (
       areset_n   => s_ch2_locked,
       clk40mhz   => globalclk,
-      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch2fifo_rdreq,
       fifo_aclr  => s_ch2fifo_aclr,
-      ch_rclk    => ch2_rclk,
+      ch_rclk    => s_ch2_rclk,
       ch_rxd     => ch2_rxd,
       geo_id     => s_geo_id_ch2,
       dataout    => s_ch2fifo_q,
@@ -649,10 +656,9 @@ BEGIN
     PORT MAP (
       areset_n   => s_ch3_locked,
       clk40mhz   => globalclk,
-      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch3fifo_rdreq,
       fifo_aclr  => s_ch3fifo_aclr,
-      ch_rclk    => ch3_rclk,
+      ch_rclk    => s_ch3_rclk,
       ch_rxd     => ch3_rxd,
       geo_id     => s_geo_id_ch3,
       dataout    => s_ch3fifo_q,
