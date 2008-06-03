@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.27 2008-06-03 16:46:48 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.28 2008-06-03 21:38:28 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -39,7 +39,6 @@ ENTITY serdes_fpga IS
       mt                                                 : OUT   std_logic_vector(31 DOWNTO 0);
       mt_clk                                             : OUT   std_logic;
       -- ***** bus to main fpga *****
---      ma                                                 : INOUT std_logic_vector(35 DOWNTO 0);
       maO                                                : OUT   std_logic_vector(16 DOWNTO 0);
       maI                                                : IN    std_logic_vector(35 DOWNTO 17);
       m_all                                              : IN    std_logic_vector(3 DOWNTO 0);
@@ -80,19 +79,6 @@ END serdes_fpga;
 
 
 ARCHITECTURE a OF serdes_fpga IS
-
-  -- These are for Serdes A in Run 8
-  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(121, 7);  -- tray 121
-  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 77, 7);  -- tray 77
-  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 78, 7);  -- tray 78
-  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR( 79, 7);  -- tray 79
-
-  -- These are for  Serdes B in Run 8
---  CONSTANT GEO_ID_CH0 : std_logic_vector := CONV_STD_LOGIC_VECTOR(80, 7);  -- tray 80
---  CONSTANT GEO_ID_CH1 : std_logic_vector := CONV_STD_LOGIC_VECTOR(76, 7);  -- tray 76
---  CONSTANT GEO_ID_CH2 : std_logic_vector := CONV_STD_LOGIC_VECTOR(82, 7);  -- tray 82
---  CONSTANT GEO_ID_CH3 : std_logic_vector := CONV_STD_LOGIC_VECTOR(83, 7);  -- tray 83
-
 
   COMPONENT serdes_poweron IS
     PORT (
@@ -218,7 +204,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL pll_160mhz        : std_logic;  -- PLL 4x output
   SIGNAL pll_160mhz_p      : std_logic;  -- PLL 4x output with phase shift
   SIGNAL clk20mhz          : std_logic;
-  SIGNAL div2out           : std_logic;
+  SIGNAL div2out           : std_logic := '0';
   SIGNAL serdes_clk        : std_logic;
   SIGNAL pll_locked        : std_logic;
   SIGNAL counter_q         : std_logic_vector (16 DOWNTO 0);
@@ -297,13 +283,11 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_geo_id_ch1 : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_geo_id_ch2 : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_geo_id_ch3 : std_logic_vector(6 DOWNTO 0);
-  
+
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE Geo_state_type IS
-    (g_data,
-     g_geo);
+  TYPE Geo_state_type IS (g_data, g_geo);
   SIGNAL geoState0 : Geo_state_type;
   SIGNAL geoState1 : Geo_state_type;
   SIGNAL geoState2 : Geo_state_type;
@@ -314,15 +298,14 @@ BEGIN
   -----------------------------------------------------------------------------
   -- Clocks and resets
   -----------------------------------------------------------------------------
-  areset_n <= '1';  -- asynchronous global reset, active low
 
   -- create 20 MHz clock with TFF:
-  div2 : TFF PORT MAP (
-    t    => '1',
-    clk  => globalclk,
-    clrn => '1',
-    prn  => '1',
-    q    => div2out);
+  div2: PROCESS (globalclk) IS
+  BEGIN
+    IF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
+      div2out <= NOT div2out;
+    END IF;
+  END PROCESS div2;
 
   -- PLL
   pll_instance : pll PORT MAP (
@@ -343,8 +326,8 @@ BEGIN
   ch3_clk_buffer : global PORT MAP (a_in => ch3_rclk, a_out => s_ch3_rclk);
 
   serdes_clk <= clk20mhz;
-  -- serdes_clk <= '0';
-  -- serdes_clk <= globalclk;
+  -- serdes_clk <= '0'; -- turned off
+  -- serdes_clk <= globalclk; -- 40MHz
 
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
@@ -406,34 +389,12 @@ BEGIN
 --  mt(30 DOWNTO 24) <= s_errorctr(6 DOWNTO 0);
 --  mt(31)           <= s_ch0_locked;
 
--- mt_clk <= globalclk;
+--  mt_clk <= globalclk;
 --  mt_clk <= serdes_clk;
 --  mt_clk <= pll_80mhz;
 
   mt     <= (OTHERS => '0');
   mt_clk <= '0';
-
-  -----------------------------------------------------------------------------
-  -- SRAM
-  -----------------------------------------------------------------------------
-  -- SRAM defaults
-  sra_addr <= (OTHERS => '0');
-  srb_addr <= (OTHERS => '0');
-  sra_tck  <= '0';
-  srb_tck  <= '0';
-  sra_rw   <= '1';
-  srb_rw   <= '1';
-  sra_oe_n <= '0';
-  srb_oe_n <= '0';
-  sra_bw   <= (OTHERS => '0');
-  srb_bw   <= (OTHERS => '0');
-  sra_adv  <= '0';
-  srb_adv  <= '0';
-  sra_clk  <= pll_160mhz;
-  srb_clk  <= pll_160mhz;
-
-  sra_d <= (OTHERS => 'Z');
-  srb_d <= (OTHERS => 'Z');
 
   -----------------------------------------------------------------------------
   -- SERDES defaults
@@ -470,11 +431,7 @@ BEGIN
   ch3_txd     <= s_ch3_txd;
 
 
-  -- tx clocks and rx refclocks
-  -- all of these clocks come directly to the SERDES
-  -- daughtercard (differentially), so just put GND ON
-  -- those lines if not used.
-  -- when resistor is changed to this path, assign proper clock here:
+  -- Serdes tx clocks and rx refclocks
   ch0_tck    <= serdes_clk;
   ch1_tck    <= serdes_clk;
   ch2_tck    <= serdes_clk;
@@ -496,110 +453,9 @@ BEGIN
     result => serdes_data);             -- goes to poweron sm first to be muxed
                                         -- with poweron data
 
+  -- test data is currently commented out, so just set it to 0
+  serdes_tst_data <= (OTHERS => '0');
 
-  -- Counter as data input to channel 0 TX
---  counter17b : lpm_counter GENERIC MAP (
---    LPM_WIDTH     => 17,
---    LPM_TYPE      => "LPM_COUNTER",
---    LPM_DIRECTION => "UP")
---    PORT MAP (
---      clock  => serdes_clk,
---      q      => counter_q,
---      clk_en => '1',
---      aclr   => s_ctr_aclr);
-
-  -- (L)inear (F)eedback (S)hift (R)egister as data generator (17 bit pseudo random numbers)
-  datagen : LFSR
-    PORT MAP (
-      RESETn => '1',
-      clock  => serdes_clk,
-      d      => lsfr_d);
-
-  -- SERDES data:
-  s_send_data <= s_ch0_locked AND s_serdes_reg(6);  -- control sending of data with serdes register bit 6
-
--- serdes_tst_data(16 DOWNTO 0) <= counter_q;
-  serdes_tst_data(15 DOWNTO 0) <= lsfr_d(15 DOWNTO 0);
-  serdes_tst_data(16)          <= lsfr_d(16) AND s_serdes_reg(6);
-  serdes_tst_data(17)          <= s_send_data;
-
-
-  -- test feature:
-  -- latch tx data into a dual clock 17bit fifo for later comparison
-  txfifo : dcfifo
-    GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_hint               => "MAXIMIZE_SPEED=5",
-      lpm_numwords           => 16,
-      lpm_showahead          => "ON",
-      lpm_type               => "dcfifo",
-      lpm_width              => 17,
-      lpm_widthu             => 4,
-      overflow_checking      => "ON",
-      rdsync_delaypipe       => 4,
-      underflow_checking     => "ON",
-      wrsync_delaypipe       => 4)
-    PORT MAP (
-      wrclk   => serdes_clk,
-      rdreq   => s_txfifo_rdreq,
-      aclr    => s_txfifo_aclr,
-      rdclk   => s_ch0_rclk,
-      wrreq   => serdes_tst_data(17),
-      data    => serdes_tst_data(16 DOWNTO 0),
-      rdempty => s_txfifo_empty,
-      q       => s_txfifo_q
-      );
-
-  -- latch rx data into a single clock 17bit fifo for later comparison
-  rxfifo : scfifo
-    GENERIC MAP (
-      add_ram_output_register => "ON",
-      intended_device_family  => "Cyclone II",
-      lpm_numwords            => 16,
-      lpm_showahead           => "ON",
-      lpm_type                => "scfifo",
-      lpm_width               => 17,
-      lpm_widthu              => 4,
-      overflow_checking       => "ON",
-      underflow_checking      => "ON",
-      use_eab                 => "ON"
-      )
-    PORT MAP (
-      rdreq => s_rxfifo_rdreq,
-      aclr  => s_rxfifo_aclr,
-      clock => s_ch0_rclk,
-      wrreq => s_rxfifo_wrreq,
-      data  => ch0_rxd(16 DOWNTO 0),
-      empty => s_rxfifo_empty,
-      q     => s_rxfifo_q
-      );
-
-  s_rxfifo_wrreq <= ch0_rxd(17) AND s_ch0_locked;
-  s_txfifo_aclr  <= NOT s_ch0_locked;
-  s_rxfifo_aclr  <= NOT s_ch0_locked;
---  s_ctr_aclr    <= NOT s_ch0_locked;
-
-  -- now compare
-  data_compare : PROCESS (serdes_clk, areset_n) IS
-    VARIABLE b_ch0valid : boolean := false;
-  BEGIN
-    IF areset_n = '0' THEN              -- asynchronous reset (active low)
-      s_errorctr     <= (OTHERS => '0');
-      s_txfifo_rdreq <= '0';
-      s_rxfifo_rdreq <= '0';
-      
-    ELSIF serdes_clk'event AND serdes_clk = '0' THEN  -- trailing clock edge
-      s_txfifo_rdreq <= '0';
-      s_rxfifo_rdreq <= '0';
-      IF ((s_rxfifo_empty = '0') AND (s_txfifo_empty = '0')) THEN
-        IF (s_rxfifo_q /= s_txfifo_q) THEN
-          s_errorctr <= s_errorctr + 1;
-        END IF;
-        s_txfifo_rdreq <= '1';
-        s_rxfifo_rdreq <= '1';
-      END IF;
-    END IF;
-  END PROCESS data_compare;
 
   -----------------------------------------------------------------------------
   -- Rx FIFOs
@@ -770,6 +626,24 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SRAM control
   -----------------------------------------------------------------------------
+  -- SRAM defaults
+  sra_addr <= (OTHERS => '0');
+  srb_addr <= (OTHERS => '0');
+  sra_tck  <= '0';
+  srb_tck  <= '0';
+  sra_rw   <= '1';
+  srb_rw   <= '1';
+  sra_oe_n <= '0';
+  srb_oe_n <= '0';
+  sra_bw   <= (OTHERS => '0');
+  srb_bw   <= (OTHERS => '0');
+  sra_adv  <= '0';
+  srb_adv  <= '0';
+  sra_clk  <= pll_160mhz;
+  srb_clk  <= pll_160mhz;
+
+  sra_d <= (OTHERS => 'Z');
+  srb_d <= (OTHERS => 'Z');
 
 --  zbt_ctrl_top_inst1 : zbt_ctrl_top
 --    PORT MAP (
@@ -835,5 +709,117 @@ BEGIN
 --      END CASE;
 --    END IF;
 --  END PROCESS sram_sm;
+
+
+
+  -----------------------------------------------------------------------------
+  -- SERDES test utilities
+  -----------------------------------------------------------------------------
+
+  -- Counter as data input to channel 0 TX
+--  counter17b : lpm_counter GENERIC MAP (
+--    LPM_WIDTH     => 17,
+--    LPM_TYPE      => "LPM_COUNTER",
+--    LPM_DIRECTION => "UP")
+--    PORT MAP (
+--      clock  => serdes_clk,
+--      q      => counter_q,
+--      clk_en => '1',
+--      aclr   => s_ctr_aclr);
+
+  -- (L)inear (F)eedback (S)hift (R)egister as data generator (17 bit pseudo random numbers)
+--  datagen : LFSR
+--    PORT MAP (
+--      RESETn => '1',
+--      clock  => serdes_clk,
+--      d      => lsfr_d);
+
+  -- SERDES data:
+--  s_send_data <= s_ch0_locked AND s_serdes_reg(6);  -- control sending of data with serdes register bit 6
+
+-- serdes_tst_data(16 DOWNTO 0) <= counter_q;
+--  serdes_tst_data(15 DOWNTO 0) <= lsfr_d(15 DOWNTO 0);
+--  serdes_tst_data(16)          <= lsfr_d(16) AND s_serdes_reg(6);
+--  serdes_tst_data(17)          <= s_send_data;
+
+
+  -- test feature:
+  -- latch tx data into a dual clock 17bit fifo for later comparison
+--  txfifo : dcfifo
+--    GENERIC MAP (
+--      intended_device_family => "Cyclone II",
+--      lpm_hint               => "MAXIMIZE_SPEED=5",
+--      lpm_numwords           => 16,
+--      lpm_showahead          => "ON",
+--      lpm_type               => "dcfifo",
+--      lpm_width              => 17,
+--      lpm_widthu             => 4,
+--      overflow_checking      => "ON",
+--      rdsync_delaypipe       => 4,
+--      underflow_checking     => "ON",
+--      wrsync_delaypipe       => 4)
+--    PORT MAP (
+--      wrclk   => serdes_clk,
+--      rdreq   => s_txfifo_rdreq,
+--      aclr    => s_txfifo_aclr,
+--      rdclk   => s_ch0_rclk,
+--      wrreq   => serdes_tst_data(17),
+--      data    => serdes_tst_data(16 DOWNTO 0),
+--      rdempty => s_txfifo_empty,
+--      q       => s_txfifo_q
+--      );
+
+  -- latch rx data into a single clock 17bit fifo for later comparison
+--  rxfifo : scfifo
+--    GENERIC MAP (
+--      add_ram_output_register => "ON",
+--      intended_device_family  => "Cyclone II",
+--      lpm_numwords            => 16,
+--      lpm_showahead           => "ON",
+--      lpm_type                => "scfifo",
+--      lpm_width               => 17,
+--      lpm_widthu              => 4,
+--      overflow_checking       => "ON",
+--      underflow_checking      => "ON",
+--      use_eab                 => "ON"
+--      )
+--    PORT MAP (
+--      rdreq => s_rxfifo_rdreq,
+--      aclr  => s_rxfifo_aclr,
+--      clock => s_ch0_rclk,
+--      wrreq => s_rxfifo_wrreq,
+--      data  => ch0_rxd(16 DOWNTO 0),
+--      empty => s_rxfifo_empty,
+--      q     => s_rxfifo_q
+--      );
+
+--  s_rxfifo_wrreq <= ch0_rxd(17) AND s_ch0_locked;
+--  s_txfifo_aclr  <= NOT s_ch0_locked;
+--  s_rxfifo_aclr  <= NOT s_ch0_locked;
+
+--  s_ctr_aclr    <= NOT s_ch0_locked;
+
+  -- now compare
+--  areset_n <= '1';  -- asynchronous global reset, active low
+--  data_compare : PROCESS (serdes_clk, areset_n) IS
+--    VARIABLE b_ch0valid : boolean := false;
+--  BEGIN
+--    IF areset_n = '0' THEN              -- asynchronous reset (active low)
+--      s_errorctr     <= (OTHERS => '0');
+--      s_txfifo_rdreq <= '0';
+--      s_rxfifo_rdreq <= '0';
+
+--    ELSIF serdes_clk'event AND serdes_clk = '0' THEN  -- trailing clock edge
+--      s_txfifo_rdreq <= '0';
+--      s_rxfifo_rdreq <= '0';
+--      IF ((s_rxfifo_empty = '0') AND (s_txfifo_empty = '0')) THEN
+--        IF (s_rxfifo_q /= s_txfifo_q) THEN
+--          s_errorctr <= s_errorctr + 1;
+--        END IF;
+--        s_txfifo_rdreq <= '1';
+--        s_rxfifo_rdreq <= '1';
+--      END IF;
+--    END IF;
+--  END PROCESS data_compare;
 
 END a;
