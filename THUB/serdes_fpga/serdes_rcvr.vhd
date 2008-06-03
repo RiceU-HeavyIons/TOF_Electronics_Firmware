@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.3 2008-05-30 19:44:06 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.4 2008-06-03 16:45:17 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-05-29
+-- Last update: 2008-06-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -36,7 +36,6 @@ ENTITY serdes_rcvr IS
     (
       areset_n   : IN  std_logic;       -- asynchronous reset, active low
       clk40mhz   : IN  std_logic;       -- Master clock
-      clk80mhz   : IN  std_logic;       -- from PLL
       rdreq_in   : IN  std_logic;
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
