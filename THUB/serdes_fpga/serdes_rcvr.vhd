@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.5 2008-06-04 21:42:56 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.6 2008-06-04 22:55:39 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -143,7 +143,13 @@ BEGIN
       
     ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- rising clock edge
       s_dff_q <= s_fifo_q;
-      fifo_empty   <= s_fifo_empty;
+      -- Only put out a valid fifo_empty, when rdreq is valid
+      -- otherwise, fifo_emtpy = '1'
+      IF s_fifo_rdreq = '1' THEN
+        fifo_empty   <= s_fifo_empty;
+      ELSE
+        fifo_empty <= '1';  
+      END IF;
     END IF;
   END PROCESS dff_inst;
 
