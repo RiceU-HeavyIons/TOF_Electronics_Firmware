@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.4 2008-06-03 16:45:17 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.5 2008-06-04 21:42:56 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-06-03
+-- Last update: 2008-06-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -62,6 +62,7 @@ ARCHITECTURE a OF serdes_rcvr IS
   SIGNAL s_latch    : std_logic;
   SIGNAL s_valid    : std_logic;
   SIGNAL s_shiftout : std_logic_vector (31 DOWNTO 0);
+  SIGNAL s_dff_q    : std_logic_vector(31 DOWNTO 0);
 
 
 BEGIN
@@ -131,14 +132,25 @@ BEGIN
       q                 => s_fifo_q
       );
 
-  fifo_empty   <= s_fifo_empty;
   s_fifo_rdreq <= rdreq_in;
 
+  -- register the outputs of the FIFO with the 40MHz clock
+  dff_inst: PROCESS (clk40mhz, areset_n) IS
+  BEGIN
+    IF areset_n = '0' THEN                   -- asynchronous reset (active low)
+      s_dff_q    <= (OTHERS => '0');
+      fifo_empty <= '1';
+      
+    ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- rising clock edge
+      s_dff_q <= s_fifo_q;
+      fifo_empty   <= s_fifo_empty;
+    END IF;
+  END PROCESS dff_inst;
 
   WITH clk40mhz SELECT
     dataout <=
-    s_fifo_q(15 DOWNTO 0)  WHEN '0',
-    s_fifo_q(31 DOWNTO 16) WHEN OTHERS;
+    s_dff_q(15 DOWNTO 0)  WHEN '0',
+    s_dff_q(31 DOWNTO 16) WHEN OTHERS;
   
 
 END a;
