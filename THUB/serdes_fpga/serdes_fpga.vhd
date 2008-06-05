@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.28 2008-06-03 21:38:28 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.29 2008-06-05 15:39:16 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-06-03
+-- Last update: 2008-06-05
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -300,14 +300,14 @@ BEGIN
   -----------------------------------------------------------------------------
 
   -- create 20 MHz clock with TFF:
-  div2: PROCESS (globalclk) IS
+  div2 : PROCESS (globalclk) IS
   BEGIN
     IF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
       div2out <= NOT div2out;
     END IF;
   END PROCESS div2;
 
-  -- PLL
+  -- PLL to generate 80MHz, 160MHz, and 160MHz phase shifted clocks
   pll_instance : pll PORT MAP (
     areset => '0',
     inclk0 => clk,
@@ -328,50 +328,6 @@ BEGIN
   serdes_clk <= clk20mhz;
   -- serdes_clk <= '0'; -- turned off
   -- serdes_clk <= globalclk; -- 40MHz
-
-  -----------------------------------------------------------------------------
-  -- SERDES-MAIN FPGA interface
-  -----------------------------------------------------------------------------
-  -- Serdes <-> Master Interface is implemented as 36 lines that are assigned
-  -- as follows:
-  -- maO[15..0]  : 16 bit (Serdes FIFO) data from Serdes to Master (output)
-  -- maO[16]     : FIFO empty (output)
-  -- maI[18..17] : Select one of 4 Serdes FIFOs (input)
-  -- maI[19]     : Read Enable to FIFO (input)
-  --
-  -- maI[31..20] : 12 bit data from Master to Serdes (input)
-  -- maI[35..32] : 4 bit data type from Master (input)
-  --
-  -- Currently, there are 4 "data types" from Master to Serdes defined:
-  --    "trigger", "bunch reset", "reset", and "load register"
-  -- each action is triggered on leading edge of 40MHz clock and is followed
-  -- by on clock of wait state (defined in smif.vhd)
-
---  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
-
-  -- SERDES (S) to MASTER (M) interface
-  maO(15 DOWNTO 0) <= s_smif_dataout;   -- 16bit data from S to M
-  maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
-  s_smif_select    <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
-  s_smif_rdenable  <= maI(19);          -- read enable from M to S for FIFO
-
-  -- MASTER (M) to SERDES (S) interface
-  s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
-  s_smif_datatype <= maI(35 DOWNTO 32);  -- 4bit data type indicator from M to S
-
-  smif_inst : smif PORT MAP (
-    clk40mhz   => globalclk,
-    clk20mhz   => clk20mhz,
-    datain     => s_smif_datain,
-    data_type  => s_smif_datatype,
-    serdes_out => s_serdes_out,
-    serdes_reg => s_serdes_reg,
-    geo_id0    => s_geo_id_ch0,
-    geo_id1    => s_geo_id_ch1,
-    geo_id2    => s_geo_id_ch2,
-    geo_id3    => s_geo_id_ch3,
-    trigger    => s_smif_trigger,
-    areset     => m_all(1));
 
   -----------------------------------------------------------------------------
   -- Mictors
@@ -395,6 +351,59 @@ BEGIN
 
   mt     <= (OTHERS => '0');
   mt_clk <= '0';
+
+  -----------------------------------------------------------------------------
+  -- SERDES-MAIN FPGA interface
+  -----------------------------------------------------------------------------
+  -- Serdes <-> Master Interface is implemented as 36 lines that are assigned
+  -- as follows:
+  -- maO[7..0]   : 8 bit (Serdes FIFO) data from Serdes DDIO to Master (output)
+  -- maO[8]      : latch signal, valid on the last two bytes of each 4 byte transmission
+  -- maO[9]      : '0'
+  -- ma[10]      : channel 2 "ready" (locked and synch'ed) signal
+  -- ma[11]      : channel 3 "ready" (locked and synch'ed) signal
+  -- ma[12]      : channel 0 "ready" (locked and synch'ed) signal
+  -- ma[13]      : channel 1 "ready" (locked and synch'ed) SIGNAL
+  -- (the above four signals are reordered so they correspond to the actual layout)
+  -- maO[14]     : '0'
+  -- maO[15]     : 80MHz clock for synchronization
+  -- maO[16]     : FIFO empty (output)
+  -- maI[18..17] : Select one of 4 Serdes FIFOs (input)
+  -- maI[19]     : Read Enable to FIFO (input)
+  --
+  -- maI[31..20] : 12 bit data from Master to Serdes (input)
+  -- maI[35..32] : 4 bit data type from Master (input)
+  --
+  -- Currently, there are 4 "data types" from Master to Serdes defined:
+  --    "trigger", "bunch reset", "reset", and "load register"
+  -- each action is triggered on leading edge of 40MHz clock and is followed
+  -- by one clock of wait state (defined in smif.vhd)
+
+--  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
+
+  -- SERDES (S) to MASTER (M) interface
+  maO(15 DOWNTO 0) <= s_smif_dataout;     -- 16bit data from S to M
+  maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
+  s_smif_select    <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
+  s_smif_rdenable  <= maI(19);            -- read enable from M to S for FIFO
+
+  -- MASTER (M) to SERDES (S) interface
+  s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
+  s_smif_datatype <= maI(35 DOWNTO 32);  -- 4bit data type indicator from M to S
+
+  smif_inst : smif PORT MAP (
+    clk40mhz   => globalclk,
+    clk20mhz   => clk20mhz,
+    datain     => s_smif_datain,
+    data_type  => s_smif_datatype,
+    serdes_out => s_serdes_out,
+    serdes_reg => s_serdes_reg,
+    geo_id0    => s_geo_id_ch0,
+    geo_id1    => s_geo_id_ch1,
+    geo_id2    => s_geo_id_ch2,
+    geo_id3    => s_geo_id_ch3,
+    trigger    => s_smif_trigger,
+    areset     => m_all(1));
 
   -----------------------------------------------------------------------------
   -- SERDES defaults
@@ -453,9 +462,8 @@ BEGIN
     result => serdes_data);             -- goes to poweron sm first to be muxed
                                         -- with poweron data
 
-  -- test data is currently commented out, so just set it to 0
+  -- test data is currently commented out, so just set it to all 0's
   serdes_tst_data <= (OTHERS => '0');
-
 
   -----------------------------------------------------------------------------
   -- Rx FIFOs
@@ -523,6 +531,7 @@ BEGIN
   s_ch3fifo_aclr <= NOT s_ch3_locked OR m_all(0) OR s_smif_trigger;
 
   -- FIFO output decoded to Master FPGA lines -----------------
+  -- select which FIFO to send read enable to
   rdreq_decode : decoder PORT MAP (
     input_sig => s_smif_rdenable,
     adr       => s_smif_select,
@@ -531,6 +540,7 @@ BEGIN
     y(2)      => s_ch0fifo_rdreq,
     y(3)      => s_ch1fifo_rdreq);
 
+  -- select which FIFO to read
   rxmux_inst : mux17x4 PORT MAP (
     data0x(15 DOWNTO 0) => s_ch2fifo_q,
     data0x(16)          => s_ch2fifo_empty,
@@ -544,13 +554,14 @@ BEGIN
     result(15 DOWNTO 0) => s_rxfifo_out,
     result(16)          => s_smif_fifo_empty);
 
+  -- output 8bit data on each clock edge of the 80MHz clock
   ddio_out_inst : ddio_out PORT MAP (
     datain_h => s_rxfifo_out(15 DOWNTO 8),
     datain_l => s_rxfifo_out(7 DOWNTO 0),
     outclock => pll_80mhz,
     dataout  => s_smif_dataout(7 DOWNTO 0));
 
-  -- sync to 80 MHz clock
+  -- sync to 80 MHz clock. put out latch signal on last two bytes when valid transmissions
   latcher : PROCESS (pll_80mhz) IS
   BEGIN
     IF pll_80mhz'event AND pll_80mhz = '1' THEN  -- rising clock edge
@@ -626,6 +637,7 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SRAM control
   -----------------------------------------------------------------------------
+  
   -- SRAM defaults
   sra_addr <= (OTHERS => '0');
   srb_addr <= (OTHERS => '0');
@@ -645,6 +657,7 @@ BEGIN
   sra_d <= (OTHERS => 'Z');
   srb_d <= (OTHERS => 'Z');
 
+-- THIS CODE NOT USED FOR NOW ----------------
 --  zbt_ctrl_top_inst1 : zbt_ctrl_top
 --    PORT MAP (
 --      clk                   => pll_160mhz_p,
