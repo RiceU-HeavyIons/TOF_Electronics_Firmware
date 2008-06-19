@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.6 2008-03-13 18:12:29 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.7 2008-06-19 16:49:10 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -63,7 +63,6 @@ ENTITY TDIG IS
       usb_flagc     : IN    std_logic;  -- J1
       usb_pktend    : OUT   std_logic;  -- J4
       usb_slcsb     : OUT   std_logic;  -- J5
-      pld_crc_error : OUT   std_logic;  -- D3
 
       --
       -- BANK 3, Schematic Sheet 6, H1 and H2 Interface -- 
@@ -198,7 +197,7 @@ END TDIG;  -- end.entity
 
 ARCHITECTURE a OF TDIG IS
 
-  CONSTANT TDIG_VERSION : std_logic_vector := x"73";
+  CONSTANT TDIG_VERSION : std_logic_vector := x"74";
 
   SIGNAL global_40mhz                       : std_logic;  -- global clock signal
   SIGNAL byteblaster_tdi                    : std_logic;
@@ -220,6 +219,7 @@ ARCHITECTURE a OF TDIG IS
   SIGNAL output_data, config0_data                        : std_logic_vector(7 DOWNTO 0);
   SIGNAL config1_data, config2_data, config3_data         : std_logic_vector(7 DOWNTO 0);
   SIGNAL config12_data, config13_data                     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL status3_data                                     : std_logic_vector(7 DOWNTO 0);
   SIGNAL output_sel                                       : std_logic_vector(3 DOWNTO 0);
   SIGNAL adr_equ                                          : std_logic_vector(15 DOWNTO 0);
   SIGNAL enable_data_out_to_mcu, enable_data_in_from_mcu  : std_logic;
@@ -578,12 +578,17 @@ BEGIN
   data15x(5)          <= mcu_fifo_parity;
   data15x(4 DOWNTO 0) <= mcu_fifo_level;
 
+  status3_data(0) <= h1_error;
+  status3_data(1) <= h2_error;
+  status3_data(2) <= h3_error;
+  status3_data(7 DOWNTO  3) <= config3_data(7 DOWNTO 3);
+  
   WITH mcu_adr SELECT
     output_data <=
     config0_data  WHEN x"0",
     config1_data  WHEN x"1",
     config2_data  WHEN x"2",
-    config3_data  WHEN x"3",
+    status3_data  WHEN x"3",
     TDIG_VERSION  WHEN x"7",            -- THIS VALUE GIVES THE CODE VERSION #
     config12_data WHEN x"C",
     config13_data WHEN x"D",
@@ -823,7 +828,6 @@ BEGIN
   --
   -- BANK 7, Schematic Sheet 1, MCU and Test Interface -- 
   --
-  pld_crc_error <= '0';
   tino_test_pld <= '0';
 
   --
