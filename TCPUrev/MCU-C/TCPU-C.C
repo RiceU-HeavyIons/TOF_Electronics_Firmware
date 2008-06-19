@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.3 2008-05-09 18:11:17 jschamba Exp $
+// $Id: TCPU-C.C,v 1.4 2008-06-19 18:02:28 jschamba Exp $
 
 // TCPU-C.c
 // Version for build TCPU-C_2C
@@ -157,7 +157,7 @@
 //JS    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-    #define FIRMWARE_ID_0 'C'   // WB version 2C
+    #define FIRMWARE_ID_0 'D'   // version 2D = 0x44
 // WB-1L make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x82  // WB version 2 download
@@ -294,6 +294,12 @@ unsigned int pld_ident;
 // unsigned int pld_config_3;
 
 unsigned int board_posn = 0;    // Gets board-position from switch
+
+//JS: TIMER STUFF *******************************************************
+#ifndef DOWNLOAD_CODE
+unsigned int timerExpired = 0;
+#endif
+//JS: END TIMER STUFF ***************************************************
 
 
 main()
@@ -594,6 +600,32 @@ main()
 /* Send an "Alert" message to both CANBus to say we are on-line */
     send_CAN_alerts (board_posn);
 
+//JS: TIMER STUFF **********************************************************
+#ifndef DOWNLOAD_CODE
+/* setup timer: Combine Timer 2 and 3 for a 32 bit timer;
+	combined timer is controlled by Timer 2 control bits,
+	but fires Timer 3 interrupt  */
+	timerExpired = 0;		// global flag to indicate expired timer 1
+	T2CON = 0; 				// clear Timer 2 control register
+	T3CON = 0; 				// clear Timer 3 control register
+	T2CONbits.TCKPS = 0b11; // Set prescale to 1:256
+	TMR2 = 0;				// clear Timer 2 timer register
+	TMR3 = 0;				// clear Timer 3 timer register
+	PR2 = 0xffff;			// load period register (low 16 bits)
+	PR3 = 0x0004;			// load period register (high 16 bits)
+	IPC2bits.T3IP0 = 1;		// Timer 3 Interrupt priority = 1
+	IPC2bits.T3IP1 = 0;
+	IPC2bits.T3IP2 = 0;
+	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
+	IEC0bits.T3IE = 1;		// enable Timer 3 interrupt
+
+	T2CONbits.T32 = 1; 		// Enable 32-bit timer operation
+	T2CONbits.TON = 1; 		// Turn on Timer 2
+#endif
+//JS: END TIMER STUFF *********************************************************
+	
+	
+
 /* Look for Have-a-Message
 */
 
@@ -880,6 +912,31 @@ main()
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
                             } // end else block was not in progress
                             break;  // end case C_WS_TARGETMCU
+//JS: TIMER STUFF **************************************
+						case C_WS_MAGICNUMWR:
+                            if (rcvmsglen == 3) {
+                            	// Copy any data from message.
+								memset(readback_buffer, 0xff, 4);
+                            	wpd = (unsigned char *)readback_buffer;    // point destination to buffer
+                            	for (i=1; i<3; i++) {   // copy any remaining bytes
+                                    *wpd++ = *wps++;        // copy byte into buffer
+                            	} // end loop over any bytes in message
+
+								// magic address at end of PIC24HJ64 device program memory
+								laddrs = 0xABFE;		// magic address
+                                save_SR = SR;           // save the Status Register
+                                SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
+                                erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+                                // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+                                write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
+                                SR = save_SR;           // restore the saved status register
+
+                            } else {        // else block was not ended, send error reply
+                                retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                            } // end else block was not in progress
+
+                            break;  // end case C_WS_MAGICNUMWR
+//JS: END TIMER STUFF **********************************
 #endif // #if !defined (DOWNLOAD_CODE)
 
                         case C_WS_MCURESTARTA:       // Restart MCU
@@ -1106,6 +1163,7 @@ main()
                 j = 2;
                 send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                 j = 0;
+
             } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in
 #endif
 
@@ -1142,6 +1200,43 @@ main()
                     if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                     j = 0;
                 } // end if have data to send
+
+//JS: TIMER STUFF **************************************
+#ifndef DOWNLOAD_CODE
+				if (timerExpired == 1) {
+					timerExpired = 0;
+					// magic address at end of PIC24HJ64 device program memory
+                    read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE); 
+#ifdef NOTNOW
+					// for now, just send back a CAN message indicating the memory content
+					retbuf[0] = readback_buffer[0];
+					retbuf[1] = readback_buffer[1];
+					retbuf[2] = readback_buffer[2];
+					retbuf[3] = readback_buffer[3];
+#endif
+					if (*((unsigned int *)readback_buffer) == 0x3412) {
+						// in the future, the reset code would go here
+#ifdef NOTNOW
+						retbuf[4] = 1;
+#endif
+                        // stop interrupts
+                        CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
+                        save_SR = SR;          // save the Status Register
+                        SR |= 0xE0;            // Raise CPU priority to lock out interrupts
+						// be sure we are running from alternate interrupt vector
+                        INTCON2 |= 0x8000;     // This is the ALTIVT bit
+                        jumpto();    // jump to new code
+					} 
+#ifdef NOTNOW
+					else {
+						retbuf[4] = 0;
+					}
+                    send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
+#endif
+				}
+#endif
+//JS: END TIMER STUFF ***********************************
+
 //            } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes CAN1
 //            } while ( ! C2RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in CAN2
             } while ( ! (C1RXFUL1bits.RXFUL1|C2RXFUL1bits.RXFUL1|C1RXFUL1bits.RXFUL2 | C2RXFUL1bits.RXFUL2) );      // send-data loop until a message comes in either port
@@ -1882,6 +1977,17 @@ void __attribute__((__interrupt__))_C2Interrupt(void)
 	}
 }
 
+//JS: TIMER STUFF
+// Timer 1 Interrupt Service Routine
+void _ISR _T3Interrupt(void)
+{
+	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
+	IEC0bits.T3IE = 0;		// disable Timer 3 interrupt
+	T2CON = 0; 				// clear Timer 2 control register (turn timer off)
+	T3CON = 0; 				// clear Timer 3 control register (turn timer off)
+	timerExpired = 1;		// indicate to main program that timer has expired
+}
+//JS: END TIMER STUFF
 
 unsigned long get_MCU_pm (UWord16, UWord16);
 
