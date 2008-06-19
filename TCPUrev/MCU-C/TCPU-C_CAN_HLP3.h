@@ -1,4 +1,4 @@
-// $Id: TCPU-C_CAN_HLP3.h,v 1.1 2008-03-05 19:38:20 jschamba Exp $
+// $Id: TCPU-C_CAN_HLP3.h,v 1.2 2008-06-19 17:11:01 jschamba Exp $
 
 /* TCPU-C_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
@@ -78,6 +78,7 @@
     #define C_WS_TARGETHPTDC3 0x43      // Target is HPTDC 3
     #define C_WS_TARGETMCU    0x4C      // Target is MCU
     #define C_WS_TARGETEEPROM2 0x4E     // Target is EEPROM #2
+	#define C_WS_MAGICNUMWR   0x4F      // Write magic number location
     #define C_WS_BLOCKCKSUM   0x50      // Block Data Checksum
     #define C_WS_RECONFIGEE1  0x89      // Reconfigure FPGA from EEPROM #1
     #define C_WS_RECONFIGEE2  0x8A      // Reconfigure FPGA from EEPROM #2
