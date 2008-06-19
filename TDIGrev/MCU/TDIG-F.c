@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.6 2008-06-19 18:02:46 jschamba Exp $
+// $Id: TDIG-F.c,v 1.7 2008-06-19 21:47:57 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -1772,6 +1772,7 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
 }
 
 //JS: TIMER STUFF
+#ifndef DOWNLOAD_CODE
 // Timer 3 Interrupt Service Routine
 void _ISR _T3Interrupt(void)
 {
@@ -1781,6 +1782,7 @@ void _ISR _T3Interrupt(void)
 	T3CON = 0; 				// clear Timer 3 control register (turn timer off)
 	timerExpired = 1;		// indicate to main program that timer has expired
 }
+#endif
 //JS: END TIMER STUFF
 
 void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno, unsigned int index, unsigned char expectedbyte, unsigned char gotbyte)

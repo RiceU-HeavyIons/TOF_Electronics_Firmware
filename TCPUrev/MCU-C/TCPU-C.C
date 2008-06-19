@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.4 2008-06-19 18:02:28 jschamba Exp $
+// $Id: TCPU-C.C,v 1.5 2008-06-19 21:45:51 jschamba Exp $
 
 // TCPU-C.c
 // Version for build TCPU-C_2C
@@ -1978,6 +1978,7 @@ void __attribute__((__interrupt__))_C2Interrupt(void)
 }
 
 //JS: TIMER STUFF
+#ifndef DOWNLOAD_CODE
 // Timer 1 Interrupt Service Routine
 void _ISR _T3Interrupt(void)
 {
@@ -1987,6 +1988,7 @@ void _ISR _T3Interrupt(void)
 	T3CON = 0; 				// clear Timer 3 control register (turn timer off)
 	timerExpired = 1;		// indicate to main program that timer has expired
 }
+#endif
 //JS: END TIMER STUFF
 
 unsigned long get_MCU_pm (UWord16, UWord16);
