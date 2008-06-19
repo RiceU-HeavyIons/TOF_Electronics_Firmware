@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.5 2008-05-27 15:59:42 jschamba Exp $
+// $Id: TDIG-F.c,v 1.6 2008-06-19 18:02:46 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -254,7 +254,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'M'    //JS-11M: 0x11 0x4D
+#define FIRMWARE_ID_0 'N'    //JS-11N: 0x11 0x4E
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -343,7 +343,8 @@ void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) 
 
 //JS: put HPTDC setup bits into program memory, three sets of configurations
 #define PM_ROW	__attribute__((space(prog), aligned(1024)))
-unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
+//unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
+unsigned char __attribute__((space(prog), aligned(1024), address(0x003000))) basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
     #include "HPTDC.inc"	// TDC 1
 	,
     #include "HPTDC.inc"	// TDC 2
@@ -351,7 +352,8 @@ unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
     #include "HPTDC.inc"	// TDC 3
 };
 
-unsigned char PM_ROW enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
+//unsigned char PM_ROW enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
+unsigned char __attribute__((space(prog), aligned(1024), address(0x003400))) enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
     #include "HPTDC_ctrl.inc"	// TDC 1
 	,
     #include "HPTDC_ctrl.inc"	// TDC 2
@@ -384,6 +386,12 @@ unsigned int current_dac;
 
 unsigned int pld_ident; // will get identification byte from PLD
 unsigned int board_posn = 0;    // Gets board-position from switch
+
+//JS: TIMER STUFF *******************************************************
+#ifndef DOWNLOAD_CODE
+unsigned int timerExpired = 0;
+#endif
+//JS: END TIMER STUFF ***************************************************
 
 main()
 {
@@ -692,6 +700,31 @@ main()
 // Get state of FPGA CRC_ERROR bit.
     fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port
 
+//JS: TIMER STUFF **********************************************************
+#ifndef DOWNLOAD_CODE
+/* setup timer: Combine Timer 2 and 3 for a 32 bit timer;
+	combined timer is controlled by Timer 2 control bits,
+	but fires Timer 3 interrupt  */
+	timerExpired = 0;		// global flag to indicate expired timer 1
+	T2CON = 0; 				// clear Timer 2 control register
+	T3CON = 0; 				// clear Timer 3 control register
+	T2CONbits.TCKPS = 0b11; // Set prescale to 1:256
+	TMR2 = 0;				// clear Timer 2 timer register
+	TMR3 = 0;				// clear Timer 3 timer register
+	PR2 = 0xffff;			// load period register (low 16 bits)
+	PR3 = 0x0004;			// load period register (high 16 bits)
+	IPC2bits.T3IP0 = 1;		// Timer 3 Interrupt priority = 1
+	IPC2bits.T3IP1 = 0;
+	IPC2bits.T3IP2 = 0;
+	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
+	IEC0bits.T3IE = 1;		// enable Timer 3 interrupt
+
+	T2CONbits.T32 = 1; 		// Enable 32-bit timer operation
+	T2CONbits.TON = 1; 		// Turn on Timer 2
+#endif
+//JS: END TIMER STUFF *********************************************************
+	
+	
 /* Look for Have-a-Message */
     do {                            // Do Forever
         if ( C1RXFUL1bits.RXFUL1 ) {
@@ -1013,6 +1046,31 @@ main()
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
                             } // end else block was not in progress
                             break;  // end case C_WS_TARGETMCU
+//JS: TIMER STUFF **************************************
+						case C_WS_MAGICNUMWR:
+                            if (rcvmsglen == 3) {
+                            	// Copy any data from message.
+								memset(readback_buffer, 0xff, 4);
+                            	wpd = (unsigned char *)readback_buffer;    // point destination to buffer
+                            	for (i=1; i<3; i++) {   // copy any remaining bytes
+                                    *wpd++ = *wps++;        // copy byte into buffer
+                            	} // end loop over any bytes in message
+
+								// magic address at end of PIC24HJ64 device program memory
+								laddrs = 0xABFE;		// magic address
+                                save_SR = SR;           // save the Status Register
+                                SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
+                                erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+                                // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+                                write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
+                                SR = save_SR;           // restore the saved status register
+
+                            } else {        // else block was not ended, send error reply
+                                retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                            } // end else block was not in progress
+
+                            break;  // end case C_WS_MAGICNUMWR
+//JS: END TIMER STUFF **********************************
 #endif // #if !defined (DOWNLOAD_CODE)
 
                         case C_WS_BLOCKCKSUM:       // Block Data Checksum
@@ -1222,6 +1280,42 @@ main()
 			send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&j);
 		}
 // WB-11J end
+
+//JS: TIMER STUFF **************************************
+#ifndef DOWNLOAD_CODE
+		if (timerExpired == 1) {
+			timerExpired = 0;
+			// magic address at end of PIC24HJ64 device program memory
+            read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE); 
+#ifdef NOTNOW
+			// for now, just send back a CAN message indicating the memory content
+			retbuf[0] = readback_buffer[0];
+			retbuf[1] = readback_buffer[1];
+			retbuf[2] = readback_buffer[2];
+			retbuf[3] = readback_buffer[3];
+#endif
+			if (*((unsigned int *)readback_buffer) == 0x3412) {
+				// in the future, the reset code would go here
+#ifdef NOTNOW
+				retbuf[4] = 1;
+#endif
+                // stop interrupts
+                CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
+                save_SR = SR;          // save the Status Register
+                SR |= 0xE0;            // Raise CPU priority to lock out interrupts
+				// be sure we are running from alternate interrupt vector
+                INTCON2 |= 0x8000;     // This is the ALTIVT bit
+                jumpto();    // jump to new code
+			} 
+#ifdef NOTNOW
+			else {
+				retbuf[4] = 0;
+			}
+            send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
+#endif
+		}
+#endif
+//JS: END TIMER STUFF ***********************************
 
 // Mostly Idle, Check for change of switches/jumpers/button
 		if ( (Read_MCP23008(SWCH_ADDR, MCP23008_GPIO)) != switches ) {        // if changed
@@ -1677,6 +1771,17 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
 	}
 }
 
+//JS: TIMER STUFF
+// Timer 3 Interrupt Service Routine
+void _ISR _T3Interrupt(void)
+{
+	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
+	IEC0bits.T3IE = 0;		// disable Timer 3 interrupt
+	T2CON = 0; 				// clear Timer 2 control register (turn timer off)
+	T3CON = 0; 				// clear Timer 3 control register (turn timer off)
+	timerExpired = 1;		// indicate to main program that timer has expired
+}
+//JS: END TIMER STUFF
 
 void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno, unsigned int index, unsigned char expectedbyte, unsigned char gotbyte)
 {
