@@ -91,7 +91,6 @@ set_location_assignment PIN_AA18 -to mcu_tdc_tms
 set_location_assignment PIN_W3 -to multa
 set_location_assignment PIN_W4 -to multb
 set_location_assignment PIN_W5 -to multc
-set_location_assignment PIN_V15 -to pld_crc_error
 set_location_assignment PIN_AB20 -to pld_led
 set_location_assignment PIN_AB17 -to pld_pushbutton
 set_location_assignment PIN_AB4 -to pld_serin
