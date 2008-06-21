@@ -1,6 +1,7 @@
-// $Id: TCPU-C_MCU_PLD.h,v 1.1 2008-03-05 19:36:40 jschamba Exp $
+// $Id: TCPU-C_MCU_PLD.h,v 1.2 2008-06-21 21:32:38 jschamba Exp $
 
 /* TDIG-D_MCU_PLD.h
+** Version for build TCPU-C_2A
 ** This header file defines the TDIG-D macros and interfaces for MCU data interface to FPGA.
 **
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -20,6 +21,8 @@
 **
 **
 ** Modified:
+**      20-Jun-2008, W. Burton
+**          Add function prototype waitfor_fpga()
 **      20-Jun-2007, W. Burton
 **          Add timeout status return on waitfor_fpga()
 ** Written: 31-Jan-2007, W. Burton
@@ -44,3 +47,4 @@ void reset_FPGA (void);
 void configure_FPGA (unsigned int whicheeprom);
 unsigned int waitfor_FPGA (void);
 void init_regs_FPGA(unsigned int reg12);
+unsigned int waitfor_FPGA (void);
