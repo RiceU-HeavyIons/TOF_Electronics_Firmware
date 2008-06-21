@@ -1,6 +1,7 @@
-// $Id: TCPU-C_MCU_PLD.c,v 1.1 2008-03-05 19:36:40 jschamba Exp $
+// $Id: TCPU-C_MCU_PLD.c,v 1.2 2008-06-21 21:33:51 jschamba Exp $
 
 /* TCPU-C_MCU_PLD.c
+** Version for build TCPU-C_2A
 ** This file defines the TCPU-C routines and interfaces for MCU iterface to the FPGA.
 **
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -19,6 +20,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**      20-Jun-2008, W. Burton
+**          Correct some missing function definitions and Includes.
 **      20-Jun-2007, W. Burton
 **          Add timeout return to waitfor_FPGA()
 //      23-May-2007, W. Burton
@@ -32,6 +35,10 @@
 */
     #include "TCPU-C_Board.h"
     #include "TCPU-C_MCU_PLD.h"
+    #include "TCPU-C_I2C.H"
+
+/* WB 20-Jun-2008 */
+void spin(int cycle);       // delay
 
 void reset_FPGA (void){
 /* Hardware reset the FPGA
