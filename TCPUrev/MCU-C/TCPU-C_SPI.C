@@ -1,6 +1,6 @@
-// $Id: TCPU-C_SPI.C,v 1.1 2008-03-05 19:36:40 jschamba Exp $
-
+// $Id: TCPU-C_SPI.C,v 1.2 2008-06-21 21:31:13 jschamba Exp $
 /* TDIG-D_SPI.c
+** Version for build TCPU-C_2A
 ** This file defines TIDG-D routines for SPI access to EEPROM #2
 **
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -19,6 +19,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**    20-Jun-2008, W. Burton
+**        Add missing function prototype spin() and clean up unused variables
 **    04-May-2007, W. Burton
 **        Add MSbit-LSbit and LSbit-MSbit options to write and read.
 **        Added new local functions for get and put byte to SPI
@@ -35,6 +37,8 @@
 */
 
     #include "TCPU-C_SPI.h"
+
+void spin(unsigned int);
 
 /* Local routines */
 void spi_put_m2l (unsigned int byte);   // send byte MS bit to LS bit
@@ -135,7 +139,8 @@ void spi_read ( unsigned int instrn, unsigned int dir, unsigned int bplim, unsig
 // Set port directions (Din IN, Clk OUT, Dout OUT, nCS OUT, EE2 Select OUT)
 // This was done back at the beginning (after Initialize_OSC())
     unsigned char *rp;      // pointer to return area
-    unsigned int i, j, k;
+//    unsigned int i, j, k;
+    unsigned int k;
     rp = bp;
 
 // Lower CS
@@ -199,7 +204,7 @@ void spi_write_adr ( unsigned int instrn, unsigned char *ap, unsigned int dir, u
 */
 // Set port directions (Din IN, Clk OUT, Dout OUT, nCS OUT, EE2 Select OUT)
 // This was done back at the beginning (after Initialize_OSC())
-    unsigned char *rp;      // pointer to source area
+//    unsigned char *rp;      // pointer to source area
     unsigned char *wp;      // working pointer
     unsigned int j, k;
 
