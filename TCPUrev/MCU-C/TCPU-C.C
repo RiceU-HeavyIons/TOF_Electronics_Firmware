@@ -1,139 +1,14 @@
-// $Id: TCPU-C.C,v 1.5 2008-06-19 21:45:51 jschamba Exp $
+// $Id: TCPU-C.C,v 1.6 2008-06-23 13:49:25 jschamba Exp $
 
-// TCPU-C.c
-// Version for build TCPU-C_2C
-// main program for PIC24HJ256GP610 as used on TCPU-B rev 0 board
-// Program # 2C -
-//      09-May-08, W. Burton
-//          Renumbered versions per Jo Schambach request.
-//          Made sending of 2-word data messages conditional on definition of SENDTWO
-// Program # 2B -
-//      08-May-08, W. Burton
-//          Rework CAN2<==>CAN1 transfers to avoid hang-up; fix spurious retransmit of CAN2 messages to CAN1.
-// Program # 2A -
-//      14-Mar-08, W. Burton
-//          More rework of clock initialization
-//      29-Feb-08, W. Burton
-//          For TCPU-C board.
-//          JU2 pins 1-2 jumpered select EXTERNAL clock.
-//          JU2 pins 3-4 jumpered select PLL clock processing.
-// Program # 1l - (note lower case L)
-//      27-28 Feb-08, W. Burton
-//          SIGNIFICANT REWORK OF CLOCK INITIALIZATION.
-//          Changed for TCPU-C.  New Clock and PLL control bits.
-// Program # 1L -
-//      08-Feb-08, W. Burton
-//          Fix reply length for JSW and ECSR commands
-//      16-Oct-07, W. Burton
-//          Mask board position to 0..31 and implement C_BOARD board ID.
-//          Program version ID is still 0x01 0x4C (version 1L)
-//          Changes marked with // WB-1L
-//      15-Oct-07, W. Burton
-//          If the second (download) image is running, we do not want to download over it.
-//          Clock selection and control is migrated-in from TDIG-F_ver11H.c
-//          CPU starts up using internal oscillator; then examines jumpers and changes to Board or Tray external Oscillator.
-//          CLOCK JUMPER (PINS 1-2) IS EXAMINED ONLY ONCE AT START-UP TO DETERMINE CLOCK SOURCE!
-//          For DOWNLOADED code (second image), the OSCILLATOR IS NOT CHANGED
-//          Program version ID is 0x01 0x4C (version 1L)
-//          Changes marked with // WB-1L
-//      11-Oct-07, W. Burton
-//          Program version ID is 0x01 0x4C (version 1L)
-//          Changes marked with // WB-1L
-//          Made the call to initialize_osc() conditional on definition of DOWNLOAD_CODE;
-//              initialize_osc() is not called for download version.
-//          PortF is initialized to all inputs so PLD_SERIN and PLD_SEROUT are "safe".
-//          Add timeouts in case CAN2 is not connected.
-//          Set CPU priority=0 and select interrupt vector depending on DOWNLOAD_CODE
-//             "normal" code = standard interrupts; "DOWNLOAD_CODE" = alternate interrupts.
-//          "Download" code has id 0x81 0x4C (81L)
-// Program # 1K -
-//      10-Oct-07, J. Schambach
-//          Program version ID is 01 0x4B (version 1K)
-//			Fixed DMA initialization
-//			Use correct buffers in received messages according to filter initialization
-//			Mask off length field correctly in received CAN messages
-//			All changes are marked by "//JS"
-// Program # 1J -
-//      27 thru 29-Sep-07, W. Burton
-//          Program version ID is 01 0x4A (version 1J)
-//          CAN1 to/from CAN2 routing.
-//          "Standard" Messages from either CAN1 or CAN2 addressed to this board "standard" get processed.
-//          Detect Standard-Address upstream-pointing (bit0 set) TDIG messages coming in on CAN1
-//              (they go into buffer[3]), get the TCPU ID put on in the extended address bits, then sent
-//              out on CANBus #2.
-//          Detect Extended-Address downtream-pointing (bit0 clear) messages coming in on CAN2
-//              (they go into buffer[3]), Take the TCPU ID off; put the standard address bits,
-//              then send message to CANBus #1.
-// Program # 1H -
-//      25-Sep-07, W. Burton
-//          Make MCU Reset and Reprogramming work properly.
-//          Update version ID to 0x1 0x48 (version 1H)
-//          Fix CAN1 and CAN2 Alert messages
-//          Fix CAN1 and CAN2 board ID numbers to allow [0..31].
-// Program # 1G -
-//      02-Jul-2007, W. Burton
-//          FPGA firmware Identifier added to C_RS_FIRMWID
-//      29-Jun-2007, W. Burton
-//          Update Include file processing.
-//      20-Jun-2007, W. Burton
-//          Bring in FPGA Reconfiguration timeout.
-//          Speed up download/reprogramming.
-// Program # 1F -
-//      31-May-2007, W. Burton
-//          MCU RESET implemented.
-//      23-May-2007, W. Burton
-//          Read_Temperature and part of Read Status implemented.
-// Program # 1E -
-//      23-May-2007, W. Burton
-//          Change FPGA initialization to do the latest reset sequence in init_regs_FPGA() in file TCPU-B_MCU_PLD.C and .H
-//          "TDIG-FPGA MCU interface registers.xls" dated 4/17/2007
-//          Sequence is a) Initialize FPGA b) toggle PLD_RESETB using reset_FPGA(); c) load registers[0..3] with zero;
-//          d) Toggle TDC HARDWARE RESET bit in CONFIG_2 register.
-//          Update to correct FIRMWARE ID
-// Program # 1D -
-//      23-May-2007, W. Burton
-//          Change to NOT terminate CAN1 and CAN2 for TCPU test.
-//          Confirmation of change:
-//              Before - the voltage across open pins of JU1 was approx. 0.0 volts (terminator switch closed).
-//              After - the voltage across open pins of JU1 was approx 1.0 volts (terminator switch open).
-//                  Without a hardware jumper across JU1, there were BUSHEAVY errors reported by PcanView.
-//                  With a hardware jumper across JU1, there were no BUSHEAVY errors reported by PcanView.
-// Program # 1C -
-//      22-May-2007, W. Burton
-//          Review and correct MCU-FPGA configuration and initialization.
-//          Added reset of state-machine through Reg 1 in module init_regs()
-//      17-May-2007, L. Bridges (WDB)
-//          This code was placed on WIKI for distribution.
-//      14-May-2007, W. Burton
-//          Changed CANBus parameters to allow long-cable to operate
-//          while still allowing "short" cables to work.
-//      12-May-2007, W. Burton
-//          FIRMWARE_ID added.
-//          Additional CAN messages implemented Firmware ID, LEDs.
-//      11-May-2007, W. Burton
-//          Rework FPGA Initialization/reset sequences:
-//              Power On == Configure from EE1, Issue PLD_RESETB, Load registers w/defaults.
-//              Reconfiguration == Configure from EEx, Issue PLD_RESETB, Load registers w/defaults.
-//              CANBus PLD_RESET 0x2 5 0C 69 96 A5 5A command == Issue PLD_RESETB, Load registers w/defaults.
-//              Serial Statemachine Reset via CANBus 0x2 3 0E 09 00 == write to FPGA register 9
-//              MCU FIFO Reset via CANBus 0x2 3 0E 10 00 == write to FPGA register 10
-//          Implement FPGA Reset and FPGA Write Register messages.
-//          Implement READ and WRITE messages for status.
-// Program # 1B -
-//      09-May-07, W. Burton
-//          Conditional code (#define DOREGTEST) writes FPGA Reg 0 with defined value and
-//          reads it back.  It also reads Register 7 (the ID register)
-//      02-May-07, W. Burton
-//          Conditional Code (#define DODATATEST)
-//              Read data from FPGA (same way as TDIG), send over CAN bus
-// Program # 1A -
-//      27 thru 30-Apr-2007, W. Burton
-//          Write Position switch value to FPGA at startup and when it changes.
-//          Make sure MCU_PLD (fpga) registers are initialized.
-//      23-Apr-2007, W. Burton
-//          Added specific reset/calibration of PLL and
-//          copy PLL_LOL status to LED D5.
-//      02-Apr-2007 based on TDIG-D program 11A.
+// TCPU-C_ver2.c
+// Version for build TCPU-C_2D
+// main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
+// Program # 2D - Extra Version for download debugging
+//      21-Jun-2008, W. Burton. (Changes identified WB-02D)
+//          Rework initializations (especially clock and ports) for download second image.
+/* WB-02D
+ * Comments moved to end of file
+ */
 /*
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
 ** BNL Contract No. 79217.  For a period of 4 years after acceptance of all items delivered
@@ -153,67 +28,68 @@
 //    #define DOREGTEST 0x5A      // Do the register test
                                 // This overrides DODATATEST
 
+/* WB-02D
+ * The new source-code and MPLAB project structure takes care of this definition 
+ * by means of -DDOWNLOAD_CODE macro definition in the workspace "Build Options".
+ * WB-02D end  */
 //JS: Uncomment this for version to be downloaded via CANbus
-//JS    #define DOWNLOAD_CODE
+//    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-    #define FIRMWARE_ID_0 'D'   // version 2D = 0x44
+#define FIRMWARE_ID_0 'E'   // WB version 2E (WB-02D) 'E' = 0x45
 // WB-1L make downloaded version have different ID
-#ifdef DOWNLOAD_CODE
-    #define FIRMWARE_ID_1 0x82  // WB version 2 download
+#if defined (DOWNLOAD_CODE)
+    #define FIRMWARE_ID_1 0x92  // WB version 2 download
 #else
-    #define FIRMWARE_ID_1 0x2   // WB version 2
+    #define FIRMWARE_ID_1 0x2   // WB version 2 first image
 #endif
 // WB-11H end
 
 // Define implementation on the TCPU board (I/O ports, etc)
-    #define CONFIG_CPU 1        // Make TCPU-C_Board.h define the CPU options
-    #include "TCPU-C_Board.h"
+#define CONFIG_CPU 1        // Make TCPU-C_Board.h define the CPU options
+#include "TCPU-C_Board.h"
 
 //  #define RC15_TOGGLE 1       // RC15/OSC2 is Clock divided by 2 Output
 
 // Define the library includes
-    #include "ecan.h"           // Include for E-CAN peripheral
-    #include "i2c.h"            // Include for I2C peripheral library
-    #include "stddef.h"         // Standard definitions
-    #include "string.h"         // Definitions for string functions
+#include "ecan.h"           // Include for E-CAN peripheral
+#include "i2c.h"            // Include for I2C peripheral library
+#include "stddef.h"         // Standard definitions
+#include "string.h"         // Definitions for string functions
 
 // Define our routine includes
-	#include "TCPU-C_I2C.h"		// Include prototypes for our I2C routines
+#include "TCPU-C_I2C.h"		// Include prototypes for our I2C routines
+#include "TCPU-C_SPI.h"     // Include for our SPI (EEPROM) macros
 
-
-
-    #include "TCPU-C_SPI.h"     // Include for our SPI (EEPROM) macros
-
-    #include "TCPU-C_MCU_PLD.h" // Include for our parallel interface to FPGA
+#include "TCPU-C_MCU_PLD.h" // Include for our parallel interface to FPGA
 
 /* DEFINE the HLP_version_3 Packet IDs */
-    #include "TCPU-C_CAN_HLP3.h"
+#include "TCPU-C_CAN_HLP3.h"
 
 // Spin Counter
-	#define SPINLIMIT 20
+#define SPINLIMIT 20
 
 // Special Test Configurations
-    #define DODATATEST 1
+#define DODATATEST 1
 
 /* ECAN1 stuff */
-	#define NBR_ECAN_BUFFERS 4
+#define NBR_ECAN_BUFFERS 4
 
-    typedef unsigned int ECAN1MSGBUF [NBR_ECAN_BUFFERS][8];
-    ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
+typedef unsigned int ECAN1MSGBUF [NBR_ECAN_BUFFERS][8];
+ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
 
-    void ecan1Init(unsigned int board_id);
-    void dma0Init(void);
-    void dma2Init(void);
+void ecan1Init(unsigned int board_id);
+void dma0Init(void);
+void dma2Init(void);
 
 /* ECAN2 stuff */
 
-    typedef unsigned int ECAN2MSGBUF [NBR_ECAN_BUFFERS][8];
-    ECAN2MSGBUF  ecan2msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
+typedef unsigned int ECAN2MSGBUF [NBR_ECAN_BUFFERS][8];
+ECAN2MSGBUF  ecan2msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
 
-    void ecan2Init(unsigned int board_id);
-    void dma1Init(void);
-    void dma3Init(void);
+void ecan2Init(unsigned int board_id);
+void dma1Init(void);
+void dma3Init(void);
 
 
 //	void ecan1WriteRxAcptFilter(int n, long identifier, unsigned int exide,
@@ -238,7 +114,7 @@ void clearIntrflags(void);	// Clear interrupt flags
 
 /* CAN message routines     */
 // Messgaes common to both busses
-   void send_CAN_alerts (unsigned int board_id);
+void send_CAN_alerts (unsigned int board_id);
 
 // CANBus #1 ("tray")
 // Send a CAN message - fills in     board id               message type  number of payload bytes    &payload[0]
@@ -301,63 +177,61 @@ unsigned int timerExpired = 0;
 #endif
 //JS: END TIMER STUFF ***************************************************
 
-
-main()
+int main()
 {
-    unsigned long int laddrs, lwork2;
-    unsigned long int fifovalue;
-    unsigned long int expectedvalue;
-    unsigned long int lwork;
-	unsigned int i, j, k;
+/* WB-02D start */
+#if !defined (DOWNLOAD_CODE)
+    unsigned long int lwork2;
+    unsigned int k;
+	unsigned char bwork[10];
+#endif
+/* WB-02D end */
+    unsigned long int laddrs;
 	unsigned int save_SR;
+
+//    unsigned long int fifovalue;      // WB-02D not used 
+//    unsigned long int expectedvalue;  // WB-02D not used
+    unsigned long int lwork;
+	unsigned int i, j;
+
 	unsigned int tglbit = 0x0;
-	unsigned int switches = 0x0;
+//	unsigned int switches = 0x0;        // WB-02D not used
 	unsigned int jumpers = 0x0;
     unsigned int oldjumpers = 0x0;  // saves previous jumper state
     unsigned int oldswitch = 0x0;   // saves previous value of position switch
-	unsigned int buttoncount = 0x0;
-	unsigned int tdcpowerbit = 0x0;
+//	unsigned int buttoncount = 0x0;    // WB-02D not used
+//	unsigned int tdcpowerbit = 0x0;    // WB-02D not used
 	unsigned int ledbits = NO_LEDS;
 	unsigned int board_temp = 0;	// will get last-read board temperature word
     unsigned int replylength;       // will get length of reply message
     unsigned int rcvmsgtype = 0;    // will get received message type for dispatch
     unsigned int rcvmsglen = 0;     // will get received message length for dispatch
     unsigned int rcvmsgfrom = 0;    // source of message (CAN1 or CAN2)
-	unsigned char bwork[10];
     unsigned char sendbuf[10], retbuf[10];
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
 
 
 //JS
-#ifndef DOWNLOAD_CODE
-// WB-1L
-// This applies to first-image code, does not apply to second "download" image.
+/* WB-02D - Begin significant rework in this area
+ * This section applies to second-image (Downloaded) code only
+ * NOTE Second Image does not re-initialize I/O Ports/Pins/or Expander I/Os!
+*/
+#if  defined (DOWNLOAD_CODE)
+    INTCON2 |= 0x8000;      // This is the ALTIVT bit, use alternate interrupt space
+#else
+/* This section applies to first-image code, does not apply to second "download" image.
+ */
     Initialize_OSC(OSCSEL_FRCPLL);          // initialize the CPU oscillator to ON-CHIP
-
 // be sure we are running from standard interrupt vector
     save_SR = INTCON2;
     save_SR &= 0x7FFF;  // clear the ALTIVT bit
     INTCON2 = save_SR;  // and restore it.
-#endif
-//JS end
-// WB-1L
-// Note that ALTIVT bit gets set just prior to starting the second image, but just to be sure
-#ifdef DOWNLOAD_CODE
-    INTCON2 |= 0x8000;      // This is the ALTIVT bit
-#endif
-
-// We will want to run at priority 0 mostly
-    SR &= 0x011F;          // Lower CPU priority to allow interrupts
-    CORCONbits.IPL3=0;     // Lower CPU priority to allow user interrupts
-// WB-1L end
-
-#if defined (RC15_IO) // RC15 will be I/O (in TCPU-C_Board.h)
-	TRISC = 0x7FFF;		// make RC15 an output
-#else
+    #if defined (RC15_IO) // RC15 will be I/O (in TCPU-C_Board.h)
+	    TRISC = 0x7FFF;		// make RC15 an output
+    #else
 //  RC15/OSC2 is set up to output TCY clock on pin 40 = CLK_DIV2_OUT, TP1
-#endif
-
+    #endif
 /* 27-Feb-2008
 ** Initialize PORTD bits[0..3,4..9] pins [72, 76, 77, 78, 81, 82, 83, 84, 68, 69]
 ** for control/monitoring of PLL and EEPROM
@@ -374,7 +248,6 @@ main()
 // Make D9 an output (pin 69 = MCU_CONFIG_PLD, initialize H)
     LATD  = (0xFFFF & MCU_EE_initial & MCU_PLL_initial); // Initial bits
     TRISD = (0xFFFF & MCU_EE_dirmask & MCU_PLL_dirmask); // I/O configuration
-
 // WB-1L
 /* Make sure port F is in a safe condition */
     LATF = PORTF_initial;
@@ -394,6 +267,7 @@ main()
 */
     LATG = PORTG_initial;       // Initial settings port G (I2CA_RESETB must be Hi)
     TRISG = PORTG_dirmask;      // Directions port G
+
 /* 23-May-2007, NO termination on CAN1 or CAN2 */
 /* selected by configuration in tcpu-b_board.h */
 //    MCU_SEL_TERM1 = 1;          // Turn on CAN1 Terminator
@@ -406,6 +280,14 @@ main()
 
     LATB = 0x0000;          // All zeroes
     TRISB = 0xDFE0;         // Set directions
+
+#endif
+/* WB-02D end of major change */
+
+// We will want to run at priority 0 mostly
+    SR &= 0x011F;          // Lower CPU priority to allow interrupts
+    CORCONbits.IPL3=0;     // Lower CPU priority to allow user interrupts
+// WB-1L end
 
 // Initialize CAN2 timeout flag
     CAN2timeout = 0;        // no timeout yet (global flag)
@@ -466,6 +348,7 @@ main()
     jumpers = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & JUMPER_MASK;
     oldjumpers = jumpers;           // remember state for next time
 
+#if !defined (DOWNLOAD_CODE)
 /* -----------------12/9/2006 11:39AM----------------
 ** Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC
 ** and MCU_EN_LOCAL_OSC
@@ -487,6 +370,7 @@ main()
 //        MCU_EN_LOCAL_OSC  = 1;      // turns on en-local-osc
         Initialize_OSC ((OSCSEL_BOARD|i));       //  Use BOARD clock W or W/O PLL
     }                               // end else turn ON local osc
+#endif // #ifndef (DOWNLOAD_CODE)
 
 // Clear all interrupts
 	clearIntrflags();
@@ -623,8 +507,6 @@ main()
 	T2CONbits.TON = 1; 		// Turn on Timer 2
 #endif
 //JS: END TIMER STUFF *********************************************************
-	
-	
 
 /* Look for Have-a-Message
 */
@@ -912,6 +794,8 @@ main()
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
                             } // end else block was not in progress
                             break;  // end case C_WS_TARGETMCU
+#endif // #if !defined (DOWNLOAD_CODE)
+
 //JS: TIMER STUFF **************************************
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
@@ -937,7 +821,6 @@ main()
 
                             break;  // end case C_WS_MAGICNUMWR
 //JS: END TIMER STUFF **********************************
-#endif // #if !defined (DOWNLOAD_CODE)
 
                         case C_WS_MCURESTARTA:       // Restart MCU
                         case C_WS_MCURESET:        // Reset MCU
@@ -1163,7 +1046,6 @@ main()
                 j = 2;
                 send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                 j = 0;
-
             } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in
 #endif
 
@@ -1207,18 +1089,18 @@ main()
 					timerExpired = 0;
 					// magic address at end of PIC24HJ64 device program memory
                     read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE); 
-#ifdef NOTNOW
+		#ifdef NOTNOW
 					// for now, just send back a CAN message indicating the memory content
 					retbuf[0] = readback_buffer[0];
 					retbuf[1] = readback_buffer[1];
 					retbuf[2] = readback_buffer[2];
 					retbuf[3] = readback_buffer[3];
-#endif
+		#endif
 					if (*((unsigned int *)readback_buffer) == 0x3412) {
 						// in the future, the reset code would go here
-#ifdef NOTNOW
+		#ifdef NOTNOW
 						retbuf[4] = 1;
-#endif
+		#endif
                         // stop interrupts
                         CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
                         save_SR = SR;          // save the Status Register
@@ -1227,12 +1109,12 @@ main()
                         INTCON2 |= 0x8000;     // This is the ALTIVT bit
                         jumpto();    // jump to new code
 					} 
-#ifdef NOTNOW
+		#ifdef NOTNOW
 					else {
 						retbuf[4] = 0;
 					}
                     send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
-#endif
+		#endif
 				}
 #endif
 //JS: END TIMER STUFF ***********************************
@@ -1878,7 +1760,7 @@ void send_CAN2_message_extended (unsigned int ext_id, unsigned int message_id, u
 **          payload[1] is usually "status" (HLP 3.0)
 */
 // WB-1L Added timeout
-    unsigned long std_id;
+//    unsigned long std_id;
     unsigned char *cp;
 	unsigned int i;
     unsigned int j=0xFFF;
@@ -1977,9 +1859,10 @@ void __attribute__((__interrupt__))_C2Interrupt(void)
 	}
 }
 
+
 //JS: TIMER STUFF
 #ifndef DOWNLOAD_CODE
-// Timer 1 Interrupt Service Routine
+// Timer 3 Interrupt Service Routine
 void _ISR _T3Interrupt(void)
 {
 	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
@@ -2011,7 +1894,7 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 }
 
 unsigned long get_MCU_pm (UWord16 addrh,UWord16 addrl){
-    unsigned long temp;
+//    unsigned long temp;
     TBLPAG = addrh;
     __asm__ volatile ("tblrdl [W1],W0");
     __asm__ volatile ("tblrdh [W1],W1");
@@ -2094,3 +1977,137 @@ jumpto(void) {
 
 }
 #endif
+/* WB-02D
+ * Comments moved from beginning of file
+ */
+// Program # 2C -
+//      09-May-08, W. Burton
+//          Renumbered versions per Jo Schambach request.
+//          Made sending of 2-word data messages conditional on definition of SENDTWO
+// Program # 2B -
+//      08-May-08, W. Burton
+//          Rework CAN2<==>CAN1 transfers to avoid hang-up; fix spurious retransmit of CAN2 messages to CAN1.
+// Program # 2A -
+//      14-Mar-08, W. Burton
+//          More rework of clock initialization
+//      29-Feb-08, W. Burton
+//          For TCPU-C board.
+//          JU2 pins 1-2 jumpered select EXTERNAL clock.
+//          JU2 pins 3-4 jumpered select PLL clock processing.
+// Program # 1l - (note lower case L)
+//      27-28 Feb-08, W. Burton
+//          SIGNIFICANT REWORK OF CLOCK INITIALIZATION.
+//          Changed for TCPU-C.  New Clock and PLL control bits.
+// Program # 1L -
+//      08-Feb-08, W. Burton
+//          Fix reply length for JSW and ECSR commands
+//      16-Oct-07, W. Burton
+//          Mask board position to 0..31 and implement C_BOARD board ID.
+//          Program version ID is still 0x01 0x4C (version 1L)
+//          Changes marked with // WB-1L
+//      15-Oct-07, W. Burton
+//          If the second (download) image is running, we do not want to download over it.
+//          Clock selection and control is migrated-in from TDIG-F_ver11H.c
+//          CPU starts up using internal oscillator; then examines jumpers and changes to Board or Tray external Oscillator.
+//          CLOCK JUMPER (PINS 1-2) IS EXAMINED ONLY ONCE AT START-UP TO DETERMINE CLOCK SOURCE!
+//          For DOWNLOADED code (second image), the OSCILLATOR IS NOT CHANGED
+//          Program version ID is 0x01 0x4C (version 1L)
+//          Changes marked with // WB-1L
+//      11-Oct-07, W. Burton
+//          Program version ID is 0x01 0x4C (version 1L)
+//          Changes marked with // WB-1L
+//          Made the call to initialize_osc() conditional on definition of DOWNLOAD_CODE;
+//              initialize_osc() is not called for download version.
+//          PortF is initialized to all inputs so PLD_SERIN and PLD_SEROUT are "safe".
+//          Add timeouts in case CAN2 is not connected.
+//          Set CPU priority=0 and select interrupt vector depending on DOWNLOAD_CODE
+//             "normal" code = standard interrupts; "DOWNLOAD_CODE" = alternate interrupts.
+//          "Download" code has id 0x81 0x4C (81L)
+// Program # 1K -
+//      10-Oct-07, J. Schambach
+//          Program version ID is 01 0x4B (version 1K)
+//			Fixed DMA initialization
+//			Use correct buffers in received messages according to filter initialization
+//			Mask off length field correctly in received CAN messages
+//			All changes are marked by "//JS"
+// Program # 1J -
+//      27 thru 29-Sep-07, W. Burton
+//          Program version ID is 01 0x4A (version 1J)
+//          CAN1 to/from CAN2 routing.
+//          "Standard" Messages from either CAN1 or CAN2 addressed to this board "standard" get processed.
+//          Detect Standard-Address upstream-pointing (bit0 set) TDIG messages coming in on CAN1
+//              (they go into buffer[3]), get the TCPU ID put on in the extended address bits, then sent
+//              out on CANBus #2.
+//          Detect Extended-Address downtream-pointing (bit0 clear) messages coming in on CAN2
+//              (they go into buffer[3]), Take the TCPU ID off; put the standard address bits,
+//              then send message to CANBus #1.
+// Program # 1H -
+//      25-Sep-07, W. Burton
+//          Make MCU Reset and Reprogramming work properly.
+//          Update version ID to 0x1 0x48 (version 1H)
+//          Fix CAN1 and CAN2 Alert messages
+//          Fix CAN1 and CAN2 board ID numbers to allow [0..31].
+// Program # 1G -
+//      02-Jul-2007, W. Burton
+//          FPGA firmware Identifier added to C_RS_FIRMWID
+//      29-Jun-2007, W. Burton
+//          Update Include file processing.
+//      20-Jun-2007, W. Burton
+//          Bring in FPGA Reconfiguration timeout.
+//          Speed up download/reprogramming.
+// Program # 1F -
+//      31-May-2007, W. Burton
+//          MCU RESET implemented.
+//      23-May-2007, W. Burton
+//          Read_Temperature and part of Read Status implemented.
+// Program # 1E -
+//      23-May-2007, W. Burton
+//          Change FPGA initialization to do the latest reset sequence in init_regs_FPGA() in file TCPU-B_MCU_PLD.C and .H
+//          "TDIG-FPGA MCU interface registers.xls" dated 4/17/2007
+//          Sequence is a) Initialize FPGA b) toggle PLD_RESETB using reset_FPGA(); c) load registers[0..3] with zero;
+//          d) Toggle TDC HARDWARE RESET bit in CONFIG_2 register.
+//          Update to correct FIRMWARE ID
+// Program # 1D -
+//      23-May-2007, W. Burton
+//          Change to NOT terminate CAN1 and CAN2 for TCPU test.
+//          Confirmation of change:
+//              Before - the voltage across open pins of JU1 was approx. 0.0 volts (terminator switch closed).
+//              After - the voltage across open pins of JU1 was approx 1.0 volts (terminator switch open).
+//                  Without a hardware jumper across JU1, there were BUSHEAVY errors reported by PcanView.
+//                  With a hardware jumper across JU1, there were no BUSHEAVY errors reported by PcanView.
+// Program # 1C -
+//      22-May-2007, W. Burton
+//          Review and correct MCU-FPGA configuration and initialization.
+//          Added reset of state-machine through Reg 1 in module init_regs()
+//      17-May-2007, L. Bridges (WDB)
+//          This code was placed on WIKI for distribution.
+//      14-May-2007, W. Burton
+//          Changed CANBus parameters to allow long-cable to operate
+//          while still allowing "short" cables to work.
+//      12-May-2007, W. Burton
+//          FIRMWARE_ID added.
+//          Additional CAN messages implemented Firmware ID, LEDs.
+//      11-May-2007, W. Burton
+//          Rework FPGA Initialization/reset sequences:
+//              Power On == Configure from EE1, Issue PLD_RESETB, Load registers w/defaults.
+//              Reconfiguration == Configure from EEx, Issue PLD_RESETB, Load registers w/defaults.
+//              CANBus PLD_RESET 0x2 5 0C 69 96 A5 5A command == Issue PLD_RESETB, Load registers w/defaults.
+//              Serial Statemachine Reset via CANBus 0x2 3 0E 09 00 == write to FPGA register 9
+//              MCU FIFO Reset via CANBus 0x2 3 0E 10 00 == write to FPGA register 10
+//          Implement FPGA Reset and FPGA Write Register messages.
+//          Implement READ and WRITE messages for status.
+// Program # 1B -
+//      09-May-07, W. Burton
+//          Conditional code (#define DOREGTEST) writes FPGA Reg 0 with defined value and
+//          reads it back.  It also reads Register 7 (the ID register)
+//      02-May-07, W. Burton
+//          Conditional Code (#define DODATATEST)
+//              Read data from FPGA (same way as TDIG), send over CAN bus
+// Program # 1A -
+//      27 thru 30-Apr-2007, W. Burton
+//          Write Position switch value to FPGA at startup and when it changes.
+//          Make sure MCU_PLD (fpga) registers are initialized.
+//      23-Apr-2007, W. Burton
+//          Added specific reset/calibration of PLL and
+//          copy PLL_LOL status to LED D5.
+//      02-Apr-2007 based on TDIG-D program 11A.
