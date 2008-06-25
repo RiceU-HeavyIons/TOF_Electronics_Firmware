@@ -1,4 +1,4 @@
-# $Id: TCPU_B_TOP.qsf,v 1.11 2008-03-12 15:43:44 jschamba Exp $
+# $Id: TCPU_B_TOP.qsf,v 1.12 2008-06-25 17:48:22 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -216,20 +216,21 @@ set_instance_assignment -name CLOCK_SETTINGS ser_rec_clk -to ser_rec_clk
 set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id RHICstrobe
 set_global_assignment -name DUTY_CYCLE 40 -section_id RHICstrobe
 set_instance_assignment -name CLOCK_SETTINGS RHICstrobe -to trig_clk_in_clk
-set_global_assignment -name VHDL_FILE REG_5BIT.vhd
-set_global_assignment -name VHDL_FILE adder_4_by_4_bits.vhd
-set_global_assignment -name VHDL_FILE MUX_16TO1.vhd
-set_global_assignment -name VHDL_FILE PLL_1x_and_16x.vhd
-set_global_assignment -name VHDL_FILE tcpu_new_primitives.vhd
+set_global_assignment -name VHDL_FILE "../FPGA-C/SHIFT_REG_16BITS.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/REG_5BIT.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/adder_4_by_4_bits.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/MUX_16TO1.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/PLL_1x_and_16x.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/tcpu_new_primitives.vhd"
 set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_conversions.vhd
-set_global_assignment -name VHDL_FILE mux18x2.vhd
-set_global_assignment -name VHDL_FILE serdes_poweron.vhd
-set_global_assignment -name VHDL_FILE serdes_serializer.vhd
-set_global_assignment -name VHDL_FILE serdes_if.vhd
-set_global_assignment -name VHDL_FILE FIFO_RD2.vhd
-set_global_assignment -name VHDL_FILE ser_rdo.vhd
-set_global_assignment -name VHDL_FILE pll.vhd
+set_global_assignment -name VHDL_FILE "../FPGA-C/mux18x2.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/serdes_poweron.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/serdes_serializer.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/serdes_if.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/FIFO_RD2.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/ser_rdo.vhd"
+set_global_assignment -name VHDL_FILE "../FPGA-C/pll.vhd"
 set_global_assignment -name VHDL_FILE TCPU_B_TOP.vhd
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name VECTOR_WAVEFORM_FILE TCPU_B_TOP.vwf
