@@ -1,4 +1,4 @@
-# $Id: TCPU_C_TOP.qsf,v 1.2 2008-05-30 19:58:18 jschamba Exp $
+# $Id: TCPU_C_TOP.qsf,v 1.3 2008-06-25 17:49:54 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -229,23 +229,23 @@ set_location_assignment PIN_F14 -to PLL_LOS
 set_location_assignment PIN_F13 -to PLL_RESET
 set_location_assignment PIN_C18 -to cal_actv
 set_location_assignment PIN_C17 -to dh_actv
-set_global_assignment -name VHDL_FILE ../FPGA/SHIFT_REG_16BITS.vhd
-set_global_assignment -name VHDL_FILE TCPU_C_TOP.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/REG_5BIT.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/adder_4_by_4_bits.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/MUX_16TO1.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/PLL_1x_and_16x.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/tcpu_new_primitives.vhd
-set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_utilities.vhd
-set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_conversions.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/mux18x2.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/serdes_poweron.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/serdes_serializer.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/serdes_if.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/FIFO_RD2.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/ser_rdo.vhd
-set_global_assignment -name VHDL_FILE ../FPGA/pll.vhd
-set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name VECTOR_WAVEFORM_FILE TCPU_C_TOP.vwf
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to th_lockb
 set_global_assignment -name SAFE_STATE_MACHINE ON
+set_global_assignment -name VHDL_FILE PLL_1x_and_16x.vhd
+set_global_assignment -name VHDL_FILE pll.vhd
+set_global_assignment -name VHDL_FILE SHIFT_REG_16BITS.vhd
+set_global_assignment -name VHDL_FILE MUX_16TO1.vhd
+set_global_assignment -name VHDL_FILE REG_5BIT.vhd
+set_global_assignment -name VHDL_FILE adder_4_by_4_bits.vhd
+set_global_assignment -name VHDL_FILE mux18x2.vhd
+set_global_assignment -name VHDL_FILE FIFO_RD2.vhd
+set_global_assignment -name VHDL_FILE serdes_serializer.vhd
+set_global_assignment -name VHDL_FILE ser_rdo.vhd
+set_global_assignment -name VHDL_FILE serdes_if.vhd
+set_global_assignment -name VHDL_FILE serdes_poweron.vhd
+set_global_assignment -name VHDL_FILE tcpu_new_primitives.vhd
+set_global_assignment -name VHDL_FILE TCPU_C_TOP.vhd
+set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_utilities.vhd
+set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_conversions.vhd
+set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name VECTOR_WAVEFORM_FILE TCPU_C_TOP.vwf
