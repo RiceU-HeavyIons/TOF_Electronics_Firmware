@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.3 2008-01-25 20:25:24 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.4 2008-06-30 20:18:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron for TCPU
 -- Project    : TCPU_B_TOP
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2008-01-25
+-- Last update: 2008-06-27
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_unsigned.ALL;
 LIBRARY altera_mf;
 USE altera_mf.altera_mf_components.ALL;
 LIBRARY lpm;
@@ -52,6 +53,7 @@ END serdes_poweron;
 ARCHITECTURE a OF serdes_poweron IS
   CONSTANT LOCK_PATTERN_THUB : std_logic_vector := "000001001000110100";
   CONSTANT LOCK_PATTERN_TCPU : std_logic_vector := "000100001100100001";
+  CONSTANT SYNC_PATTERN      : std_logic_vector := "000000000111111111";
 
   COMPONENT mux18x2 IS
     PORT (
@@ -69,22 +71,13 @@ ARCHITECTURE a OF serdes_poweron IS
     PO_LOCKED
     );
 
+  SIGNAL poweron_present : poweron_state;
+
   SIGNAL counter_q       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_ctr_aclr      : std_logic;
   SIGNAL s_serdes_tx_sel : std_logic;
 
 
 BEGIN
-
-  counter4b : lpm_counter GENERIC MAP (
-    LPM_WIDTH     => 4,
-    LPM_TYPE      => "LPM_COUNTER",
-    LPM_DIRECTION => "UP")
-    PORT MAP (
-      clock  => clk,
-      q      => counter_q,
-      clk_en => '1',
-      aclr   => s_ctr_aclr);
 
   -- purpose: power on state machine for channel 0
   -- type   : sequential
@@ -92,14 +85,10 @@ BEGIN
   -- outputs: 
   poweron : PROCESS (clk, areset_n) IS
 
-    VARIABLE poweron_present : poweron_state;
-    VARIABLE poweron_next    : poweron_state;
-    
   BEGIN  -- PROCESS poweron
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
 
-      poweron_present := PO_INIT;
-      poweron_next    := PO_INIT;
+      poweron_present <= PO_INIT;
       tpwdn_n         <= '0';           -- tx powered down
       rpwdn_n         <= '0';           -- rx powered down
       sync            <= '0';           -- sync turned off
@@ -113,50 +102,45 @@ BEGIN
       sync            <= '0';
       ch_ready        <= '0';
       s_serdes_tx_sel <= '0';           -- TX data default: "normal" data
-      s_ctr_aclr      <= '1';           -- reset timeout counter
 
       CASE poweron_present IS
         WHEN PO_INIT =>
-          s_ctr_aclr <= '1';               -- reset timeout ctr
-          IF pll_locked = '1' THEN         -- wait for clock lock
-            poweron_next := PO_SYNC;
+          IF pll_locked = '1' THEN           -- wait for clock lock
+            poweron_present <= PO_SYNC;
           END IF;
         WHEN PO_SYNC =>
-          rpwdn_n <= '1';                  -- rx powered on
-          IF ch_lock_n = '0' THEN          -- wait for SERDES lock
-            s_ctr_aclr   <= '0';           -- start counter
-            poweron_next := PO_SEARCH_PATTERN;
+          rpwdn_n <= '1';                    -- rx powered on
+          -- wait for SERDES lock and sync pattern on Rx
+          IF (ch_lock_n = '0') AND (rxd = SYNC_PATTERN) THEN
+            poweron_present <= PO_SEARCH_PATTERN;
           END IF;
         WHEN PO_SEARCH_PATTERN =>
-          sync    <= '1';                  -- sync turned on
-          tpwdn_n <= '1';                  -- tx powered on
-          rpwdn_n <= '1';                  -- rx powered on
-          IF rxd = LOCK_PATTERN_THUB THEN  -- wait for pattern on RX
-            poweron_next := PO_PATTERN;
+          sync      <= '1';                  -- sync turned on
+          tpwdn_n   <= '1';                  -- tx powered on
+          rpwdn_n   <= '1';                  -- rx powered on
+          counter_q <= (OTHERS => '0');      -- clear counter
+          IF rxd = LOCK_PATTERN_THUB THEN    -- wait for pattern on RX
+            poweron_present <= PO_PATTERN;
           END IF;
         WHEN PO_PATTERN =>
-          tpwdn_n         <= '1';          -- tx powered on
-          rpwdn_n         <= '1';          -- rx powered on
-          s_ctr_aclr      <= '0';          -- start timeout ctr
-          s_serdes_tx_sel <= '1';          -- send lock pattern
-          IF counter_q(2) = '1' THEN       -- hold pattern for 4 clocks
-            poweron_next := PO_LOCKED;     -- then move on to "Locked" state
+          tpwdn_n         <= '1';            -- tx powered on
+          rpwdn_n         <= '1';            -- rx powered on
+          s_serdes_tx_sel <= '1';            -- send lock pattern
+          counter_q       <= counter_q + 1;  -- increment counter
+          IF counter_q(3) = '1' THEN         -- hold pattern for 7 clocks
+            poweron_present <= PO_LOCKED;    -- then move on to "Locked" state
           END IF;
         WHEN PO_LOCKED =>
-          tpwdn_n  <= '1';                 -- tx powered on
-          rpwdn_n  <= '1';                 -- rx powered on
-          ch_ready <= '1';                 -- signal that  we achieved lock
+          tpwdn_n  <= '1';                   -- tx powered on
+          rpwdn_n  <= '1';                   -- rx powered on
+          ch_ready <= '1';                   -- signal that  we achieved lock
 
-          IF (ch_lock_n = '1') THEN     -- if we ever loose lock
-            poweron_next := PO_INIT;    -- start all over again
+          IF (ch_lock_n = '1') THEN      -- if we ever loose lock
+            poweron_present <= PO_INIT;  -- start all over again
           END IF;
         WHEN OTHERS =>
-          rpwdn_n <= '1';               -- rx powered on
-          tpwdn_n <= '1';               -- tx powered on
-
-          poweron_next := PO_LOCKED;
+          poweron_present <= PO_INIT;
       END CASE;
-      poweron_present := poweron_next;
 
     END IF;
   END PROCESS poweron;
