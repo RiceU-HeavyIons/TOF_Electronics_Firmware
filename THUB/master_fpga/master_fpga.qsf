@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:56:07  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION "7.2 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION 8.0
 
 # Pin & Location Assignments
 # ==========================
@@ -513,6 +513,20 @@ set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
 set_global_assignment -name ENABLE_CLOCK_LATENCY ON
 set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id maI_clk
 set_instance_assignment -name CLOCK_SETTINGS maI_clk -to maI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mbI_clk
+set_instance_assignment -name CLOCK_SETTINGS mbI_clk -to mbI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mcI_clk
+set_instance_assignment -name CLOCK_SETTINGS mcI_clk -to mcI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mdI_clk
+set_instance_assignment -name CLOCK_SETTINGS mdI_clk -to mdI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id meI_clk
+set_instance_assignment -name CLOCK_SETTINGS meI_clk -to meI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mfI_clk
+set_instance_assignment -name CLOCK_SETTINGS mfI_clk -to mfI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mgI_clk
+set_instance_assignment -name CLOCK_SETTINGS mgI_clk -to mgI[15]
+set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mhI_clk
+set_instance_assignment -name CLOCK_SETTINGS mhI_clk -to mhI[15]
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE ddio_in.vhd
@@ -535,17 +549,3 @@ set_global_assignment -name VHDL_FILE serdes_registers.vhd
 set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mbI_clk
-set_instance_assignment -name CLOCK_SETTINGS mbI_clk -to mbI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mcI_clk
-set_instance_assignment -name CLOCK_SETTINGS mcI_clk -to mcI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mdI_clk
-set_instance_assignment -name CLOCK_SETTINGS mdI_clk -to mdI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id meI_clk
-set_instance_assignment -name CLOCK_SETTINGS meI_clk -to meI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mfI_clk
-set_instance_assignment -name CLOCK_SETTINGS mfI_clk -to mfI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mgI_clk
-set_instance_assignment -name CLOCK_SETTINGS mgI_clk -to mgI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mhI_clk
-set_instance_assignment -name CLOCK_SETTINGS mhI_clk -to mhI[15]
