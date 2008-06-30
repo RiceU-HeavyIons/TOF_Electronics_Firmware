@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.4 2008-05-09 16:15:33 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.5 2008-06-30 15:40:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2008-05-07
+-- Last update: 2008-06-27
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -52,6 +52,7 @@ END serdes_poweron;
 ARCHITECTURE a OF serdes_poweron IS
   CONSTANT LOCK_PATTERN_THUB : std_logic_vector := "000001001000110100";
   CONSTANT LOCK_PATTERN_TCPU : std_logic_vector := "000100001100100001";
+  CONSTANT SYNC_PATTERN      : std_logic_vector := "000000000111111111";
 
   COMPONENT mux18x2 IS
     PORT (
@@ -134,7 +135,8 @@ BEGIN
           rpwdn_n    <= '1';            -- rx powered on
           sync       <= '1';            -- sync turned on
 
-          IF ch_lock_n = '0' THEN       -- wait for SERDES lock
+          -- wait for SERDES lock and sync pattern on Rx  
+          IF (ch_lock_n = '0') AND (rxd = SYNC_PATTERN) THEN
             IF counter_q(7) = '1' THEN  -- wait a little
               s_ctr_aclr <= '1';
               poweron_next := PO_PATTERN;
