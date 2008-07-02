@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.13 2008-04-18 19:20:10 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.14 2008-07-02 21:33:53 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-03-11
+-- Last update: 2008-06-30
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -246,7 +246,7 @@ BEGIN  -- ARCHITECTURE a
           chCtr    := chCtr + 1;
           serCtr   := serCtr + 1;
 
-          IF serCtr = 8 THEN            -- last channel: Serdes B, Channel 3
+          IF serCtr = 0 THEN            -- last channel: rollover, Serdes H, Channel 3
             TState <= SDelay;           -- move on
           ELSE                          -- otherwise repeat from SChkChannel
             ser_selector <= CONV_STD_LOGIC_VECTOR(serCtr, 5);
