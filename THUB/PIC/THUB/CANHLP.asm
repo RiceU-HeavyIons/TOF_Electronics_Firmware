@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.23 2008-05-14 20:49:16 jschamba Exp $
+; $Id: CANHLP.asm,v 1.24 2008-07-02 21:35:32 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -584,8 +584,8 @@ is_it_writeEEPROM:
     ;* RxData[3] = EEPROM data byte
     ;* RxData[4] = RESET Boolean (0xa5 = reset, all others: don't)
     ;*
-    ;* Effect: set last location of EEPROM data to "EEPROM data 
-    ;*           byte" and reset
+    ;* Effect: write EEPROM data byte to location EEPROM address. 
+    ;*           If RESET Boolean == 0xa5, initiate reset
     ;**************************************************************
     movf    RxData,W        ; WREG = RxData
     sublw   0x26
@@ -595,7 +595,7 @@ is_it_writeEEPROM:
 
 writeEEPROM:
     movff   RxData+1, EEADR     ; EEPROM address low byte
-    movff   RxData+2, EEADRH    ; EEPROM address low byte
+    movff   RxData+2, EEADRH    ; EEPROM address high byte
     movff   RxData+3,EEDATA     ; EEPROM data byte = RxData[3]
     movlw   b'00000100'     ; Enable writes to EEData
     movwf   EECON1
@@ -614,7 +614,7 @@ writeEEPROM:
 
     movf    RxData+4,W        ; WREG = RxData[4]
     sublw   0xA5
-    bz      resetToNewProgram
+    bz      resetToNewProgram   ; if 0xA5, reset MCU
     return
 
 resetToNewProgram:
