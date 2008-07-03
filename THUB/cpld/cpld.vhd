@@ -1,4 +1,4 @@
--- $Id: cpld.vhd,v 1.6 2008-05-14 19:14:41 jschamba Exp $
+-- $Id: cpld.vhd,v 1.7 2008-07-03 17:23:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : CPLD
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-15
--- Last update: 2008-05-13
+-- Last update: 2008-07-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -146,10 +146,10 @@ BEGIN
   dclk      <= s_dclk      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
   ncs       <= s_ncs       WHEN as_enable = '1' ELSE (OTHERS => 'Z');
   asdi      <= s_asdi      WHEN as_enable = '1' ELSE (OTHERS => 'Z');
-  nce       <= s_nce       WHEN as_enable = '1' ELSE 'Z';
-  nconfig   <= s_nconfig   WHEN as_enable = '1' ELSE 'Z';
-  nce_2     <= s_nce_2     WHEN as_enable = '1' ELSE 'Z';
-  nconfig_2 <= s_nconfig_2 WHEN as_enable = '1' ELSE 'Z';
+  nce       <= s_nce       WHEN (as_enable = '1' AND count < 9) ELSE 'Z';
+  nconfig   <= s_nconfig   WHEN (as_enable = '1' AND count < 9) ELSE 'Z';
+  nce_2     <= s_nce_2     WHEN (as_enable = '1' AND count < 9) ELSE 'Z';
+  nconfig_2 <= s_nconfig_2 WHEN (as_enable = '1' AND count < 9) ELSE 'Z';
 
   -- these function as JTAG signals to the FPGA JTAG chain
   tck_fp <= uc_tck WHEN as_enable = '1' ELSE 'Z';
