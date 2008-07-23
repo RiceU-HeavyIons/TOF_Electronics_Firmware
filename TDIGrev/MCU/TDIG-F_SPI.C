@@ -1,4 +1,4 @@
-// $Id: TDIG-F_SPI.C,v 1.1 2008-02-13 17:16:11 jschamba Exp $
+// $Id: TDIG-F_SPI.C,v 1.2 2008-07-23 16:33:48 jschamba Exp $
 
 /* TDIG-F_SPI.c
 ** This file defines TIDG-D routines for SPI access to EEPROM #2
@@ -19,6 +19,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**    26-Jun-2008, W. Burton
+**      Remove some unused variables
 **    08-Sep-2007, W. Burton
 **       Updated filenames for RevF boards
 **    29-Jun-2007, W. Burton
@@ -46,6 +48,7 @@ void spi_put_l2m (unsigned int byte);  // send byte LS bit to MS bit
 unsigned char spi_get_m2l (void);       // read byte MS bit to LS bit
 unsigned char spi_get_l2m (void);       // read byte LS bit to MS bit
 
+void spin(int cycle);       // delay via do-nothing loop (defined in TDIG-F.c)
 
 void spi_read_adr ( unsigned int instrn, unsigned char *ap, unsigned int dir, unsigned int bplim, unsigned char *bp) {
 /* Do an SPI read sequence with address.
@@ -139,7 +142,8 @@ void spi_read ( unsigned int instrn, unsigned int dir, unsigned int bplim, unsig
 // Set port directions (Din IN, Clk OUT, Dout OUT, nCS OUT, EE2 Select OUT)
 // This was done back at the beginning (after Initialize_OSC())
     unsigned char *rp;      // pointer to return area
-    unsigned int i, j, k;
+//    unsigned int i, j;
+    unsigned int k;
     rp = bp;
 
 // Lower CS
@@ -203,7 +207,7 @@ void spi_write_adr ( unsigned int instrn, unsigned char *ap, unsigned int dir, u
 */
 // Set port directions (Din IN, Clk OUT, Dout OUT, nCS OUT, EE2 Select OUT)
 // This was done back at the beginning (after Initialize_OSC())
-    unsigned char *rp;      // pointer to source area
+//    unsigned char *rp;      // pointer to source area
     unsigned char *wp;      // working pointer
     unsigned int j, k;
 
