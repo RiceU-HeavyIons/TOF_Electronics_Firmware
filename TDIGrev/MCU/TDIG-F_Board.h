@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.7 2008-06-19 17:55:59 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.8 2008-07-23 17:13:54 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -159,16 +159,16 @@
 //  Clock Switching and Monitor (Disabled) & OSCIO pin is I/O & Primary Disabled
 //    _FOSC( OSCIOFNC_ON & POSCMD_NONE )
 //  Clock Switching Enabled and Monitor Disabled & OSCIO pin is I/O & Primary External
-    _FOSC( FCKSM_CSECMD & OSCIOFNC_ON & POSCMD_EC )
+//    _FOSC( FCKSM_CSECMD & OSCIOFNC_ON & POSCMD_EC )
 //  Clock Switching Enabled and Monitor ENABLED & OSCIO pin is I/O & Primary External
-//    _FOSC( FCKSM_CSECME & OSCIOFNC_ON & POSCMD_EC )
+    _FOSC( FCKSM_CSECME & OSCIOFNC_ON & POSCMD_EC )
 #else
 //  Clock Switching and Monitor (Disabled) & OSCIO pin is Clock & Primary Disabled
 //    _FOSC( OSCIOFNC_OFF & POSCMD_NONE )
 //  Clock Switching Enabled and Monitor Disabled & OSCIO pin is Clock & Primary External
-    _FOSC( FCKSM_CSECMD & OSCIOFNC_OFF & POSCMD_EC )
+//    _FOSC( FCKSM_CSECMD & OSCIOFNC_OFF & POSCMD_EC )
 //  Clock Switching Enabled and Monitor Enabled & OSCIO pin is Clock & Primary External
-//    _FOSC( FCKSM_CSECME & OSCIOFNC_OFF & POSCMD_EC )
+    _FOSC( FCKSM_CSECME & OSCIOFNC_OFF & POSCMD_EC )
 #endif
 /* Clock Selector Bits */
     #define MCU_FRCPLL 1
@@ -179,7 +179,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'N' )       // "M" = 0x4E
+    _FUID0( 'R' )       // "R" = 0x52
     _FUID1( 0x11)       // 0x11
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
