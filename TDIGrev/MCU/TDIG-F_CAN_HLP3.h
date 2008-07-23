@@ -1,4 +1,4 @@
-// $Id: TDIG-F_CAN_HLP3.h,v 1.5 2008-06-19 17:54:32 jschamba Exp $
+// $Id: TDIG-F_CAN_HLP3.h,v 1.6 2008-07-23 17:16:28 jschamba Exp $
 
 /* TDIG-D_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
@@ -19,7 +19,9 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 **
-** 02-Jul-2007, W. Burton
+** 22-Jul-2008, W. Burton
+**     Added C_RS_CLKSTATUS to get read clock status
+** 21-Jul-2007, W. Burton
 **    Added Clock Source Selection code C_WS_OSCSRCSEL
 ** 29-Jun-2007, W. Burton
 **    Created header file to be used in common with TCPU to define the HLP codes
@@ -87,17 +89,41 @@
     #define C_WS_RSTSEQHPTDC2 0x92      // Reset Seq for HPTDC 2
     #define C_WS_RSTSEQHPTDC3 0x93      // Reset Seq for HPTDC 3
 
-// Oscillator clock selection constants
+// Oscillator clock selection constants for C_WS_OSCSRCSEL
+    #define OSCSRCSEL_LEN 3             // 3 payload bytes
     #define OSCSEL_JUMPER 0xFF          // Select oscillator from Jumper
     #define OSCSEL_BOARD 0x0            // Select on-board oscillator (U25)
     #define OSCSEL_TRAY 0x8             // Select Tray (cable) oscillator (U45)
     #define OSCSEL_FRCPLL 0x1           // Select MCU FRC w/PLL Oscillator
+
+// bytes 1 thru 4 of C_WS_RECONFIGx Message (used for security)
+    #define RECONFIG_LEN 5              // 5 payload bytes in FPGA reconfiguration message
+    #define RECONFIG_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
+// bytes 1 thru 4 of C_WS_FPGARESET Message (used for security)
+    #define FPGARESET_LEN 5             // 5 payload bytes in FPGA reset message
+    #define FPGARESET_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
+// bytes 1 thru 4 of C_WS_MCURESET Message (used for security)
+    #define MCURESET_LEN 5             // 5 payload bytes in MCU Restart message
+    #define MCURESET_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
+/* byte 5 of C_WS_TARGETMCU (new MCU code download controlling erase/preserve type\
+ * These must agree with the host-side code in MCU2.cpp
+ */
+    #define ERASE_NONE     0            // do not erase
+    #define ERASE_NORMAL   1            // normal erase entire 2Kbyte block
+    #define ERASE_PRESERVE 2            // preserve unmodified part of 2Kbyte block (e.g. IVT).
+    #define PAGE_MASK 0xFFFFFC00L       // Page address mask0xFFFFFC00L
+    #define OFFSET_MASK 0x3FF           // Offset mask
+    #define PAGE_BYTES 2048             // Page size, bytes
+
+
 
 // byte-0 of Payload codes (C_READ SubCommands)
     #define C_RS_STATUS1      0x05      // Read Status HPTDC #1
     #define C_RS_STATUS2      0x06      // Read Status HPTDC #2
     #define C_RS_STATUS3      0x07      // Read Status HPTDC #3
     #define C_RS_TEMPBRD      0x09      // Read Temperature of board (U37)
+    #define C_RS_CLKSTATUS    0x0D      // Read MCU Clock Status
+    #define C_RS_FPGAREG      0x0E      // Read FPGA Register(s)
     #define C_RS_FPGAREG      0x0E      // Read FPGA Register(s)
     #define C_RS_MCUMEM       0x4C      // Read MCU program memory
     #define C_RS_STATUSB      0xB0      // Read Status of Board
@@ -119,28 +145,10 @@
     #define C_STATUS_BADEE2   0x08      // EEPROM #2 / MCU readback error
     #define C_STATUS_TMOFPGA  0x09      // Timeout during FPGA Reconfiguration
 
-// bytes 1 thru 4 of C_WS_RECONFIGx Message (used for security)
-    #define RECONFIG_LEN 5              // 5 payload bytes in FPGA reconfiguration message
-    #define RECONFIG_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
-// bytes 1 thru 4 of C_WS_FPGARESET Message (used for security)
-    #define FPGARESET_LEN 5             // 5 payload bytes in FPGA reset message
-    #define FPGARESET_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
-// bytes 1 thru 4 of C_WS_MCURESET Message (used for security)
-    #define MCURESET_LEN 5             // 5 payload bytes in MCU Restart message
-    #define MCURESET_CONST 0x5AA59669L  // 0x69 0x96 0xA5 0x5A confirmation
-/* byte 5 of C_WS_TARGETMCU (new MCU code download controlling erase/preserve type\
- * These must agree with the host-side code in MCU2.cpp
- */
-    #define ERASE_NONE     0            // do not erase
-    #define ERASE_NORMAL   1            // normal erase entire 2Kbyte block
-    #define ERASE_PRESERVE 2            // preserve unmodified part of 2Kbyte block (e.g. IVT).
-    #define PAGE_MASK 0xFFFFFC00L       // Page address mask0xFFFFFC00L
-    #define OFFSET_MASK 0x3FF           // Offset mask
-    #define PAGE_BYTES 2048             // Page size, bytes
-
-// Length of message to change oscillator must be correct
-    #define OSCSRCSEL_LEN 3             // 3 payload bytes
-
 // WB-11J Checksum ALERT message contents
     #define C_ALERT_CKSUM_LEN 1
     #define C_ALERT_CKSUM_CODE 0x04
+
+// WB-11R Clock Fail ALERT message
+   #define C_ALERT_CLOCKFAIL_LEN 1
+   #define C_ALERT_CLOCKFAIL_CODE 0xFC
