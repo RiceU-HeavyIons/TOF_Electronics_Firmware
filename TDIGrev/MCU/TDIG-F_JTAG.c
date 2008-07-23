@@ -1,4 +1,4 @@
-// $Id: TDIG-F_JTAG.c,v 1.3 2008-03-13 18:18:38 jschamba Exp $
+// $Id: TDIG-F_JTAG.c,v 1.4 2008-07-23 16:38:53 jschamba Exp $
 
 /* TDIG-F_JTAG.c
 ** This file defines the TDIG-F routines and interfaces for JTAG interface to the TDIG chips.
@@ -19,6 +19,10 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**  26-Jun-2008, W. Burton
+**      Add include for FPGA interface (TDIG-F_MCU_PLD.h)
+**      Remove definition of unused variables (warned by compiler)
+**      Fix unclosed nested comment.
 **  13-Oct-2007, W. Burton
 **      Be sure TAP is reset when starting and ending functions.
 **  12-Sep-2007, W. Burton
@@ -40,6 +44,7 @@
 */
     #include "TDIG-F_Board.h"
     #include "TDIG-F_JTAG.h"
+    #include "TDIG-F_MCU_PLD.h"
     #include "stddef.h"         // Standard definitions
     #include "string.h"
 
@@ -49,7 +54,7 @@
     static unsigned char lock_pll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x20}; // 2nd control
     static unsigned char lock_dll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x80}; // 3rd control
     static unsigned char global_reset [J_HPTDC_CONTROLBYTES] = {0x14, 0x00, 0x00, 0x00, 0x00}; // 4th control
-    static unsigned char enable_all   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F}; // final control
+//    static unsigned char enable_all   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F}; // final control
 #else
     static unsigned char global_reset [J_HPTDC_CONTROLBYTES] = {0x14, 0x00, 0x00, 0x00, 0x00};
     static unsigned char lock_pll     [J_HPTDC_CONTROLBYTES] = {0x04, 0x00, 0x00, 0x00, 0x40};
@@ -58,6 +63,8 @@
     static unsigned char reset_all    [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0xFF};
     static unsigned char enable_all   [J_HPTDC_CONTROLBYTES] = {0xE4, 0xFF, 0xFF, 0xFF, 0x9F};
 #endif
+
+void spin(int cycle);       // delay via do-nothing loop (defined in TDIG-F.c)
 
 void control_hptdc (unsigned int tdcnbr, unsigned char *ctrl);
 
@@ -298,7 +305,7 @@ void DRScan (unsigned char *sndbuf, unsigned int dsize, unsigned int read_into, 
     unsigned char *sp;
     unsigned int bitcount;
     unsigned int i;
-    unsigned int mcu_tdo;
+//    unsigned int mcu_tdo;
     if (dsize != 0) {
         bitcount=dsize;     // number of bits to process
 		sp = sndbuf;		// point to source location
@@ -363,7 +370,8 @@ void insert_parity (unsigned char *bitsbuf, unsigned int nbits)
 	unsigned int i=8;
 	unsigned int partial=0;
 	unsigned int p2=0;
-	unsigned int offset, work;
+	unsigned int offset;
+//    unsigned int work;
 
 	if (nbits > 1) {
 		bp = bitsbuf;
@@ -406,7 +414,7 @@ void insert_parity (unsigned char *bitsbuf, unsigned int nbits)
 **                 LSword, i.e. location of bit[0])
 **     retcfgptr = pointer to the array to receive J_HPTDC_SETUPBITS number of configuration bits read back from HPTDC chip
 **                 (point to LSByte of LSword, i.e. location of bit[0])
-
+*/
 /* Configure the HPTDCs */
     if ((tdcnbr > 0) && (tdcnbr<= NBR_HPTDCS)) {
         select_hptdc(JTAG_MCU, tdcnbr);        // select MCU controlling which HPTDC
