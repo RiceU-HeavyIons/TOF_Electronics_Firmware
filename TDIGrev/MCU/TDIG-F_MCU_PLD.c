@@ -1,4 +1,4 @@
-// $Id: TDIG-F_MCU_PLD.c,v 1.2 2008-03-13 18:17:06 jschamba Exp $
+// $Id: TDIG-F_MCU_PLD.c,v 1.3 2008-07-23 16:34:52 jschamba Exp $
 
 /* TDIG-F_MCU_PLD.c
 ** This file defines the TDIG-D routines and interfaces for MCU iterface to the FPGA.
@@ -19,6 +19,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**      26-Jun-2008, W. Burton
+**          Add include of I2C function headers (TDIG-F_I2C.H)
 **      08-Sep-2007, W. Burton
 **          Updated filenames for RevF boards
 **      06-Jul-2007, W. Burton
@@ -35,6 +37,9 @@
 */
     #include "TDIG-F_Board.h"
     #include "TDIG-F_MCU_PLD.h"
+    #include "TDIG-F_I2C.H"
+
+void spin(int cycle);       // delay via do-nothing loop (defined in TDIG-F.c)
 
 void reset_FPGA (void){
 /* Hardware reset the FPGA
