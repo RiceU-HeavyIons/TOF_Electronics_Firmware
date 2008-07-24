@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.8 2008-07-23 17:13:54 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.9 2008-07-24 18:00:18 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -179,7 +179,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'R' )       // "R" = 0x52
+    _FUID0( 'S' )       // "S" = 0x53
     _FUID1( 0x11)       // 0x11
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
