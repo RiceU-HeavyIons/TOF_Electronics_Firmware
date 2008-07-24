@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.8 2008-07-23 17:12:21 jschamba Exp $
+// $Id: TDIG-F.c,v 1.9 2008-07-24 18:01:51 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -30,8 +30,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'R'      //WB-11R: 0x11 0x52
-//#define FIRMWARE_ID_0 'N'    //JS-11N: 0x11 0x4E
+#define FIRMWARE_ID_0 'S'      // 0x11 0x53
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -200,9 +199,10 @@ unsigned int timerExpired = 0;
 int main()
 {
 #if !defined (DOWNLOAD_CODE)
-    unsigned long int laddrs, lwork2;
-    unsigned int save_SR;           // image of status register while we block interrupts
+    unsigned long int lwork2;
 #endif
+    unsigned int save_SR;           // image of status register while we block interrupts
+   	unsigned long int laddrs;
     unsigned long lwork;
     unsigned int i, j, k, l;        // working indexes
 	unsigned int tglbit = 0x0;
@@ -368,6 +368,7 @@ int main()
  --------------------------------------------------*/
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc.
+		spin(40);	// JS: Wait a little for external clock to be valid, should be at least 40
         Initialize_OSC (OSCSEL_TRAY);       //  Use TRAY clock
     } else {                        // Jumper OUT (use local osc)
         Initialize_OSC (OSCSEL_BOARD);       //  Use BOARD clock
@@ -891,6 +892,8 @@ int main()
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
                             } // end else block was not in progress
                             break;  // end case C_WS_TARGETMCU
+#endif // #if !defined (DOWNLOAD_CODE)
+
 //JS: TIMER STUFF **************************************
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
@@ -916,7 +919,6 @@ int main()
 
                             break;  // end case C_WS_MAGICNUMWR
 //JS: END TIMER STUFF **********************************
-#endif // #if !defined (DOWNLOAD_CODE)
 
                         case C_WS_BLOCKCKSUM:       // Block Data Checksum
                             retbuf[1] = C_STATUS_INVALID;
