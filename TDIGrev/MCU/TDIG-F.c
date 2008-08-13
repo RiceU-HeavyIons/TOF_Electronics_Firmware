@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.9 2008-07-24 18:01:51 jschamba Exp $
+// $Id: TDIG-F.c,v 1.10 2008-08-13 17:54:24 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -368,7 +368,7 @@ int main()
  --------------------------------------------------*/
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc.
-		spin(40);	// JS: Wait a little for external clock to be valid, should be at least 40
+		spin(45);	// JS: Wait a little for external clock to be valid, should be at least 40
         Initialize_OSC (OSCSEL_TRAY);       //  Use TRAY clock
     } else {                        // Jumper OUT (use local osc)
         Initialize_OSC (OSCSEL_BOARD);       //  Use BOARD clock
