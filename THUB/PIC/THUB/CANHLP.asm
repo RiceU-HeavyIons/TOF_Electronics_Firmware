@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.24 2008-07-02 21:35:32 jschamba Exp $
+; $Id: CANHLP.asm,v 1.25 2008-09-17 17:47:38 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -294,7 +294,7 @@ is_it_TofReadCRCErrors:
     ;**************************************************************
     movf    RxData,W
     sublw   0x5
-    bnz     is_it_TofReadSiID  
+    bnz     is_it_TofGetChecksum  
 
 	banksel	TXB0CON
 	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
@@ -304,6 +304,31 @@ is_it_TofReadCRCErrors:
 
     ; send read response with length 2
     mCANSendRdResponse  2
+    return
+
+is_it_TofGetChecksum
+    ;**************************************************************
+    ;****** Get Code Checksum **********************************
+    ;* msgID = 0x404
+    ;* RxData[0] = 0x6
+    ;* RxData[1] = start address low byte
+    ;* RxData[2] = start address high byte
+    ;* RxData[3] = start address upper byte
+    ;* RxData[4] = end address low byte
+    ;* RxData[5] = end address high byte
+    ;* RxData[6] = end address upper byte
+    ;*
+    ;* Effect: Calculate 16 bit checksum of code bytes between
+    ;*          "start address" and "end address". The result
+    ;*          is returned as two bytes with
+    ;*          return byte 0 = low byte of checksum
+    ;*          return byte 1 = hi byte of checksum
+    ;*
+    ;**************************************************************
+    movf    RxData,W
+    sublw   0x6
+    bnz     is_it_TofReadSiID  
+    call    TofGetChecksum
     return
 
 is_it_TofReadSiID:
@@ -782,6 +807,61 @@ FirmwareLoop:
 
     ; send read response with length 8
     mCANSendRdResponse  8
+    return                  ; back to receiver loop
+
+    ;**************************************************************
+    ;****** Get Code Checksum *************************************
+    ;**************************************************************
+TofGetChecksum:
+    movff   RxData+3, TBLPTRU
+    movff   RxData+2, TBLPTRH
+    movff   RxData+1, TBLPTRL
+
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    clrf    TXB0D0          ; Checksum low byte 
+    clrf    TXB0D1          ; Checksum hi byte
+
+    ; increment all bytes by 1, so the loop decrement stops at 0
+    incf    RxData+4, F
+    incf    RxData+5, F
+    incf    RxData+6, F
+
+    ; low byte loop counter
+    movf    RxData+1, W
+    subwf   RxData+4, F
+    btfsc   STATUS, N   ; is result negative?
+    decf    RxData+5, F ; if yes, subtract 1 from next higher byte
+
+    ; high byte loop counter
+    movf    RxData+2, W
+    subwf   RxData+5, F
+    btfsc   STATUS, N   ; is result negative?
+    decf    RxData+6, F ; if yes, subtract 1 from next higher byte
+
+    ; upper byte loop counter
+    movf    RxData+3, W
+    subwf   RxData+6, F
+
+    ; now use RxData[4], RxData[5], and RxData[6] as loop counters
+
+ChecksumLoop:
+    tblrd*+                 ; Read flash program byte
+    movf    TABLAT, W       ; get program byte
+    addwf   TXB0D0, F       ; add it to checksum low byte
+    btfsc   STATUS, C       ; check for overflow
+    incf    TXB0D1, F       ; yes, increment hi byte of checksum
+	decfsz	RxData+4, F     ; inner most loop
+	bra		ChecksumLoop
+    decfsz  RxData+5, F     ; next outer loop
+    bra     ChecksumLoop
+    decfsz  RxData+6, F     ; outer most loop
+    bra     ChecksumLoop    
+
+    ; send read response with length 2 (16 bit checksum)
+    mCANSendRdResponse  2
     return                  ; back to receiver loop
 
     ;**************************************************************
