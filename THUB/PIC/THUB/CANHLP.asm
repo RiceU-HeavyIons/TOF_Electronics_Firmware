@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.25 2008-09-17 17:47:38 jschamba Exp $
+; $Id: CANHLP.asm,v 1.26 2008-09-17 21:06:14 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -830,16 +830,21 @@ TofGetChecksum:
     incf    RxData+6, F
 
     ; low byte loop counter
+    movf    RxData+4, W
+	cpfsgt	RxData+1	; check if RxData[1] > RxData[4]
+	incf	RxData+5, F	; if no, increment next higher byte first
+    decf    RxData+5, F ; subtract 1 from next higher byte
     movf    RxData+1, W
     subwf   RxData+4, F
-    btfsc   STATUS, N   ; is result negative?
-    decf    RxData+5, F ; if yes, subtract 1 from next higher byte
 
     ; high byte loop counter
+    movf    RxData+5, W
+	cpfsgt	RxData+2	; check if RxData[2] > RxData[5]
+	incf	RxData+6, F	; if no, increment next higher byte first
+    decf    RxData+6, F ; subtract 1 from next higher byte
     movf    RxData+2, W
     subwf   RxData+5, F
-    btfsc   STATUS, N   ; is result negative?
-    decf    RxData+6, F ; if yes, subtract 1 from next higher byte
+
 
     ; upper byte loop counter
     movf    RxData+3, W
