@@ -27,7 +27,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:57:31  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION 8.0
+set_global_assignment -name LAST_QUARTUS_VERSION "8.0 SP1"
 
 # Pin & Location Assignments
 # ==========================
@@ -493,6 +493,11 @@ set_instance_assignment -name CLOCK_SETTINGS ch3_rclk -to ch3_rclk
 set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
 set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
 set_global_assignment -name BLOCK_DESIGN_NAMING AUTO
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch0_lock_n
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch1_lock_n
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch2_lock_n
+set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch3_lock_n
+set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE ddio_out.vhd
@@ -511,10 +516,4 @@ set_global_assignment -name VHDL_FILE pipe_stage.vhd
 set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
-set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch0_lock_n
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch1_lock_n
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch2_lock_n
-set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch3_lock_n
-set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
