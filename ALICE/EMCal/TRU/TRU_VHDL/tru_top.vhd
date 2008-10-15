@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.2 2008-10-15 21:07:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-10-13
+-- Last update: 2008-10-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -169,7 +169,7 @@ ARCHITECTURE str OF tru IS
 
   COMPONENT adc_init
     PORT (
-      RESET_n     : IN  std_logic;
+      RESET       : IN  std_logic;
       CLK10M      : IN  std_logic;
       LOCKED      : IN  std_logic;
       ADC_RESET_n : OUT std_logic;
@@ -235,10 +235,14 @@ ARCHITECTURE str OF tru IS
   SIGNAL s_adc_ready    : std_logic;
   SIGNAL s_serdese_rdy  : std_logic_vector(13 DOWNTO 0);
   SIGNAL s_serdeso_rdy  : std_logic_vector(13 DOWNTO 0);
+  SIGNAL s_intReset     : std_logic;
 
   SIGNAL chipscope_data : std_logic_vector(195 DOWNTO 0);
   
 BEGIN  -- ARCHITECTURE str
+
+  -- internal reset:
+  s_intReset <= NOT BRD_RESET_n;
 
   -----------------------------------------------------------------------------
   -- clock generation
@@ -386,7 +390,7 @@ BEGIN  -- ARCHITECTURE str
   -- sample ADC serial control
   -----------------------------------------------------------------------------
   adc_init_inst : adc_init PORT MAP (
-    RESET_n     => BRD_RESET_n,
+    RESET       => s_intReset,
     CLK10M      => global_clk10M,
     LOCKED      => s_dcm_locked,
     ADC_RESET_n => ADC_RESET_n,
@@ -405,7 +409,7 @@ BEGIN  -- ARCHITECTURE str
   -----------------------------------------------------------------------------
   serdes_inst : adc_deserializer
     PORT MAP (
-      RESET          => NOT BRD_RESET_n,
+      RESET          => s_intReset,
       ADC_READY      => s_adc_ready,
       ADC_CLK_P      => ADC_CLK_P,
       ADC_CLK_N      => ADC_CLK_N,

@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.2 2008-10-15 21:07:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-10-10
+-- Last update: 2008-10-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ ENTITY adc_init IS
 
 
   PORT (
-    RESET_n     : IN  std_logic;        -- reset (active low)
+    RESET       : IN  std_logic;        -- reset (active high)
     CLK10M      : IN  std_logic;
     LOCKED      : IN  std_logic;
     ADC_RESET_n : OUT std_logic;
@@ -53,14 +53,14 @@ ARCHITECTURE str1 OF adc_init IS
   -----------------------------------------------------------------------------
   COMPONENT adc_serial_tx
     PORT (
-      RESET_n : IN  std_logic;          -- reset (active low)
-      SCLK    : IN  std_logic;
-      SDATA   : OUT std_logic;
-      CS_n    : OUT std_logic;
-      PDATA   : IN  std_logic_vector(15 DOWNTO 0);
-      ADDR    : IN  std_logic_vector (7 DOWNTO 0);
-      LOAD    : IN  std_logic;
-      READY   : OUT std_logic);
+      RESET : IN  std_logic;            -- reset (active high)
+      SCLK  : IN  std_logic;
+      SDATA : OUT std_logic;
+      CS_n  : OUT std_logic;
+      PDATA : IN  std_logic_vector(15 DOWNTO 0);
+      ADDR  : IN  std_logic_vector (7 DOWNTO 0);
+      LOAD  : IN  std_logic;
+      READY : OUT std_logic);
   END COMPONENT;
 
   -----------------------------------------------------------------------------
@@ -94,20 +94,20 @@ ARCHITECTURE str1 OF adc_init IS
 BEGIN  -- ARCHITECTURE str
 
   adc_serial_tx_inst : adc_serial_tx PORT MAP (
-    RESET_n => RESET_n,
-    SCLK    => CLK10M,
-    SDATA   => SDATA,
-    CS_n    => CS_n,
-    PDATA   => s_pdata,
-    ADDR    => s_addr,
-    LOAD    => s_load,
-    READY   => s_ready);
+    RESET => RESET,
+    SCLK  => CLK10M,
+    SDATA => SDATA,
+    CS_n  => CS_n,
+    PDATA => s_pdata,
+    ADDR  => s_addr,
+    LOAD  => s_load,
+    READY => s_ready);
 
   -- use a state machine to control the serial data TX
-  IControl : PROCESS (CLK10M, RESET_n) IS
+  IControl : PROCESS (CLK10M, RESET) IS
     VARIABLE timeoutCtr : integer RANGE 0 TO 131071 := 0;  -- 17 bits
   BEGIN
-    IF RESET_n = '0' THEN               -- asynchronous reset (active low)
+    IF RESET = '1' THEN                 -- asynchronous reset (active high)
       IState      <= SLock;
       s_pdata     <= x"0000";
       s_addr      <= x"00";
@@ -132,21 +132,21 @@ BEGIN  -- ARCHITECTURE str
 
           IF timeoutCtr = 106496 THEN   --  >10ms
             timeoutCtr := 0;
-            IState <= SReset;
+            IState     <= SReset;
           END IF;
 
         WHEN SReset =>
           timeoutCtr  := timeoutCtr + 1;
           ADC_RESET_n <= '0';
-          IF timeoutCtr = 4 THEN   --  >100ns
+          IF timeoutCtr = 4 THEN        --  >100ns
             IState <= SWaitInit;
           END IF;
 
           -- First Initialization register
         WHEN SWaitInit =>
           timeoutCtr := 0;
-          s_addr  <= x"03";
-          s_pdata <= x"0002";
+          s_addr     <= x"03";
+          s_pdata    <= x"0002";
 
           IState <= SStartInit1;
 
@@ -161,8 +161,8 @@ BEGIN  -- ARCHITECTURE str
           -- Second Initialization register
         WHEN SWaitInit1 =>
           timeoutCtr := 0;
-          s_addr <= x"01";
-          s_pdata <= x"0010";
+          s_addr     <= x"01";
+          s_pdata    <= x"0010";
           IF s_ready = '1' THEN
             IState <= SStartInit2;
           END IF;
@@ -178,8 +178,8 @@ BEGIN  -- ARCHITECTURE str
           -- Third Initialization register
         WHEN SWaitInit2 =>
           timeoutCtr := 0;
-          s_addr <= x"C7";
-          s_pdata <= x"8001";
+          s_addr     <= x"C7";
+          s_pdata    <= x"8001";
           IF s_ready = '1' THEN
             IState <= SStartInit3;
           END IF;
@@ -195,8 +195,8 @@ BEGIN  -- ARCHITECTURE str
           -- Fourth Initialization register
         WHEN SWaitInit3 =>
           timeoutCtr := 0;
-          s_addr <= x"DE";
-          s_pdata <= x"01C0";
+          s_addr     <= x"DE";
+          s_pdata    <= x"01C0";
           IF s_ready = '1' THEN
             IState <= SStartInit4;
           END IF;
@@ -212,8 +212,8 @@ BEGIN  -- ARCHITECTURE str
           -- LVDS Test Pattern register
         WHEN SWaitInit4 =>
           timeoutCtr := 0;
-          s_addr <= x"45";
-          s_pdata <= x"0002";           -- PAT_SYNC
+          s_addr     <= x"45";
+          s_pdata    <= x"0002";        -- PAT_SYNC
 --          s_pdata <= x"0001";           -- PAT_DESKEW
           IF s_ready = '1' THEN
             IState <= SStartInit5;

@@ -1,4 +1,4 @@
--- $Id: adc_serial_tx.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: adc_serial_tx.vhd,v 1.2 2008-10-15 21:07:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Serial Transmitter
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-18
--- Last update: 2008-08-19
+-- Last update: 2008-10-15
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,14 +33,14 @@ ENTITY adc_serial_tx IS
 
 
   PORT (
-    RESET_n : IN  std_logic;            -- reset (active low)
-    SCLK    : IN  std_logic;
-    SDATA   : OUT std_logic;
-    CS_n    : OUT std_logic;
-    PDATA   : IN  std_logic_vector(15 DOWNTO 0);
-    ADDR    : IN  std_logic_vector (7 DOWNTO 0);
-    LOAD    : IN  std_logic;
-    READY   : OUT std_logic
+    RESET : IN  std_logic;              -- reset (active high)
+    SCLK  : IN  std_logic;
+    SDATA : OUT std_logic;
+    CS_n  : OUT std_logic;
+    PDATA : IN  std_logic_vector(15 DOWNTO 0);
+    ADDR  : IN  std_logic_vector (7 DOWNTO 0);
+    LOAD  : IN  std_logic;
+    READY : OUT std_logic
     );
 
 END ENTITY adc_serial_tx;
@@ -72,10 +72,10 @@ BEGIN  -- ARCHITECTURE str
   SDATA <= s_shiftreg(23);
 
   -- use a state machine to control the serial data TX
-  txControl : PROCESS (SCLK, RESET_n) IS
+  txControl : PROCESS (SCLK, RESET) IS
     VARIABLE dataCtr : integer RANGE 0 TO 23 := 0;
   BEGIN
-    IF RESET_n = '0' THEN               -- asynchronous reset (active low)
+    IF RESET = '1' THEN                 -- asynchronous reset (active high)
       TxState    <= SIdle;
       dataCtr    := 0;
       CS_n       <= '1';
