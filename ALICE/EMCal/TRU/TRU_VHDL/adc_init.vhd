@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.2 2008-10-15 21:07:00 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.3 2008-10-16 20:14:58 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-10-15
+-- Last update: 2008-10-16
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -114,6 +114,7 @@ BEGIN  -- ARCHITECTURE str
       s_load      <= '0';
       timeoutCtr  := 0;
       ADC_RESET_n <= '1';
+      READY       <= '0';
       
     ELSIF CLK10M'event AND CLK10M = '1' THEN  -- rising clock edge
       s_load      <= '0';
@@ -212,8 +213,11 @@ BEGIN  -- ARCHITECTURE str
           -- LVDS Test Pattern register
         WHEN SWaitInit4 =>
           timeoutCtr := 0;
-          s_addr     <= x"45";
-          s_pdata    <= x"0002";        -- PAT_SYNC
+          s_addr     <= x"25";
+          s_pdata    <= x"002D";        -- DUALCUSTOM_PAT: 1 = 0xc00, 2 = 0x400
+          s_pdata    <= x"0040";        -- EN_RAMP
+--          s_addr     <= x"45";
+--          s_pdata    <= x"0002";        -- PAT_SYNC
 --          s_pdata <= x"0001";           -- PAT_DESKEW
           IF s_ready = '1' THEN
             IState <= SStartInit5;
