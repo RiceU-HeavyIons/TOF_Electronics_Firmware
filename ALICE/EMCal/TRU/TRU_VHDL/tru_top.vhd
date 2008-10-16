@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.2 2008-10-15 21:07:00 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.3 2008-10-16 20:19:31 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-10-15
+-- Last update: 2008-10-16
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -147,15 +147,6 @@ ARCHITECTURE str OF tru IS
   -- Component Declarations
   -----------------------------------------------------------------------------
 
-  COMPONENT clockPLL
-    PORT(
-      CLKIN1_IN   : IN  std_logic;
-      RST_IN      : IN  std_logic;
-      CLKOUT0_OUT : OUT std_logic;
-      LOCKED_OUT  : OUT std_logic
-      );
-  END COMPONENT;
-
   COMPONENT clockDCM
     PORT (
       CLKIN_IN        : IN  std_logic;
@@ -208,6 +199,12 @@ ARCHITECTURE str OF tru IS
       ADC_SERDES_OUT : OUT std_logic_vector (1343 DOWNTO 0));
   END COMPONENT;
 
+  COMPONENT poweron IS
+    PORT (
+      BRD_RESET_n : IN  std_logic;
+      BRD_40M     : IN  std_logic;
+      PO_RESET    : OUT std_logic);
+  END COMPONENT poweron;
 
   -----------------------------------------------------------------------------
   -- Internal signal declarations
@@ -236,13 +233,20 @@ ARCHITECTURE str OF tru IS
   SIGNAL s_serdese_rdy  : std_logic_vector(13 DOWNTO 0);
   SIGNAL s_serdeso_rdy  : std_logic_vector(13 DOWNTO 0);
   SIGNAL s_intReset     : std_logic;
+  SIGNAL s_clk0_out     : std_logic;
 
   SIGNAL chipscope_data : std_logic_vector(195 DOWNTO 0);
   
 BEGIN  -- ARCHITECTURE str
 
   -- internal reset:
-  s_intReset <= NOT BRD_RESET_n;
+--  s_intReset <= NOT BRD_RESET_n;
+
+  poreset_inst : poweron
+    PORT MAP (
+      BRD_RESET_n => BRD_RESET_n,
+      BRD_40M     => global_clk40M,
+      PO_RESET    => s_intReset);
 
   -----------------------------------------------------------------------------
   -- clock generation
@@ -254,7 +258,7 @@ BEGIN  -- ARCHITECTURE str
     CLKDV_OUT       => global_clk10M,
     CLKFX_OUT       => clk_200M,
     CLKIN_IBUFG_OUT => global_clk40M,
-    CLK0_OUT        => OPEN,
+    CLK0_OUT        => s_clk0_out,
     LOCKED_OUT      => s_dcm_locked);
 
   -- use 200MHz clock for IDELAYCTRL
@@ -527,14 +531,8 @@ BEGIN  -- ARCHITECTURE str
     -----------------------------------------------------------------------------
     -- Chipscope connections
     -----------------------------------------------------------------------------
-    -- this one is the clock for Chipscope
-    clockPLL_inst : clockPLL PORT MAP(
-      CLKIN1_IN   => global_clk40M,
-      RST_IN      => '0',
-      CLKOUT0_OUT => global_ilaclk,
-      LOCKED_OUT  => s_pll_locked
-      );
 
+    global_ilaclk <= clk_200M;
     -- the chipscope controller
     icon_inst : tru_chipscope
       PORT MAP (
@@ -546,12 +544,16 @@ BEGIN  -- ARCHITECTURE str
     -- put one chip's worth of deserialized data on ILA:
 --    chipscope_data <= s_serdes_out(383 DOWNTO 288);
 
-    GCS : FOR i IN 0 TO 13 GENERATE
+    GCS : FOR i IN 0 TO 12 GENERATE
       chipscope_data(i*14+11 DOWNTO i*14) <= s_serdes_out(i*8*12 + 11 DOWNTO i*8*12);
       chipscope_data(i*14+12)             <= s_serdese_rdy(i);
       chipscope_data(i*14+13)             <= s_serdeso_rdy(i);
       
     END GENERATE GCS;
+
+    chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
+    chipscope_data(194) <= global_clk40M;
+    chipscope_data(195) <= s_intReset;
 
     ila_inst : tru_ila
       PORT MAP (
