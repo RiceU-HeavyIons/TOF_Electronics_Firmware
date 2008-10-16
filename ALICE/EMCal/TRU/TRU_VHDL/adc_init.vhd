@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.3 2008-10-16 20:14:58 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.4 2008-10-16 20:44:43 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -214,7 +214,7 @@ BEGIN  -- ARCHITECTURE str
         WHEN SWaitInit4 =>
           timeoutCtr := 0;
           s_addr     <= x"25";
-          s_pdata    <= x"002D";        -- DUALCUSTOM_PAT: 1 = 0xc00, 2 = 0x400
+--          s_pdata    <= x"002D";        -- DUALCUSTOM_PAT: 1 = 0xc00, 2 = 0x400
           s_pdata    <= x"0040";        -- EN_RAMP
 --          s_addr     <= x"45";
 --          s_pdata    <= x"0002";        -- PAT_SYNC
