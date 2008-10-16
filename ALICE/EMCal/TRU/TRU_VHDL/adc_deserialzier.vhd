@@ -1,4 +1,4 @@
--- $Id: adc_deserialzier.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: adc_deserialzier.vhd,v 1.2 2008-10-16 20:22:29 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Deserializer
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-08
--- Last update: 2008-10-14
+-- Last update: 2008-10-16
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -60,7 +60,7 @@ ARCHITECTURE str1 OF adc_deserializer IS
   SIGNAL s_adc_fclk, s_adc_fclkp    : std_logic_vector (13 DOWNTO 0);
 --  SIGNAL s_adc_dclk_p, s_adc_dclk_n : std_logic_vector (13 DOWNTO 0);
   SIGNAL s_adc_dclk_r               : std_logic_vector (13 DOWNTO 0);
-  SIGNAL s_adc_data_p, s_adc_data_n : std_logic_vector (111 DOWNTO 0);
+  SIGNAL s_adc_data_e, s_adc_data_o : std_logic_vector (111 DOWNTO 0);
   SIGNAL s_serdes_out               : std_logic_vector (1343 DOWNTO 0);  -- 12 * 112
   SIGNAL s_adc_dclk                 : std_logic_vector (13 DOWNTO 0);
   SIGNAL bse, bso                   : std_logic_vector (13 DOWNTO 0);
@@ -68,8 +68,8 @@ ARCHITECTURE str1 OF adc_deserializer IS
   SIGNAL s_bitslip_rst              : std_logic;
 
   TYPE BS_CNT IS ARRAY (0 TO 13) OF integer RANGE 0 TO 7;
-  CONSTANT bs_cnt_even : BS_CNT := (5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5);
-  CONSTANT bs_cnt_odd  : BS_CNT := (4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4);
+  CONSTANT bs_cnt_even : BS_CNT := (4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4);
+  CONSTANT bs_cnt_odd  : BS_CNT := (5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5);
 
   COMPONENT adc_bitslip IS
     PORT (
@@ -85,7 +85,7 @@ BEGIN  -- ARCHITECTURE str1
   -- 671 = (14 ADC * 8 channel * 12 bits)/2 - 1
   Gfinal : FOR j IN 0 TO 671 GENERATE
     ADC_SERDES_OUT(j*2)   <= s_serdes_out(j*2);
-    -- odd bits are inverted
+    -- odd bits are inverted relative to even bits
     ADC_SERDES_OUT(j*2+1) <= NOT s_serdes_out(j*2+1);
   END GENERATE Gfinal;
 
@@ -164,8 +164,8 @@ BEGIN  -- ARCHITECTURE str1
         PORT MAP (
           I  => ADC_QUAD_P(j),
           IB => ADC_QUAD_N(j),
-          O  => s_adc_data_p(j),
-          OB => s_adc_data_n(j)
+          O  => s_adc_data_e(j),
+          OB => s_adc_data_o(j)
           );
     END GENERATE G3a;
 
@@ -177,8 +177,8 @@ BEGIN  -- ARCHITECTURE str1
         PORT MAP (
           I  => ADC_QUAD_N(j),
           IB => ADC_QUAD_P(j),
-          O  => s_adc_data_n(j),
-          OB => s_adc_data_p(j)
+          O  => s_adc_data_o(j),
+          OB => s_adc_data_e(j)
           );
     END GENERATE G3b;
     
@@ -195,7 +195,8 @@ BEGIN  -- ARCHITECTURE str1
 
       G4a1 : IF ADC_LCLK_POLARITY_FLIP(i) = '0' GENERATE
         -----------------------------------------------------------------------------
-        -- deserialize all of the positive data lines with the positive clock;
+        -- deserialize all of the positive data lines with the negative clock;
+        -- (clock shifted by 180 degrees to compensate for delays)
         -----------------------------------------------------------------------------
         ISERDES_even : ISERDES
           GENERIC MAP (
@@ -222,9 +223,9 @@ BEGIN  -- ARCHITECTURE str1
             BITSLIP   => bse(i),        -- 1-bit Bitslip enable input
             CE1       => '1',           -- 1-bit clock enable input
             CE2       => '0',           -- 1-bit clock enable input
-            CLK       => s_adc_dclk_r(i),    -- 1-bit master clock input
+            CLK       => NOT s_adc_dclk_r(i),  -- 1-bit master clock input
             CLKDIV    => s_adc_fclk(i),  -- 1-bit divided clock input
-            D         => s_adc_data_p(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
+            D         => s_adc_data_e(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
             DLYCE     => '0',           -- 1-bit input
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
@@ -236,7 +237,8 @@ BEGIN  -- ARCHITECTURE str1
             );
 
         -----------------------------------------------------------------------------
-        -- deserialize all of the negative data lines with the negative clock;
+        -- deserialize all of the negative data lines with the positive clock;
+        -- (clock shifted by 180 degrees to compensate for delays)
         -----------------------------------------------------------------------------
         ISERDES_odd : ISERDES
           GENERIC MAP (
@@ -263,9 +265,9 @@ BEGIN  -- ARCHITECTURE str1
             BITSLIP   => bso(i),        -- 1-bit Bitslip enable input
             CE1       => '1',           -- 1-bit clock enable input
             CE2       => '0',           -- 1-bit clock enable input
-            CLK       => NOT s_adc_dclk_r(i),  -- 1-bit master clock input
+            CLK       => s_adc_dclk_r(i),    -- 1-bit master clock input
             CLKDIV    => s_adc_fclk(i),  -- 1-bit divided clock input
-            D         => s_adc_data_n(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
+            D         => s_adc_data_o(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
             DLYCE     => '0',           -- 1-bit input
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
@@ -311,9 +313,9 @@ BEGIN  -- ARCHITECTURE str1
             BITSLIP   => bse(i),        -- 1-bit Bitslip enable input
             CE1       => '1',           -- 1-bit clock enable input
             CE2       => '0',           -- 1-bit clock enable input
-            CLK       => NOT s_adc_dclk_r(i),  -- 1-bit master clock input
+            CLK       => s_adc_dclk_r(i),    -- 1-bit master clock input
             CLKDIV    => s_adc_fclk(i),  -- 1-bit divided clock input
-            D         => s_adc_data_p(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
+            D         => s_adc_data_e(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
             DLYCE     => '0',           -- 1-bit input
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
@@ -353,9 +355,9 @@ BEGIN  -- ARCHITECTURE str1
             BITSLIP   => bso(i),        -- 1-bit Bitslip enable input
             CE1       => '1',           -- 1-bit clock enable input
             CE2       => '0',           -- 1-bit clock enable input
-            CLK       => s_adc_dclk_r(i),    -- 1-bit master clock input
+            CLK       => NOT s_adc_dclk_r(i),  -- 1-bit master clock input
             CLKDIV    => s_adc_fclk(i),  -- 1-bit divided clock input
-            D         => s_adc_data_n(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
+            D         => s_adc_data_o(i*8+j),  -- 1-bit data input, connects to IODELAY or input buffer
             DLYCE     => '0',           -- 1-bit input
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
