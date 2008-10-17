@@ -1,4 +1,4 @@
--- $Id: adc_deserialzier.vhd,v 1.2 2008-10-16 20:22:29 jschamba Exp $
+-- $Id: adc_deserialzier.vhd,v 1.3 2008-10-17 18:37:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Deserializer
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-08
--- Last update: 2008-10-16
+-- Last update: 2008-10-17
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -207,7 +207,7 @@ BEGIN  -- ARCHITECTURE str1
             IOBDELAY       => "IFD",  -- Specify outputs where delay chain will be applied
             -- "NONE", "IBUF", "IFD", or "BOTH" 
             IOBDELAY_TYPE  => "FIXED",  -- Set tap delay "DEFAULT", "FIXED", or "VARIABLE" 
-            IOBDELAY_VALUE => 0,  -- Set initial tap delay to an integer from 0 to 63
+            IOBDELAY_VALUE => 7,  -- Set initial tap delay to an integer from 0 to 63
             NUM_CE         => 1,  -- Define number or clock enables to an integer of 1 or 2
             SERDES_MODE    => "MASTER")  -- Set SERDES mode to "MASTER" or "SLAVE" 
           PORT MAP (
@@ -249,7 +249,7 @@ BEGIN  -- ARCHITECTURE str1
             IOBDELAY       => "IFD",  -- Specify outputs where delay chain will be applied
             -- "NONE", "IBUF", "IFD", or "BOTH" 
             IOBDELAY_TYPE  => "FIXED",  -- Set tap delay "DEFAULT", "FIXED", or "VARIABLE" 
-            IOBDELAY_VALUE => 0,  -- Set initial tap delay to an integer from 0 to 63
+            IOBDELAY_VALUE => 7,  -- Set initial tap delay to an integer from 0 to 63
             NUM_CE         => 1,  -- Define number or clock enables to an integer of 1 or 2
             SERDES_MODE    => "MASTER")  -- Set SERDES mode to "MASTER" or "SLAVE" 
           PORT MAP (
@@ -297,7 +297,7 @@ BEGIN  -- ARCHITECTURE str1
             IOBDELAY       => "IFD",  -- Specify outputs where delay chain will be applied
             -- "NONE", "IBUF", "IFD", or "BOTH" 
             IOBDELAY_TYPE  => "FIXED",  -- Set tap delay "DEFAULT", "FIXED", or "VARIABLE" 
-            IOBDELAY_VALUE => 0,  -- Set initial tap delay to an integer from 0 to 63
+            IOBDELAY_VALUE => 7,  -- Set initial tap delay to an integer from 0 to 63
             NUM_CE         => 1,  -- Define number or clock enables to an integer of 1 or 2
             SERDES_MODE    => "MASTER")  -- Set SERDES mode to "MASTER" or "SLAVE" 
           PORT MAP (
@@ -339,7 +339,7 @@ BEGIN  -- ARCHITECTURE str1
             IOBDELAY       => "IFD",  -- Specify outputs where delay chain will be applied
             -- "NONE", "IBUF", "IFD", or "BOTH" 
             IOBDELAY_TYPE  => "FIXED",  -- Set tap delay "DEFAULT", "FIXED", or "VARIABLE" 
-            IOBDELAY_VALUE => 0,  -- Set initial tap delay to an integer from 0 to 63
+            IOBDELAY_VALUE => 7,  -- Set initial tap delay to an integer from 0 to 63
             NUM_CE         => 1,  -- Define number or clock enables to an integer of 1 or 2
             SERDES_MODE    => "MASTER")  -- Set SERDES mode to "MASTER" or "SLAVE" 
           PORT MAP (
