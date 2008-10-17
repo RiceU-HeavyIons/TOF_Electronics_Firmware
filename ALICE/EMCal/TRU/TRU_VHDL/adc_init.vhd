@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.4 2008-10-16 20:44:43 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.5 2008-10-17 18:36:38 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -81,6 +81,10 @@ ARCHITECTURE str1 OF adc_init IS
     SWaitInit4,
     SStartInit5,
     SWaitInit5,
+    SStartInit6,
+    SWaitInit6,
+    SStartInit7,
+    SWaitInit7,
     SFinish
     );
   SIGNAL IState : IState_type;
@@ -214,8 +218,8 @@ BEGIN  -- ARCHITECTURE str
         WHEN SWaitInit4 =>
           timeoutCtr := 0;
           s_addr     <= x"25";
---          s_pdata    <= x"002D";        -- DUALCUSTOM_PAT: 1 = 0xc00, 2 = 0x400
-          s_pdata    <= x"0040";        -- EN_RAMP
+          s_pdata    <= x"002A";        -- DUALCUSTOM_PAT: 1 = 0x800, 2 = 0x800
+--          s_pdata    <= x"0040";        -- EN_RAMP
 --          s_addr     <= x"45";
 --          s_pdata    <= x"0002";        -- PAT_SYNC
 --          s_pdata <= x"0001";           -- PAT_DESKEW
@@ -232,6 +236,38 @@ BEGIN  -- ARCHITECTURE str
           END IF;
 
         WHEN SWaitInit5 =>
+          timeoutCtr := 0;
+          s_addr     <= x"26";          -- BITS_CUSTOM1
+          s_pdata    <= x"BBC0";        -- 1 + 0x2EF 
+          IF s_ready = '1' THEN
+            IState <= SStartInit6;
+          END IF;
+
+        WHEN SStartInit6 =>
+          timeoutCtr := timeoutCtr + 1;
+          s_load     <= '1';
+
+          IF timeoutCtr = 2 THEN
+            IState <= SWaitInit6;
+          END IF;
+
+        WHEN SWaitInit6 =>
+          timeoutCtr := 0;
+          s_addr     <= x"27";          -- BITS_CUSTOM2
+          s_pdata    <= x"BC00";        -- 2 + 0x2F0
+          IF s_ready = '1' THEN
+            IState <= SStartInit7;
+          END IF;
+
+        WHEN SStartInit7 =>
+          timeoutCtr := timeoutCtr + 1;
+          s_load     <= '1';
+
+          IF timeoutCtr = 2 THEN
+            IState <= SWaitInit7;
+          END IF;
+
+        WHEN SWaitInit7 =>
           timeoutCtr := 0;
           IF s_ready = '1' THEN
             IState <= SFinish;
