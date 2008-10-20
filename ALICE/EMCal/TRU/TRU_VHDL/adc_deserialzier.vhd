@@ -1,4 +1,4 @@
--- $Id: adc_deserialzier.vhd,v 1.4 2008-10-20 15:22:31 jschamba Exp $
+-- $Id: adc_deserialzier.vhd,v 1.5 2008-10-20 22:54:38 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Deserializer
 -- Project    : 
@@ -65,8 +65,9 @@ ARCHITECTURE str1 OF adc_deserializer IS
   SIGNAL s_serdes_out               : std_logic_vector (1343 DOWNTO 0);  -- 12 * 112
   SIGNAL s_adc_dclk                 : std_logic_vector (13 DOWNTO 0);
   SIGNAL bse, bso                   : std_logic_vector (13 DOWNTO 0);
-  SIGNAL serdes_rste, serdes_rsto   : std_logic_vector (13 DOWNTO 0);
   SIGNAL s_bitslip_rst              : std_logic;
+  SIGNAL s_serdese_rdy : std_logic_vector(13 DOWNTO 0);
+  SIGNAL s_serdeso_rdy : std_logic_vector(13 DOWNTO 0);
 
   -- number of bit slips in ISERDES for each ADC:
   TYPE BS_CNT IS ARRAY (0 TO 13) OF integer RANGE 0 TO 7;
@@ -235,7 +236,7 @@ BEGIN
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
             OCLK      => '0',           -- 1-bit fast output clock input
-            SR        => serdes_rste(i),     -- 1-bit asynchronous reset input
+            SR        => s_bitslip_rst,     -- 1-bit asynchronous reset input
             REV       => '0',           -- Must be tied to logic zero
             SHIFTIN1  => '0',           -- 1-bit cascade Master/Slave input
             SHIFTIN2  => '0'            -- 1-bit cascade Master/Slave input
@@ -277,7 +278,7 @@ BEGIN
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
             OCLK      => '0',           -- 1-bit fast output clock input
-            SR        => serdes_rsto(i),     -- 1-bit asynchronous reset input
+            SR        => s_bitslip_rst,     -- 1-bit asynchronous reset input
             REV       => '0',           -- Must be tied to logic zero
             SHIFTIN1  => '0',           -- 1-bit cascade Master/Slave input
             SHIFTIN2  => '0'            -- 1-bit cascade Master/Slave input
@@ -325,7 +326,7 @@ BEGIN
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
             OCLK      => '0',           -- 1-bit fast output clock input
-            SR        => serdes_rste(i),     -- 1-bit asynchronous reset input
+            SR        => s_bitslip_rst,     -- 1-bit asynchronous reset input
             REV       => '0',           -- Must be tied to logic zero
             SHIFTIN1  => '0',           -- 1-bit cascade Master/Slave input
             SHIFTIN2  => '0'            -- 1-bit cascade Master/Slave input
@@ -367,7 +368,7 @@ BEGIN
             DLYINC    => '0',           -- 1-bit input
             DLYRST    => '0',           -- 1-bit input
             OCLK      => '0',           -- 1-bit fast output clock input
-            SR        => serdes_rsto(i),     -- 1-bit asynchronous reset input
+            SR        => s_bitslip_rst,     -- 1-bit asynchronous reset input
             REV       => '0',           -- Must be tied to logic zero
             SHIFTIN1  => '0',           -- 1-bit cascade Master/Slave input
             SHIFTIN2  => '0'            -- 1-bit cascade Master/Slave input
@@ -379,25 +380,29 @@ BEGIN
 
 
   -- bitslip control
-  s_bitslip_rst <= (NOT ADC_READY) OR RESET;
+  s_bitslip_rst <= (NOT ADC_READY);
 
   GBS : FOR i IN 0 TO 13 GENERATE
-    -- hold serdes in reset while ADCs are initialized
-    serdes_rste(i) <= NOT ADC_READY;
-    serdes_rsto(i) <= NOT ADC_READY;
 
     bitslipe : adc_bitslip PORT MAP (
       RESET        => s_bitslip_rst,
       ADC_FCLK     => s_adc_fclk(i),
       BITSLIP_CNT  => bs_cnt_even(i),
-      SERDES_RDY   => SERDESe_RDY(i),
+      SERDES_RDY   => s_serdese_rdy(i),
       BITSLIP_CTRL => bse(i));
     bitslipo : adc_bitslip PORT MAP (
       RESET        => s_bitslip_rst,
       ADC_FCLK     => s_adc_fclk(i),
       BITSLIP_CNT  => bs_cnt_odd(i),
-      SERDES_RDY   => SERDESo_RDY(i),
+      SERDES_RDY   => s_serdeso_rdy(i),
       BITSLIP_CTRL => bso(i));
+
+    SERDESe_RDY(i) <= s_serdese_rdy(i);
+    SERDESo_RDY(i) <= s_serdeso_rdy(i);
+-- temporarily put the bitslip controls on these lines, so they can be
+-- displayed in chipscope
+--    SERDESe_RDY(i) <= bse(i);
+--    SERDESo_RDY(i) <= bso(i);
 
   END GENERATE GBS;
   
