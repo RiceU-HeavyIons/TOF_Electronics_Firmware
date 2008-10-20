@@ -1,4 +1,4 @@
--- $Id: tru_tb.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: tru_tb.vhd,v 1.2 2008-10-20 13:55:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU Testbench
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-19
--- Last update: 2008-09-09
+-- Last update: 2008-10-17
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -304,14 +304,14 @@ BEGIN
     -- -------------------------------------
     -- -------------  Current Time:  999ns
     WAIT FOR 796 ns;
-    TST_AUX9    <= '1';
+--    TST_AUX9    <= '1';
     -- -------------------------------------
     -- -------------  Current Time:  1287ns
     WAIT FOR 288 ns;
-    TST_AUX9    <= '0';
+--    TST_AUX9    <= '0';
     -- -------------------------------------
-    WAIT FOR 8713 ns;                   --
-    -- Total time = 10,000 ns      
+    WAIT FOR 18713 ns;                   --
+    -- Total time = 20,000 ns      
 
   END PROCESS;
 
