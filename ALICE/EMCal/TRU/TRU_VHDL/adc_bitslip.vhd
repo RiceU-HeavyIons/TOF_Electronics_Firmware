@@ -1,4 +1,4 @@
--- $Id: adc_bitslip.vhd,v 1.1 2008-10-14 22:11:15 jschamba Exp $
+-- $Id: adc_bitslip.vhd,v 1.2 2008-10-20 22:47:14 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Bitslip for ADCs
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-13
--- Last update: 2008-10-14
+-- Last update: 2008-10-20
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -47,7 +47,7 @@ ARCHITECTURE str2 OF adc_bitslip IS
 
 
   TYPE bsState_type IS (
-    S1, S2, S3, S4
+    S0, S1, S2, S3, S4
     );
   SIGNAL bsState : bsState_type;
   
@@ -55,11 +55,13 @@ BEGIN  -- ARCHITECTURE str2
 
   -- bit slip control 
   bitslip : PROCESS (ADC_FCLK, RESET) IS
-    VARIABLE bsCtr : integer RANGE 0 TO 7 := 0;
+    VARIABLE bsCtr   : integer RANGE 0 TO 7 := 0;
+    VARIABLE timeout : integer RANGE 0 TO 7 := 0;
   BEGIN
     IF RESET = '1' THEN                 -- asynchronous reset (active high)
       bsState      <= S1;
       bsCtr        := 0;
+      timeout      := 0;
       BITSLIP_CTRL <= '0';
       SERDES_RDY   <= '0';
       
@@ -68,9 +70,15 @@ BEGIN  -- ARCHITECTURE str2
       SERDES_RDY   <= '0';
 
       CASE bsState IS
+        WHEN S0 =>
+          timeout := 0;
+          bsState <= S1;
         WHEN S1 =>
           bsCtr   := 0;
-          bsState <= S2;
+          timeout := timeout + 1;
+          IF timeout = 7 THEN          -- wait a little before starting bitslip
+            bsState <= S2;
+          END IF;
           -- bit slip signal needs to toggle between 1 and 0
         WHEN S2 =>                      -- bit slip = 1
           BITSLIP_CTRL <= '1';
@@ -85,10 +93,10 @@ BEGIN  -- ARCHITECTURE str2
         WHEN S4 =>
           SERDES_RDY <= '1';
           IF RESET = '1' THEN
-            bsState <= S1;
+            bsState <= S0;
           END IF;
         WHEN OTHERS =>
-          bsState <= S1;
+          bsState <= S0;
       END CASE;
     END IF;
   END PROCESS bitslip;
