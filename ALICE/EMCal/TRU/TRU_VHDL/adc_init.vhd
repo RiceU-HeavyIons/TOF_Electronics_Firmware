@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.5 2008-10-17 18:36:38 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.6 2008-10-20 13:54:58 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-10-16
+-- Last update: 2008-10-17
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -71,32 +71,58 @@ ARCHITECTURE str1 OF adc_init IS
     SWaitReset,
     SReset,
     SWaitInit,
-    SStartInit1,
+    SStartInit,
     SWaitInit1,
-    SStartInit2,
+    SStartInit1,
     SWaitInit2,
-    SStartInit3,
-    SWaitInit3,
-    SStartInit4,
-    SWaitInit4,
-    SStartInit5,
-    SWaitInit5,
-    SStartInit6,
-    SWaitInit6,
-    SStartInit7,
-    SWaitInit7,
     SFinish
     );
   SIGNAL IState : IState_type;
+
+  CONSTANT NUM_INIT : integer := 8;
 
   SIGNAL s_pdata : std_logic_vector (15 DOWNTO 0);
   SIGNAL s_addr  : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_load  : std_logic;
   SIGNAL s_ready : std_logic;
 
-
+  TYPE data_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (15 DOWNTO 0);
+  TYPE addr_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (7 DOWNTO 0);
+  SIGNAL idata : data_array;
+  SIGNAL iaddr : addr_array;
+  
 BEGIN  -- ARCHITECTURE str
 
+  iaddr(0) <= x"03";
+  idata(0) <= x"0002";
+
+  iaddr(1) <= x"01";
+  idata(1) <= x"0010";
+
+  iaddr(2) <= x"C7";
+  idata(2) <= x"8001";
+
+  iaddr(3) <= x"DE";
+  idata(3) <= x"01C0";
+
+  iaddr(4) <= x"01";
+  idata(4) <= x"0010";
+
+
+  iaddr(5) <= x"25";                    -- LVDS Test Pattern register
+  idata(5) <= x"002A";                  -- DUALCUSTOM_PAT: 1 = 0x800, 2 = 0x800
+--  idata(5) <= x"0040";                  -- EN_RAMP
+--  iaddr(5) <= x"45";
+--  idata(5) <= x"0002";                  -- PAT_SYNC
+--  idata(5) <= x"0001";                  -- PAT_DESKEW
+
+  iaddr(6) <= x"26";                    -- BITS_CUSTOM1
+  idata(6) <= x"BBC0";                  -- 1 + 0x2EF 
+
+  iaddr(7) <= x"27";                    -- BITS_CUSTOM2
+  idata(7) <= x"BC00";                  -- 2 + 0x2F0
+
+  
   adc_serial_tx_inst : adc_serial_tx PORT MAP (
     RESET => RESET,
     SCLK  => CLK10M,
@@ -109,7 +135,8 @@ BEGIN  -- ARCHITECTURE str
 
   -- use a state machine to control the serial data TX
   IControl : PROCESS (CLK10M, RESET) IS
-    VARIABLE timeoutCtr : integer RANGE 0 TO 131071 := 0;  -- 17 bits
+    VARIABLE timeoutCtr : integer RANGE 0 TO 131071   := 0;  -- 17 bits
+    VARIABLE inum       : integer RANGE 0 TO NUM_INIT := 0;
   BEGIN
     IF RESET = '1' THEN                 -- asynchronous reset (active high)
       IState      <= SLock;
@@ -135,6 +162,7 @@ BEGIN  -- ARCHITECTURE str
         WHEN SWaitReset =>
           timeoutCtr := timeoutCtr + 1;
 
+--          IF timeoutCtr = 2 THEN        -- for testing only
           IF timeoutCtr = 106496 THEN   --  >10ms
             timeoutCtr := 0;
             IState     <= SReset;
@@ -142,137 +170,54 @@ BEGIN  -- ARCHITECTURE str
 
         WHEN SReset =>
           timeoutCtr  := timeoutCtr + 1;
+          inum        := 0;
           ADC_RESET_n <= '0';
           IF timeoutCtr = 4 THEN        --  >100ns
             IState <= SWaitInit;
           END IF;
 
-          -- First Initialization register
         WHEN SWaitInit =>
           timeoutCtr := 0;
-          s_addr     <= x"03";
-          s_pdata    <= x"0002";
+          s_addr     <= iaddr(inum);
+          s_pdata    <= idata(inum);
 
-          IState <= SStartInit1;
+          IState <= SStartInit;
 
-        WHEN SStartInit1 =>
+        WHEN SStartInit =>
           timeoutCtr := timeoutCtr + 1;
+          inum       := 1;
           s_load     <= '1';
 
           IF timeoutCtr = 2 THEN
             IState <= SWaitInit1;
           END IF;
 
-          -- Second Initialization register
         WHEN SWaitInit1 =>
           timeoutCtr := 0;
-          s_addr     <= x"01";
-          s_pdata    <= x"0010";
+          s_addr     <= iaddr(inum);
+          s_pdata    <= idata(inum);
           IF s_ready = '1' THEN
-            IState <= SStartInit2;
+            inum   := inum + 1;
+            IState <= SStartInit1;
           END IF;
 
-        WHEN SStartInit2 =>
+        WHEN SStartInit1 =>
           timeoutCtr := timeoutCtr + 1;
           s_load     <= '1';
 
           IF timeoutCtr = 2 THEN
-            IState <= SWaitInit2;
+            IF inum = NUM_INIT THEN
+              IState <= SWaitInit2;
+            ELSE
+              IState <= SWaitInit1;
+              
+            END IF;
           END IF;
 
-          -- Third Initialization register
         WHEN SWaitInit2 =>
-          timeoutCtr := 0;
-          s_addr     <= x"C7";
-          s_pdata    <= x"8001";
-          IF s_ready = '1' THEN
-            IState <= SStartInit3;
-          END IF;
-
-        WHEN SStartInit3 =>
-          timeoutCtr := timeoutCtr + 1;
-          s_load     <= '1';
-
-          IF timeoutCtr = 2 THEN
-            IState <= SWaitInit3;
-          END IF;
-
-          -- Fourth Initialization register
-        WHEN SWaitInit3 =>
-          timeoutCtr := 0;
-          s_addr     <= x"DE";
-          s_pdata    <= x"01C0";
-          IF s_ready = '1' THEN
-            IState <= SStartInit4;
-          END IF;
-
-        WHEN SStartInit4 =>
-          timeoutCtr := timeoutCtr + 1;
-          s_load     <= '1';
-
-          IF timeoutCtr = 2 THEN
-            IState <= SWaitInit4;
-          END IF;
-
-          -- LVDS Test Pattern register
-        WHEN SWaitInit4 =>
-          timeoutCtr := 0;
-          s_addr     <= x"25";
-          s_pdata    <= x"002A";        -- DUALCUSTOM_PAT: 1 = 0x800, 2 = 0x800
---          s_pdata    <= x"0040";        -- EN_RAMP
---          s_addr     <= x"45";
---          s_pdata    <= x"0002";        -- PAT_SYNC
---          s_pdata <= x"0001";           -- PAT_DESKEW
-          IF s_ready = '1' THEN
-            IState <= SStartInit5;
-          END IF;
-
-        WHEN SStartInit5 =>
-          timeoutCtr := timeoutCtr + 1;
-          s_load     <= '1';
-
-          IF timeoutCtr = 2 THEN
-            IState <= SWaitInit5;
-          END IF;
-
-        WHEN SWaitInit5 =>
-          timeoutCtr := 0;
-          s_addr     <= x"26";          -- BITS_CUSTOM1
-          s_pdata    <= x"BBC0";        -- 1 + 0x2EF 
-          IF s_ready = '1' THEN
-            IState <= SStartInit6;
-          END IF;
-
-        WHEN SStartInit6 =>
-          timeoutCtr := timeoutCtr + 1;
-          s_load     <= '1';
-
-          IF timeoutCtr = 2 THEN
-            IState <= SWaitInit6;
-          END IF;
-
-        WHEN SWaitInit6 =>
-          timeoutCtr := 0;
-          s_addr     <= x"27";          -- BITS_CUSTOM2
-          s_pdata    <= x"BC00";        -- 2 + 0x2F0
-          IF s_ready = '1' THEN
-            IState <= SStartInit7;
-          END IF;
-
-        WHEN SStartInit7 =>
-          timeoutCtr := timeoutCtr + 1;
-          s_load     <= '1';
-
-          IF timeoutCtr = 2 THEN
-            IState <= SWaitInit7;
-          END IF;
-
-        WHEN SWaitInit7 =>
-          timeoutCtr := 0;
           IF s_ready = '1' THEN
             IState <= SFinish;
           END IF;
-
 
           -- Finished with serial registers
         WHEN SFinish =>
@@ -288,6 +233,5 @@ BEGIN  -- ARCHITECTURE str
 
     END IF;
   END PROCESS IControl;
-
 
 END ARCHITECTURE str1;
