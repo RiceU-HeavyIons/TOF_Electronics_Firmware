@@ -1,4 +1,4 @@
--- $Id: adc_deserialzier.vhd,v 1.3 2008-10-17 18:37:27 jschamba Exp $
+-- $Id: adc_deserialzier.vhd,v 1.4 2008-10-20 15:22:31 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Deserializer
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-08
--- Last update: 2008-10-17
+-- Last update: 2008-10-20
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -54,6 +54,7 @@ ARCHITECTURE str1 OF adc_deserializer IS
   -- These two constants are used below to do this inversion.
   CONSTANT ADC_LCLK_POLARITY_FLIP   : std_logic_vector(0 TO 13)  := (9  => '1', OTHERS => '0');
   CONSTANT ADC_QUAD_POLARITY_FLIP   : std_logic_vector(0 TO 111) := (88 => '1', OTHERS => '0');
+
   -----------------------------------------------------------------------------
   -- Internal signal declarations
   -----------------------------------------------------------------------------
@@ -67,9 +68,10 @@ ARCHITECTURE str1 OF adc_deserializer IS
   SIGNAL serdes_rste, serdes_rsto   : std_logic_vector (13 DOWNTO 0);
   SIGNAL s_bitslip_rst              : std_logic;
 
+  -- number of bit slips in ISERDES for each ADC:
   TYPE BS_CNT IS ARRAY (0 TO 13) OF integer RANGE 0 TO 7;
-  CONSTANT bs_cnt_even : BS_CNT := (4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4);
-  CONSTANT bs_cnt_odd  : BS_CNT := (5, 5, 5, 4, 5, 5, 5, 5, 5, 5, 4, 5, 5, 5);
+  CONSTANT bs_cnt_even : BS_CNT := (1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1);
+  CONSTANT bs_cnt_odd  : BS_CNT := (2, 2, 2, 1, 2, 2, 2, 2, 2, 2, 1, 2, 2, 2);
 
   COMPONENT adc_bitslip IS
     PORT (
@@ -80,7 +82,7 @@ ARCHITECTURE str1 OF adc_deserializer IS
       BITSLIP_CTRL : OUT std_logic);
   END COMPONENT adc_bitslip;
   
-BEGIN  -- ARCHITECTURE str1
+BEGIN
 
   -- 671 = (14 ADC * 8 channel * 12 bits)/2 - 1
   Gfinal : FOR j IN 0 TO 671 GENERATE
@@ -102,7 +104,10 @@ BEGIN  -- ARCHITECTURE str1
         IB => ADC_CLK_N(j),
         O  => s_adc_fclkp(j));
 
-    -- use BUFRs to distribute frame clocks
+    -- use BUFRs to distribute frame clocks.
+    -- use inverted frame clock (i.e. shift frame clock by 180 degrees) to avoid
+    -- large bitslip values, since too much bitslip seems to shift
+    -- output values by one whole clock
     adcFrameClkg_inst : BUFR
       GENERIC MAP (
         BUFR_DIVIDE => "BYPASS",
@@ -111,7 +116,7 @@ BEGIN  -- ARCHITECTURE str1
         O   => s_adc_fclk(j),
         CE  => '1',
         CLR => '0',
-        I   => s_adc_fclkp(j)
+        I   => NOT s_adc_fclkp(j)
         );
   END GENERATE G1;
 
