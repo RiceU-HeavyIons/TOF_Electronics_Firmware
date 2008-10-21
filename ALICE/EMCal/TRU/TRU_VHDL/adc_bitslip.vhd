@@ -1,4 +1,4 @@
--- $Id: adc_bitslip.vhd,v 1.2 2008-10-20 22:47:14 jschamba Exp $
+-- $Id: adc_bitslip.vhd,v 1.3 2008-10-21 15:46:26 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Bitslip for ADCs
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-13
--- Last update: 2008-10-20
+-- Last update: 2008-10-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -59,7 +59,7 @@ BEGIN  -- ARCHITECTURE str2
     VARIABLE timeout : integer RANGE 0 TO 7 := 0;
   BEGIN
     IF RESET = '1' THEN                 -- asynchronous reset (active high)
-      bsState      <= S1;
+      bsState      <= S0;
       bsCtr        := 0;
       timeout      := 0;
       BITSLIP_CTRL <= '0';
