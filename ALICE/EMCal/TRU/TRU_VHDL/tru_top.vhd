@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.4 2008-10-22 17:21:42 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.5 2008-10-22 20:00:38 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-10-21
+-- Last update: 2008-10-22
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -201,9 +201,9 @@ ARCHITECTURE str OF tru IS
 
   COMPONENT poweron IS
     PORT (
-      BRD_RESET_n : IN  std_logic;
-      BRD_40M     : IN  std_logic;
-      PO_RESET    : OUT std_logic);
+      RESET_n  : IN  std_logic;
+      CLK_10M  : IN  std_logic;
+      PO_RESET : OUT std_logic);
   END COMPONENT poweron;
 
   -----------------------------------------------------------------------------
@@ -233,6 +233,7 @@ ARCHITECTURE str OF tru IS
   SIGNAL s_serdese_rdy  : std_logic_vector(13 DOWNTO 0);
   SIGNAL s_serdeso_rdy  : std_logic_vector(13 DOWNTO 0);
   SIGNAL s_intReset     : std_logic;
+  SIGNAL s_poReset      : std_logic;
   SIGNAL s_clk0_out     : std_logic;
 
   SIGNAL chipscope_data : std_logic_vector(195 DOWNTO 0);
@@ -240,13 +241,15 @@ ARCHITECTURE str OF tru IS
 BEGIN  -- ARCHITECTURE str
 
   -- internal reset:
-  s_intReset <= NOT BRD_RESET_n;
+--  s_intReset <= NOT BRD_RESET_n;
+  s_intReset <= NOT BRD_RESET_n OR s_poReset;
 
---  poreset_inst : poweron
---    PORT MAP (
---      BRD_RESET_n => BRD_RESET_n,
---      BRD_40M     => global_clk40M,
---      PO_RESET    => s_intReset);
+  poreset_inst : poweron
+    PORT MAP (
+      RESET_n  => s_dcm_locked,
+      CLK_10M  => global_clk10M,
+      PO_RESET => s_poReset);
+
 
   -----------------------------------------------------------------------------
   -- clock generation
@@ -552,8 +555,8 @@ BEGIN  -- ARCHITECTURE str
     END GENERATE GCS;
 
     chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
-    chipscope_data(194) <= global_clk40M;
-    chipscope_data(195) <= s_adc_ready;
+    chipscope_data(194)            <= global_clk40M;
+    chipscope_data(195)            <= s_adc_ready;
 
     ila_inst : tru_ila
       PORT MAP (
