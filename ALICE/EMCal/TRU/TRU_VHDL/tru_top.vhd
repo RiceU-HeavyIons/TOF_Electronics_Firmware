@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.3 2008-10-16 20:19:31 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.4 2008-10-22 17:21:42 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-10-16
+-- Last update: 2008-10-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -219,9 +219,9 @@ ARCHITECTURE str OF tru IS
 --  SIGNAL s_adc_dclk_p, s_adc_dclk_n : std_logic_vector (13 DOWNTO 0);
 --  SIGNAL s_adc_dclk_r               : std_logic_vector (13 DOWNTO 0);
 --  SIGNAL s_adc_data_p, s_adc_data_n : std_logic_vector (111 DOWNTO 0);
-  SIGNAL s_adc_fclk     : std_logic_vector (13 DOWNTO 0);
-  SIGNAL s_adc_quad     : std_logic_vector (111 DOWNTO 0);
-  SIGNAL s_adc_dclk     : std_logic_vector (13 DOWNTO 0);
+--  SIGNAL s_adc_fclk     : std_logic_vector (13 DOWNTO 0);
+--  SIGNAL s_adc_quad     : std_logic_vector (111 DOWNTO 0);
+--  SIGNAL s_adc_dclk     : std_logic_vector (13 DOWNTO 0);
   SIGNAL s_serdes_out   : std_logic_vector (1343 DOWNTO 0);  -- 12 * 112
   SIGNAL s_IdlyCtrl_Rdy : std_logic;
   SIGNAL ctr_val        : std_logic_vector (24 DOWNTO 0) := "0000000000000000000000000";
@@ -240,13 +240,13 @@ ARCHITECTURE str OF tru IS
 BEGIN  -- ARCHITECTURE str
 
   -- internal reset:
---  s_intReset <= NOT BRD_RESET_n;
+  s_intReset <= NOT BRD_RESET_n;
 
-  poreset_inst : poweron
-    PORT MAP (
-      BRD_RESET_n => BRD_RESET_n,
-      BRD_40M     => global_clk40M,
-      PO_RESET    => s_intReset);
+--  poreset_inst : poweron
+--    PORT MAP (
+--      BRD_RESET_n => BRD_RESET_n,
+--      BRD_40M     => global_clk40M,
+--      PO_RESET    => s_intReset);
 
   -----------------------------------------------------------------------------
   -- clock generation
@@ -553,7 +553,7 @@ BEGIN  -- ARCHITECTURE str
 
     chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
     chipscope_data(194) <= global_clk40M;
-    chipscope_data(195) <= s_intReset;
+    chipscope_data(195) <= s_adc_ready;
 
     ila_inst : tru_ila
       PORT MAP (
