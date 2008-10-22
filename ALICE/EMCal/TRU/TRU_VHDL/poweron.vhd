@@ -1,4 +1,4 @@
--- $Id: poweron.vhd,v 1.1 2008-10-16 20:10:49 jschamba Exp $
+-- $Id: poweron.vhd,v 1.2 2008-10-22 20:01:28 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Power On Initialization
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-10-15
--- Last update: 2008-10-15
+-- Last update: 2008-10-22
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -32,8 +32,8 @@ USE UNISIM.vcomponents.ALL;
 ENTITY poweron IS
   PORT (
     -- clocks and reset
-    BRD_RESET_n : IN std_logic;         -- board reset (active low)
-    BRD_40M     : IN std_logic;         -- Board 40 MHz clock
+    RESET_n : IN std_logic;             -- reset (active low)
+    CLK_10M : IN std_logic;             -- DCM 10 MHz clock
 
     PO_RESET : OUT std_logic
     );
@@ -50,15 +50,15 @@ ARCHITECTURE str3 OF poweron IS
   
 BEGIN
 
-  poreset : PROCESS (BRD_40M, BRD_RESET_n) IS
-    VARIABLE poCtr : integer RANGE 0 TO 53248 := 0;
+  poreset : PROCESS (CLK_10M, RESET_n) IS
+    VARIABLE poCtr : integer RANGE 0 TO 131071 := 0;
   BEGIN
-    IF BRD_RESET_n = '0' THEN           -- asynchronous reset (active low)
+    IF RESET_n = '0' THEN               -- asynchronous reset (active low)
       poState  <= S1;
       poCtr    := 0;
       PO_RESET <= '0';
       
-    ELSIF BRD_40M'event AND BRD_40M = '1' THEN  -- rising clock edge
+    ELSIF CLK_10M'event AND CLK_10M = '1' THEN  -- rising clock edge
       PO_RESET <= '0';
 
       CASE poState IS
@@ -67,7 +67,7 @@ BEGIN
           poState <= S2;
         WHEN S2 =>
           poCtr := poCtr + 1;
-          IF poCtr = 53232 THEN         -- about 1ms
+          IF poCtr = 131056 THEN        -- about 13ms
             poState <= S3;
           ELSE
             poState <= S2;
@@ -75,13 +75,13 @@ BEGIN
         WHEN S3 =>                      -- keep PO_RESET high for 16 clocks
           PO_RESET <= '1';
           poCtr    := poCtr + 1;
-          IF poCtr = 53248 THEN
+          IF poCtr = 131071 THEN
             poState <= S4;
           ELSE
             poState <= S3;
           END IF;
         WHEN S4 =>
-          IF BRD_RESET_n = '0' THEN
+          IF RESET_n = '0' THEN
             poState <= S1;
           ELSE
             poState <= S4;
