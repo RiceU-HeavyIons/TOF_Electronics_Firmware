@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.7 2008-10-20 22:48:00 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.8 2008-10-22 17:17:56 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-10-20
+-- Last update: 2008-10-22
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -79,7 +79,7 @@ ARCHITECTURE str1 OF adc_init IS
     );
   SIGNAL IState : IState_type;
 
-  CONSTANT NUM_INIT : integer := 8;
+  CONSTANT NUM_INIT : integer := 8;     -- number of registers to write
 
   SIGNAL s_pdata : std_logic_vector (15 DOWNTO 0);
   SIGNAL s_addr  : std_logic_vector (7 DOWNTO 0);
@@ -93,6 +93,8 @@ ARCHITECTURE str1 OF adc_init IS
   
 BEGIN  -- ARCHITECTURE str
 
+  -- the first four are the recommended initialization as described
+  -- in the manual on page 3:
   iaddr(0) <= x"03";
   idata(0) <= x"0002";
 
@@ -105,26 +107,27 @@ BEGIN  -- ARCHITECTURE str
   iaddr(3) <= x"DE";
   idata(3) <= x"01C0";
 
-  iaddr(4) <= x"01";
-  idata(4) <= x"0010";
 
+  -- these registers determine the test pattern outputs:
+  iaddr(4) <= x"25";                    -- LVDS Test Pattern register
+  idata(4) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
+--  idata(4) <= x"0000";                  -- inactive
+--  idata(4) <= x"002C";                  -- DUALCUSTOM_PAT: 1 = 0x000, 2 = 0xC00
+--  idata(4) <= x"0040";                  -- EN_RAMP
 
-  iaddr(5) <= x"25";                    -- LVDS Test Pattern register
-  idata(5) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
---  idata(5) <= x"002C";                  -- DUALCUSTOM_PAT: 1 = 0x000, 2 = 0xC00
---  idata(5) <= x"0040";                  -- EN_RAMP
---  iaddr(5) <= x"45";
---  idata(5) <= x"0002";                  -- PAT_SYNC
---  idata(5) <= x"0001";                  -- PAT_DESKEW
+  iaddr(5) <= x"26";                    -- BITS_CUSTOM1
+  idata(5) <= x"5540";                  -- 1 + 0x155 = 0x555
+--  idata(5) <= x"0000";                  -- 1 + 0x000 = 0x000
 
-  iaddr(6) <= x"26";                    -- BITS_CUSTOM1
-  idata(6) <= x"5540";                  -- 1 + 0x155 = 0x555
---  idata(6) <= x"0000";                  -- 1 + 0x000 = 0x000
+  iaddr(6) <= x"27";                    -- BITS_CUSTOM2
+  idata(6) <= x"AA80";                  -- 2 + 0x2AA = 0xAAA
+--  idata(6) <= x"FFC0";                  -- 2 + 0x3FF = 0xFFF
 
-  iaddr(7) <= x"27";                    -- BITS_CUSTOM2
-  idata(7) <= x"AA80";                  -- 2 + 0x2AA = 0xAAA
---  idata(7) <= x"FFC0";                  -- 2 + 0x3FF = 0xFFF
-
+  iaddr(7) <= x"45";
+  idata(7) <= x"0000";                  -- inactive
+--  idata(7) <= x"0002";                  -- PAT_SYNC
+--  idata(7) <= x"0001";                  -- PAT_DESKEW
+  
   
   adc_serial_tx_inst : adc_serial_tx PORT MAP (
     RESET => RESET,
