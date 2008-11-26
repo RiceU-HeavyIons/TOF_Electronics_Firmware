@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.5 2008-10-22 20:00:38 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.6 2008-11-26 16:32:35 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-10-22
+-- Last update: 2008-11-21
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -54,10 +54,10 @@ ENTITY tru IS
     ADC_CLK40M_P, ADC_CLK40M_N : OUT std_logic;  -- clock to ADC
 
     -- Altro/GTL bus
-    ALT_TRSF_EN            : OUT   std_logic;  -- (TRSF_GT) ALTRO chip controls bus
-    ALT_ACKN_EN            : OUT   std_logic;  -- (ACKN_GT) TRU Ack. read/write
-    ALT_DOLO_EN            : IN    std_logic;  -- 
-    ALT_SCLK_P, ALT_SCLK_N : IN    std_logic;  -- (SCLK_DP/N)
+    ALT_TRSF_EN            : IN    std_logic;  -- (TRSF_GT) ALTRO chip controls bus (not used)
+    ALT_ACKN_EN            : IN    std_logic;  -- (ACKN_GT) TRU Ack. read/write (not used)
+    ALT_DOLO_EN            : IN    std_logic;  -- (not used)
+    ALT_SCLK_P, ALT_SCLK_N : IN    std_logic;  -- (SCLK_DP/N) (not used)
     ALT_RDOCLK             : IN    std_logic;  -- (RCLK_GT) 40 MHz Readout Clock.
     ALT_TRSF               : OUT   std_logic;  -- (TRSF_GT) Asserted when ALTROchip controls the bus
     ALT_DSTB               : OUT   std_logic;  -- (DSTB_GT) Each word are validated by the DataStrobe
@@ -74,7 +74,7 @@ ENTITY tru IS
     ALT_BD                 : INOUT std_logic_vector (39 DOWNTO 0);  -- GTL DATA BUS
     ALT_CARDADD            : IN    std_logic_vector (4 DOWNTO 0);
     -- these 6 signals are named "GTL_CTRL[x]" on schematics:
-    GTL_OEBA_L             : OUT   std_logic;  --  RCU -> TRU
+    GTL_OEBA_L             : OUT   std_logic;  -- RCU -> TRU
     GTL_OEAB_L             : OUT   std_logic;  -- TRU -> RCU
     GTL_OEBA_H             : OUT   std_logic;  -- RCU -> TRU
     GTL_OEAB_H             : OUT   std_logic;  -- TRU -> RCU
@@ -132,6 +132,8 @@ ENTITY tru IS
 
     );
 
+--  ATTRIBUTE clock_buffer               : string;
+--  ATTRIBUTE clock_buffer OF ALT_RDOCLK : SIGNAL IS "ibuf";
 --  ATTRIBUTE period: string;
 --  ATTRIBUTE period OF BRD_40M: signal IS "25ns";  -- 40 MHz
 --  ATTRIBUTE period OF ADC_LCLK_P: signal IS "4.16667ns";  -- 240 MHz
@@ -160,13 +162,15 @@ ARCHITECTURE str OF tru IS
 
   COMPONENT adc_init
     PORT (
-      RESET       : IN  std_logic;
-      CLK10M      : IN  std_logic;
-      LOCKED      : IN  std_logic;
-      ADC_RESET_n : OUT std_logic;
-      SDATA       : OUT std_logic;
-      CS_n        : OUT std_logic;
-      READY       : OUT std_logic);
+      RESET         : IN  std_logic;
+      CLK10M        : IN  std_logic;
+      LOCKED        : IN  std_logic;
+      RX_DATA_OUT   : IN  std_logic_vector (15 DOWNTO 0);
+      RX_DATA_READY : IN  std_logic;
+      ADC_RESET_n   : OUT std_logic;
+      SDATA         : OUT std_logic;
+      CS_n          : OUT std_logic;
+      READY         : OUT std_logic);
   END COMPONENT adc_init;
 
   -- chipscope control core
@@ -206,6 +210,52 @@ ARCHITECTURE str OF tru IS
       PO_RESET : OUT std_logic);
   END COMPONENT poweron;
 
+  COMPONENT rcui2c_top IS
+    PORT (
+      reset            : IN  std_logic;
+      clk_40m          : IN  std_logic;
+      rcu_scl_i        : IN  std_logic;
+      rcu_sda_in_i     : IN  std_logic;
+      tx_data_in       : IN  std_logic_vector (15 DOWNTO 0);
+      card_addr        : IN  std_logic_vector (4 DOWNTO 0);
+      tx_data_req      : OUT std_logic;
+      rx_data_out      : OUT std_logic_vector (15 DOWNTO 0);
+      rx_data_ready    : OUT std_logic;
+      rcu_sda_out      : OUT std_logic;
+      reg_addr_reg     : OUT std_logic_vector (7 DOWNTO 0);
+      rcui2c_busy_flag : OUT std_logic);
+  END COMPONENT rcui2c_top;
+
+  COMPONENT fake_altro IS
+    PORT (
+      rcu_clk  : IN std_logic;
+      clk_dstb : IN std_logic;
+      g_clk    : IN std_logic;
+      reset    : IN std_logic;
+
+      L0 : IN std_logic;
+      L1 : IN std_logic;
+      L2 : IN std_logic;
+
+      shift_data : IN std_logic_vector(1343 DOWNTO 0);
+
+      cstb    : IN std_logic;
+      write_r : IN std_logic;
+
+      ctrl_out : OUT std_logic;
+      oeab_l   : OUT std_logic;
+      oeab_h   : OUT std_logic;
+      oeba_l   : OUT std_logic;
+      oeba_h   : OUT std_logic;
+
+      ackn : OUT std_logic;
+      dstb : OUT std_logic;
+      trsf : OUT std_logic;
+
+      bd       : OUT std_logic_vector(39 DOWNTO 0);
+      chipview : OUT std_logic_vector(41 DOWNTO 0)
+      );
+  END COMPONENT fake_altro;
   -----------------------------------------------------------------------------
   -- Internal signal declarations
   -----------------------------------------------------------------------------
@@ -216,12 +266,6 @@ ARCHITECTURE str OF tru IS
   SIGNAL global_clk40M  : std_logic;
   SIGNAL global_clk10M  : std_logic;
   SIGNAL clk_200M       : std_logic;
---  SIGNAL s_adc_dclk_p, s_adc_dclk_n : std_logic_vector (13 DOWNTO 0);
---  SIGNAL s_adc_dclk_r               : std_logic_vector (13 DOWNTO 0);
---  SIGNAL s_adc_data_p, s_adc_data_n : std_logic_vector (111 DOWNTO 0);
---  SIGNAL s_adc_fclk     : std_logic_vector (13 DOWNTO 0);
---  SIGNAL s_adc_quad     : std_logic_vector (111 DOWNTO 0);
---  SIGNAL s_adc_dclk     : std_logic_vector (13 DOWNTO 0);
   SIGNAL s_serdes_out   : std_logic_vector (1343 DOWNTO 0);  -- 12 * 112
   SIGNAL s_IdlyCtrl_Rdy : std_logic;
   SIGNAL ctr_val        : std_logic_vector (24 DOWNTO 0) := "0000000000000000000000000";
@@ -236,7 +280,19 @@ ARCHITECTURE str OF tru IS
   SIGNAL s_poReset      : std_logic;
   SIGNAL s_clk0_out     : std_logic;
 
-  SIGNAL chipscope_data : std_logic_vector(195 DOWNTO 0);
+  SIGNAL chipscope_data : std_logic_vector (195 DOWNTO 0);
+
+  SIGNAL ctrl_out         : std_logic;
+  SIGNAL rcui2c_busy_flag : std_logic;
+  SIGNAL rcu_clk          : std_logic;
+  SIGNAL rcu_clkio        : std_logic;
+  SIGNAL rx_data_out      : std_logic_vector (15 DOWNTO 0);
+  SIGNAL rx_data_ready    : std_logic;
+  SIGNAL reg_addr_reg     : std_logic_vector (7 DOWNTO 0);
+  SIGNAL chipview         : std_logic_vector (41 DOWNTO 0);
+
+
+  
   
 BEGIN  -- ARCHITECTURE str
 
@@ -275,15 +331,11 @@ BEGIN  -- ARCHITECTURE str
   -- set all outputs to some reasonable default for now
   -----------------------------------------------------------------------------
 
-  -- ADC register serial interface
---  ADC_SDATA <= '0';
+  -- ADC register serial interface clock
   ADC_SCLK <= global_clk10M;
---  ADC_CS_n  <= (OTHERS => '1');         -- active low
---  ADC_CS_n(13 DOWNTO 1) <= (OTHERS => '1');  -- active low
 
   -- ADC control
   ADC_INTEXT <= '0';
---  ADC_RESET_n <= '1';                   -- active low
   ADC_PDWN   <= '0';                    -- don't power down ADCs
 
   -- ADC power, also powers down the PROM, so don't set to 0
@@ -298,33 +350,6 @@ BEGIN  -- ARCHITECTURE str
       O  => ADC_CLK40M_P,
       OB => ADC_CLK40M_N,
       I  => global_clk40M);
-
-  -- GTL bus
-  ALT_TRSF_EN <= '0';
-  ALT_ACKN_EN <= '0';
-  ALT_TRSF    <= '0';
-  ALT_DSTB    <= '0';
-  ALT_ACKN    <= '0';
-  ALT_ERROR   <= '0';
-  RCU_SDA_OUT <= '0';
-  GB1 : FOR i IN 0 TO 39 GENERATE
-    altBDInsts : IOBUF PORT MAP (
-      T  => '1',                        -- enable 3-state
-      I  => s_alt_bd_out(i),
-      O  => s_alt_bd_in(i),
-      IO => ALT_BD(i));
-  END GENERATE GB1;
-
-  s_alt_bd_out <= (OTHERS => '0');
-
-  TRU_INTERRUPT_n <= '1';               -- active low
-
-  GTL_OEAB_H   <= '1';
-  GTL_OEAB_L   <= '1';
-  GTL_OEBA_L   <= '0';
-  GTL_OEBA_H   <= '0';
-  GTL_CTRL_IN  <= '0';
-  GTL_CTRL_OUT <= '1';
 
   -------------------------------------------------------------------------------
   -- LEDs
@@ -358,7 +383,7 @@ BEGIN  -- ARCHITECTURE str
   LED_BUSY <= ctr_val(22);
 
 
-  -- test pins
+-- test pins
   TST_AUX9 <= '0';
   TST_AUX8 <= '0';
   TST_AUX7 <= '0';
@@ -368,7 +393,7 @@ BEGIN  -- ARCHITECTURE str
   TST_AUX3 <= '0';
   TST_AUX2 <= '0';
   TST_AUX1 <= '0';
---  TST_AUX0 <= '0';
+  TST_AUX0 <= '0';
 
 --  TST_AUX0 <= s_adc_fclk(0);
 --  TST_AUX1 <= s_adc_dclk(0);
@@ -381,6 +406,8 @@ BEGIN  -- ARCHITECTURE str
 --  TST_AUX8 <= s_adc_quad(6);
 --  TST_AUX9 <= '0';                      -- Ground for scope
 
+  TRU_INTERRUPT_n <= '1';
+
 
   -- monitoring ADCs
   snsDataInst : IOBUF PORT MAP (
@@ -391,28 +418,29 @@ BEGIN  -- ARCHITECTURE str
   SNS_SCL    <= '0';
   SNS_CONV_n <= '1';                    -- active low
 
-
-
   -----------------------------------------------------------------------------
-  -- sample ADC serial control
+  -- ADC serial control
   -----------------------------------------------------------------------------
   adc_init_inst : adc_init PORT MAP (
-    RESET       => s_intReset,
-    CLK10M      => global_clk10M,
-    LOCKED      => s_dcm_locked,
-    ADC_RESET_n => ADC_RESET_n,
-    SDATA       => ADC_SDATA,
-    CS_n        => s_adc_cs_n,
-    READY       => s_adc_ready
+    RESET         => s_intReset,
+    CLK10M        => global_clk10M,
+    LOCKED        => s_dcm_locked,
+    RX_DATA_OUT   => rx_data_out,
+    RX_DATA_READY => rx_data_ready,
+    ADC_RESET_n   => ADC_RESET_n,
+    SDATA         => ADC_SDATA,
+    CS_n          => s_adc_cs_n,
+    READY         => s_adc_ready
     );
 
   -- this line configures ADC 3 and 5
 --  ADC_CS_n <= (5 => s_adc_cs_n, 3 => s_adc_cs_n, OTHERS => '1');
+
   -- this line configures all ADCs
   ADC_CS_n <= (OTHERS => s_adc_cs_n);
 
   -----------------------------------------------------------------------------
-  -- sample Serdes
+  -- ADC Deserializer
   -----------------------------------------------------------------------------
   serdes_inst : adc_deserializer
     PORT MAP (
@@ -428,99 +456,62 @@ BEGIN  -- ARCHITECTURE str
       SERDESo_RDY    => s_serdeso_rdy,
       ADC_SERDES_OUT => s_serdes_out);
 
-
-
-  -- here is an example on how the serdes_out need to be  inverted:
---  s_alt_bd_out(0)  <= s_serdes_out(0);
---  s_alt_bd_out(1)  <= NOT s_serdes_out(1);
---  s_alt_bd_out(2)  <= s_serdes_out(2);
---  s_alt_bd_out(3)  <= NOT s_serdes_out(3);
---  s_alt_bd_out(4)  <= s_serdes_out(4);
---  s_alt_bd_out(5)  <= NOT s_serdes_out(5);
---  s_alt_bd_out(6)  <= s_serdes_out(6);
---  s_alt_bd_out(7)  <= NOT s_serdes_out(7);
---  s_alt_bd_out(8)  <= s_serdes_out(8);
---  s_alt_bd_out(9)  <= NOT s_serdes_out(9);
---  s_alt_bd_out(10) <= s_serdes_out(10);
---  s_alt_bd_out(11) <= NOT s_serdes_out(11);
-
   -----------------------------------------------------------------------------
-  -- sample serdes conversion for chipscope
+  -- GTL BUS
   -----------------------------------------------------------------------------
---  G2 : FOR j IN 0 TO 87 GENERATE
---    adcDataInst : IBUFDS
---      GENERIC MAP (
---        IOSTANDARD => "LVDS_25",
---        DIFF_TERM  => true)
---      PORT MAP (
---        I  => ADC_QUAD_P(j),
---        IB => ADC_QUAD_N(j),
---        O  => s_adc_quad(j));
---  END GENERATE G2;
+  ALT_ERROR    <= '1';
+  GTL_CTRL_IN  <= '0';                                  --control in
+  GTL_CTRL_OUT <= (NOT rcui2c_busy_flag) AND ctrl_out;  --control out 
+  
+  -- put GTL RDO clock through a global clock buffer
+  rdoclk_inst : BUFG PORT MAP (
+    I => ALT_RDOCLK,
+    O => rcu_clk);
+    
+  -- slow controls code from Dong:
+  rcui2c_top_inst : rcui2c_top PORT MAP (
+    reset            => ALT_RST_TBC,
+    clk_40m          => rcu_clk,
+    rcu_scl_i        => RCU_SCL,
+    rcu_sda_in_i     => RCU_SDA_IN,
+    tx_data_in       => x"abcd",
+    card_addr        => b"00000",
+    rx_data_out      => rx_data_out,
+    rx_data_ready    => rx_data_ready,
+    reg_addr_reg     => reg_addr_reg,
+    rcu_sda_out      => RCU_SDA_OUT,
+    rcui2c_busy_flag => rcui2c_busy_flag
+    );    
 
---  G2a : FOR j IN 89 TO 111 GENERATE
---    adcDataInst : IBUFDS
---      GENERIC MAP (
---        IOSTANDARD => "LVDS_25",
---        DIFF_TERM  => true)
---      PORT MAP (
---        I  => ADC_QUAD_P(j),
---        IB => ADC_QUAD_N(j),
---        O  => s_adc_quad(j));
---  END GENERATE G2a;
+  -- Fake Altro code from Dong
+  fake_altro_inst : fake_altro PORT MAP (
+    rcu_clk  => rcu_clk,
+    clk_dstb => rcu_clk,
+    g_clk    => global_clk40M,
+    reset    => ALT_RST_TBC,
 
---  adcDataInst : IBUFDS
---    GENERIC MAP (
---      IOSTANDARD => "LVDS_25",
---      DIFF_TERM  => true)
---    PORT MAP (
---      I  => ADC_QUAD_N(88),
---      IB => ADC_QUAD_P(88),
---      O  => s_adc_quad(88));
+    L0 => '0',
+    L1 => ALT_L1,
+    L2 => ALT_L2,
 
---  G3 : FOR j IN 0 TO 13 GENERATE
---    adcFrameClk_inst : IBUFDS
---      GENERIC MAP (
---        IOSTANDARD => "LVDS_25",
---        DIFF_TERM  => true)
---      PORT MAP (
---        I  => ADC_CLK_P(j),
---        IB => ADC_CLK_N(j),
---        O  => s_adc_fclk(j));
---  END GENERATE G3;
+    shift_data => s_serdes_out,
 
---  G4 : FOR j IN 0 TO 8 GENERATE
---    adcDClk_inst : IBUFDS
---      GENERIC MAP (
---        IOSTANDARD => "LVDS_25",
---        DIFF_TERM  => true)
---      PORT MAP (
---        I  => ADC_LCLK_P(j),
---        IB => ADC_LCLK_N(j),
---        O  => s_adc_dclk(j));
---  END GENERATE G4;
+    cstb    => ALT_CSTB,
+    write_r => ALT_WRITE,
 
---  G4a : FOR j IN 10 TO 13 GENERATE
---    adcDClk_inst : IBUFDS
---      GENERIC MAP (
---        IOSTANDARD => "LVDS_25",
---        DIFF_TERM  => true)
---      PORT MAP (
---        I  => ADC_LCLK_P(j),
---        IB => ADC_LCLK_N(j),
---        O  => s_adc_dclk(j));
---  END GENERATE G4a;
+    ctrl_out => ctrl_out,
+    oeab_l   => GTL_OEAB_L,
+    oeab_h   => GTL_OEAB_H,
+    oeba_l   => GTL_OEBA_L,
+    oeba_h   => GTL_OEBA_H,
 
---  adcDClk_inst : IBUFDS
---    GENERIC MAP (
---      IOSTANDARD => "LVDS_25",
---      DIFF_TERM  => true)
---    PORT MAP (
---      I  => ADC_LCLK_N(9),
---      IB => ADC_LCLK_P(9),
---      O  => s_adc_dclk(9));
+    ackn => ALT_ACKN,
+    dstb => ALT_DSTB,
+    trsf => ALT_TRSF,
 
-
+    bd       => ALT_BD,
+    chipview => chipview
+    );             
 
 
   -- This "generate" statement makes it so we can include
@@ -535,7 +526,9 @@ BEGIN  -- ARCHITECTURE str
     -- Chipscope connections
     -----------------------------------------------------------------------------
 
-    global_ilaclk <= clk_200M;
+    -- the clock for the chipscope analyzer
+--    global_ilaclk <= clk_200M;
+    global_ilaclk <= global_clk40M;
     -- the chipscope controller
     icon_inst : tru_chipscope
       PORT MAP (
@@ -546,17 +539,39 @@ BEGIN  -- ARCHITECTURE str
 
     -- put one chip's worth of deserialized data on ILA:
 --    chipscope_data <= s_serdes_out(383 DOWNTO 288);
+--
+--    GCS : FOR i IN 0 TO 12 GENERATE
+--      chipscope_data(i*14+11 DOWNTO i*14) <= s_serdes_out(i*8*12 + 11 DOWNTO i*8*12);
+--      chipscope_data(i*14+12)             <= s_serdese_rdy(i);
+--      chipscope_data(i*14+13)             <= s_serdeso_rdy(i);
+--      
+--    END GENERATE GCS;
+--
+--    chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
+--    chipscope_data(194)            <= global_clk40M;
+--    chipscope_data(195)            <= s_adc_ready;
 
-    GCS : FOR i IN 0 TO 12 GENERATE
-      chipscope_data(i*14+11 DOWNTO i*14) <= s_serdes_out(i*8*12 + 11 DOWNTO i*8*12);
-      chipscope_data(i*14+12)             <= s_serdese_rdy(i);
-      chipscope_data(i*14+13)             <= s_serdeso_rdy(i);
-      
-    END GENERATE GCS;
-
-    chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
-    chipscope_data(194)            <= global_clk40M;
-    chipscope_data(195)            <= s_adc_ready;
+    chipscope_data(11 DOWNTO 0)    <= s_serdes_out(71 DOWNTO 60);      -- 5
+    chipscope_data(23 DOWNTO 12)   <= s_serdes_out(83 DOWNTO 72);      -- 6
+    chipscope_data(35 DOWNTO 24)   <= s_serdes_out(155 DOWNTO 144);    -- 12
+    chipscope_data(47 DOWNTO 36)   <= s_serdes_out(911 DOWNTO 900);    -- 75
+    chipscope_data(59 DOWNTO 48)   <= s_serdes_out(1055 DOWNTO 1044);  -- 87
+    chipscope_data(71 DOWNTO 60)   <= s_serdes_out(1331 DOWNTO 1320);  -- 110
+    chipscope_data(83 DOWNTO 72)   <= s_serdes_out(179 DOWNTO 168);    -- 14
+    chipscope_data(95 DOWNTO 84)   <= s_serdes_out(575 DOWNTO 564);    -- 47
+    chipscope_data(107 DOWNTO 96)  <= s_serdes_out(11 DOWNTO 0);       -- 0
+    chipscope_data(119 DOWNTO 108) <= s_serdes_out(23 DOWNTO 12);      -- 1
+    chipscope_data(131 DOWNTO 120) <= s_serdes_out(35 DOWNTO 24);      -- 2
+    chipscope_data(143 DOWNTO 132) <= s_serdes_out(47 DOWNTO 36);      -- 3
+--    chipscope_data(155 DOWNTO 144) <= s_serdes_out(59 DOWNTO 48);      -- 4
+--    chipscope_data(167 DOWNTO 156) <= s_serdes_out(95 DOWNTO 84);      -- 7
+--    chipscope_data(179 DOWNTO 168) <= s_serdes_out(107 DOWNTO 96);     -- 8
+--    chipscope_data(191 DOWNTO 180) <= s_serdes_out(119 DOWNTO 108);    -- 9
+--    chipscope_data(195 DOWNTO 192) <= (OTHERS => '0');
+    chipscope_data(185 DOWNTO 144) <= chipview;
+    chipscope_data(186)            <= ALT_RDOCLK;
+    chipscope_data(187)            <= global_clk40M;
+    chipscope_data(195 DOWNTO 188) <= (OTHERS => '0');
 
     ila_inst : tru_ila
       PORT MAP (
@@ -565,90 +580,37 @@ BEGIN  -- ARCHITECTURE str
         TRIG0   => chipscope_data
         );
 
-    -- for now: use the parallel data, so it doesn't get optimized away:
-    PROCESS (s_serdes_out) IS
-      VARIABLE dummy : std_logic;
-    BEGIN  -- PROCESS
-      dummy := '0';
-      FOR i IN 1343 DOWNTO 0 LOOP
-        dummy := dummy XOR s_serdes_out(i);
-      END LOOP;  -- i
-      TST_AUX0 <= dummy;
-    END PROCESS;
-
---    ila_inst : tru_ila
---      PORT MAP (
---        CONTROL               => s_control0,
---        CLK                   => global_ilaclk,
---        TRIG0(0)              => s_adc_fclk(0),
---        TRIG0(1)              => s_adc_dclk(0),
---        TRIG0(9 DOWNTO 2)     => s_adc_quad(7 DOWNTO 0),
---        TRIG0(10)             => s_adc_fclk(1),
---        TRIG0(11)             => s_adc_dclk(1),
---        TRIG0(19 DOWNTO 12)   => s_adc_quad(15 DOWNTO 8),
---        TRIG0(20)             => s_adc_fclk(2),
---        TRIG0(21)             => s_adc_dclk(2),
---        TRIG0(29 DOWNTO 22)   => s_adc_quad(23 DOWNTO 16),
---        TRIG0(30)             => s_adc_fclk(3),
---        TRIG0(31)             => s_adc_dclk(3),
---        TRIG0(39 DOWNTO 32)   => s_adc_quad(31 DOWNTO 24),
---        TRIG0(40)             => s_adc_fclk(4),
---        TRIG0(41)             => s_adc_dclk(4),
---        TRIG0(49 DOWNTO 42)   => s_adc_quad(39 DOWNTO 32),
---        TRIG0(50)             => s_adc_fclk(5),
---        TRIG0(51)             => s_adc_dclk(5),
---        TRIG0(59 DOWNTO 52)   => s_adc_quad(47 DOWNTO 40),
---        TRIG0(60)             => s_adc_fclk(6),
---        TRIG0(61)             => s_adc_dclk(6),
---        TRIG0(69 DOWNTO 62)   => s_adc_quad(55 DOWNTO 48),
---        TRIG0(70)             => s_adc_fclk(7),
---        TRIG0(71)             => s_adc_dclk(7),
---        TRIG0(79 DOWNTO 72)   => s_adc_quad(63 DOWNTO 56),
---        TRIG0(80)             => s_adc_fclk(8),
---        TRIG0(81)             => s_adc_dclk(8),
---        TRIG0(89 DOWNTO 82)   => s_adc_quad(71 DOWNTO 64),
---        TRIG0(90)             => s_adc_fclk(9),
---        TRIG0(91)             => s_adc_dclk(9),
---        TRIG0(99 DOWNTO 92)   => s_adc_quad(79 DOWNTO 72),
---        TRIG0(100)            => s_adc_fclk(10),
---        TRIG0(101)            => s_adc_dclk(10),
---        TRIG0(109 DOWNTO 102) => s_adc_quad(87 DOWNTO 80),
---        TRIG0(110)            => s_adc_fclk(11),
---        TRIG0(111)            => s_adc_dclk(11),
---        TRIG0(119 DOWNTO 112) => s_adc_quad(95 DOWNTO 88),
---        TRIG0(120)            => s_adc_fclk(12),
---        TRIG0(121)            => s_adc_dclk(12),
---        TRIG0(129 DOWNTO 122) => s_adc_quad(103 DOWNTO 96),
---        TRIG0(130)            => s_adc_fclk(13),
---        TRIG0(131)            => s_adc_dclk(13),
---        TRIG0(139 DOWNTO 132) => s_adc_quad(111 DOWNTO 104)
---        );
-
-
+--    -- for now: use the parallel data, so it doesn't get optimized away:
+--    PROCESS (s_serdes_out) IS
+--      VARIABLE dummy : std_logic;
+--    BEGIN  -- PROCESS
+--      dummy := '0';
+--      FOR i IN 1343 DOWNTO 0 LOOP
+--        dummy := dummy XOR s_serdes_out(i);
+--      END LOOP;  -- i
+--      TST_AUX0 <= dummy;
+--    END PROCESS;
 
   END GENERATE IncChipScope;
 
-  -- this gets invoked when the GENERIC parameter
-  -- "includeChipscope" is "false"
+--  -- this gets invoked when the GENERIC parameter
+--  -- "includeChipscope" is "false"
   DontIncChipscope : IF NOT includeChipscope GENERATE
     -- need to do something with the ADC signals or we get a
     -- compiler warning about unconnected signals
---    TST_AUX0 <= '1' WHEN (s_adc_fclk = "11111111111111" AND
---                          s_adc_dclk = "11111111111111" AND
---                          s_adc_quad = x"ffffffffffffffffffffffffffff")
--- ELSE '0';
-
-    -- for now: use the parallel data, so it doesn't get optimized away:
-    PROCESS (s_serdes_out) IS
-      VARIABLE dummy : std_logic;
-    BEGIN  -- PROCESS
-      dummy := '0';
-      FOR i IN 1343 DOWNTO 0 LOOP
-        dummy := dummy XOR s_serdes_out(i);
-      END LOOP;  -- i
-      TST_AUX0 <= dummy;
-    END PROCESS;
-
+--
+--    -- for now: use the parallel data, so it doesn't get optimized away:
+--    PROCESS (s_serdes_out) IS
+--      VARIABLE dummy : std_logic;
+--    BEGIN  -- PROCESS
+--      dummy := '0';
+--      FOR i IN 1343 DOWNTO 0 LOOP
+--        dummy := dummy XOR s_serdes_out(i);
+--      END LOOP;  -- i
+--      TST_AUX0 <= dummy;
+--    END PROCESS;
+--
   END GENERATE DontIncChipscope;
+  
 
 END ARCHITECTURE str;
