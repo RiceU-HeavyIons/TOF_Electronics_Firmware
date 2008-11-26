@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.8 2008-10-22 17:17:56 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.9 2008-11-26 16:31:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-10-22
+-- Last update: 2008-11-19
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,13 +33,15 @@ ENTITY adc_init IS
 
 
   PORT (
-    RESET       : IN  std_logic;        -- reset (active high)
-    CLK10M      : IN  std_logic;
-    LOCKED      : IN  std_logic;
-    ADC_RESET_n : OUT std_logic;
-    SDATA       : OUT std_logic;
-    CS_n        : OUT std_logic;
-    READY       : OUT std_logic
+    RESET         : IN  std_logic;      -- reset (active high)
+    CLK10M        : IN  std_logic;
+    LOCKED        : IN  std_logic;
+    RX_DATA_OUT   : IN  std_logic_vector (15 DOWNTO 0);
+    RX_DATA_READY : IN  std_logic;
+    ADC_RESET_n   : OUT std_logic;
+    SDATA         : OUT std_logic;
+    CS_n          : OUT std_logic;
+    READY         : OUT std_logic
     );
 
 END ENTITY adc_init;
@@ -75,16 +77,21 @@ ARCHITECTURE str1 OF adc_init IS
     SWaitInit1,
     SStartInit1,
     SWaitInit2,
-    SFinish
+    SFinish,
+    SetTestPattern,
+    SStartInit2,
+    SWaitInit3
     );
   SIGNAL IState : IState_type;
 
   CONSTANT NUM_INIT : integer := 8;     -- number of registers to write
 
-  SIGNAL s_pdata : std_logic_vector (15 DOWNTO 0);
-  SIGNAL s_addr  : std_logic_vector (7 DOWNTO 0);
-  SIGNAL s_load  : std_logic;
-  SIGNAL s_ready : std_logic;
+  SIGNAL s_pdata    : std_logic_vector (15 DOWNTO 0);
+  SIGNAL s_addr     : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_load     : std_logic;
+  SIGNAL s_ready    : std_logic;
+  SIGNAL l_register : std_logic_vector (15 DOWNTO 0) := x"0000";
+  SIGNAL reg_reset  : std_logic;
 
   TYPE data_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (15 DOWNTO 0);
   TYPE addr_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (7 DOWNTO 0);
@@ -110,8 +117,8 @@ BEGIN  -- ARCHITECTURE str
 
   -- these registers determine the test pattern outputs:
   iaddr(4) <= x"25";                    -- LVDS Test Pattern register
-  idata(4) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
---  idata(4) <= x"0000";                  -- inactive
+--  idata(4) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
+  idata(4) <= x"0000";                  -- inactive
 --  idata(4) <= x"002C";                  -- DUALCUSTOM_PAT: 1 = 0x000, 2 = 0xC00
 --  idata(4) <= x"0040";                  -- EN_RAMP
 
@@ -152,11 +159,13 @@ BEGIN  -- ARCHITECTURE str
       timeoutCtr  := 0;
       ADC_RESET_n <= '1';
       READY       <= '0';
+      reg_reset   <= '0';
       
     ELSIF CLK10M'event AND CLK10M = '1' THEN  -- rising clock edge
       s_load      <= '0';
       ADC_RESET_n <= '1';
       READY       <= '0';
+      reg_reset   <= '1';
 
       CASE IState IS
         WHEN SLock =>
@@ -230,6 +239,39 @@ BEGIN  -- ARCHITECTURE str
           READY <= '1';
           IF LOCKED = '0' THEN
             IState <= SLock;
+          ELSIF l_register /= x"0000" THEN
+            IState <= SetTestPattern;
+          ELSE
+            IState <= SFinish;
+          END IF;
+
+          -- set a new test pattern when GTL I2c register write
+        WHEN SetTestPattern =>
+          timeoutCtr := 0;
+          s_addr     <= x"25";
+          
+          IF l_register = x"0001" THEN
+            s_pdata <= x"0040";         -- ramp
+          ELSIF l_register = x"0002" THEN
+            s_pdata <= x"0029";         -- dual pattern 0xAAA 0x555
+          ELSE
+            s_pdata <= x"0000";         -- normal data
+          END IF;
+
+          IState <= SStartInit2;
+          
+        WHEN SStartInit2 =>
+          timeoutCtr := timeoutCtr + 1;
+          s_load     <= '1';
+
+          IF timeoutCtr = 2 THEN
+            IState <= SWaitInit3;
+          END IF;
+
+        WHEN SWaitInit3 =>
+          reg_reset <= '0';
+          IF s_ready = '1' THEN
+            IState <= SFinish;
           END IF;
           
         WHEN OTHERS =>
@@ -239,5 +281,14 @@ BEGIN  -- ARCHITECTURE str
 
     END IF;
   END PROCESS IControl;
+
+  PROCESS (RX_DATA_READY, reg_reset) IS
+  BEGIN
+    IF reg_reset = '0' THEN             -- asynchronous reset (active low)
+      l_register <= x"0000";
+    ELSIF RX_DATA_READY'event AND RX_DATA_READY = '1' THEN  -- rising clock edge
+      l_register <= RX_DATA_OUT;
+    END IF;
+  END PROCESS;
 
 END ARCHITECTURE str1;
