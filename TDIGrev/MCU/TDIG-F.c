@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.10 2008-08-13 17:54:24 jschamba Exp $
+// $Id: TDIG-F.c,v 1.11 2008-12-01 16:01:28 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -30,7 +30,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'S'      // 0x11 0x53
+#define FIRMWARE_ID_0 'T'      // 0x11 0x54
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -716,7 +716,7 @@ int main()
                                         maskoff = 0xFF;
                                         for (l=0; l<J_HPTDC_SETUPBYTES;l++){ // checking readback
                                             if (l == (J_HPTDC_SETUPBYTES-1)) maskoff = 0x7F;     // don't need last bit!
-                                            if ((unsigned char)hptdc_setup[j][i] != (((unsigned char)readback_setup[i])&maskoff)) {
+                                            if ((unsigned char)hptdc_setup[j][l] != (((unsigned char)readback_setup[l])&maskoff)) {
                                                 retbuf[1] = C_STATUS_BADCFG;    // bad configuration status
                                                 if ((ledbits & 0x10) != 0) {
                                                     ledbits &= 0xEF;    //
