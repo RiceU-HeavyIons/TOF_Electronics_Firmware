@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.6 2008-06-04 22:55:39 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.7 2008-12-04 20:38:54 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-06-04
+-- Last update: 2008-12-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -132,24 +132,26 @@ BEGIN
       q                 => s_fifo_q
       );
 
-  s_fifo_rdreq <= rdreq_in;
-
-  -- register the outputs of the FIFO with the 40MHz clock
+  -- register the outputs of the FIFO with the rising edge
+  -- of the 40MHz clock, and the rdreq with the falling edge
   dff_inst: PROCESS (clk40mhz, areset_n) IS
   BEGIN
     IF areset_n = '0' THEN                   -- asynchronous reset (active low)
       s_dff_q    <= (OTHERS => '0');
       fifo_empty <= '1';
+      s_fifo_rdreq <= '0';
       
     ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- rising clock edge
       s_dff_q <= s_fifo_q;
       -- Only put out a valid fifo_empty, when rdreq is valid
       -- otherwise, fifo_emtpy = '1'
-      IF s_fifo_rdreq = '1' THEN
+      IF rdreq_in = '1' THEN
         fifo_empty   <= s_fifo_empty;
       ELSE
         fifo_empty <= '1';  
       END IF;
+    ELSIF clk40mhz'event AND clk40mhz = '0' THEN  -- falling clock edge
+        s_fifo_rdreq <= rdreq_in;
     END IF;
   END PROCESS dff_inst;
 
