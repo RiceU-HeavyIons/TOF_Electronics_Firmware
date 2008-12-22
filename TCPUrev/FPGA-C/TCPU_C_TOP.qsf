@@ -1,4 +1,4 @@
-# $Id: TCPU_C_TOP.qsf,v 1.6 2008-11-05 16:19:43 jschamba Exp $
+# $Id: TCPU_C_TOP.qsf,v 1.7 2008-12-22 16:34:12 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -250,3 +250,4 @@ set_global_assignment -name VHDL_FILE ../../THUB/vhdl_common/my_conversions.vhd
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
 set_global_assignment -name VECTOR_WAVEFORM_FILE TCPU_C_TOP.vwf
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
+set_global_assignment -name QIP_FILE PLL_1x_and_16x.qip
