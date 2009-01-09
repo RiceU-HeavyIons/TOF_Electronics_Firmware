@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.7 2008-05-14 20:45:43 jschamba Exp $
+-- $Id: uc_fpga_interface.vhd,v 1.8 2009-01-09 16:03:13 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-06-27
--- Last update: 2008-05-14
+-- Last update: 2009-01-09
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -31,6 +31,7 @@ ENTITY uc_fpga_interface IS
     ctl           : IN  std_logic;
     ds            : IN  std_logic;
     uc_data_in    : IN  std_logic_vector(7 DOWNTO 0);
+    reg0          : IN  std_logic_vector(7 DOWNTO 0);
     reg1          : IN  std_logic_vector(7 DOWNTO 0);
     reg2          : IN  std_logic_vector(7 DOWNTO 0);
     reg3          : IN  std_logic_vector(7 DOWNTO 0);
@@ -38,7 +39,6 @@ ENTITY uc_fpga_interface IS
     reg5          : IN  std_logic_vector(7 DOWNTO 0);
     reg6          : IN  std_logic_vector(7 DOWNTO 0);
     reg7          : IN  std_logic_vector(7 DOWNTO 0);
-    reg8          : IN  std_logic_vector(7 DOWNTO 0);
     serdes_reg    : IN  std_logic_vector(7 DOWNTO 0);
     serdes_statma : IN  std_logic_vector(3 DOWNTO 0);
     serdes_statmb : IN  std_logic_vector(3 DOWNTO 0);
@@ -115,14 +115,14 @@ BEGIN  -- ARCHITECTURE SYN
     serdes_reg(3 DOWNTO 0);
   
   uc_data_out <=
-    reg1      WHEN addr = "00000" ELSE
-    reg2      WHEN addr = "00001" ELSE
-    reg3      WHEN addr = "00010" ELSE
-    reg4      WHEN addr = "00011" ELSE
-    reg5      WHEN addr = "00100" ELSE
-    reg6      WHEN addr = "00101" ELSE
-    reg7      WHEN addr = "00110" ELSE
-    reg8      WHEN addr = "00111" ELSE
+    reg0      WHEN addr = "00000" ELSE
+    reg1      WHEN addr = "00001" ELSE
+    reg2      WHEN addr = "00010" ELSE
+    reg3      WHEN addr = "00011" ELSE
+    reg4      WHEN addr = "00100" ELSE
+    reg5      WHEN addr = "00101" ELSE
+    reg6      WHEN addr = "00110" ELSE
+    reg7      WHEN addr = "00111" ELSE
     ser_regrd WHEN addr(4) = '1' ELSE
     "11111111";
   
