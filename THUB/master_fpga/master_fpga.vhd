@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.33 2009-01-09 16:05:11 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.34 2009-01-09 18:40:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -21,6 +21,7 @@
 -------------------------------------------------------------------------------
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_unsigned.ALL;
 LIBRARY lpm;
 USE lpm.lpm_components.ALL;
 LIBRARY altera_mf;
@@ -310,6 +311,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg1         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg2         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg3         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg3_ctr     : std_logic_vector(7 DOWNTO 0);
+  SIGNAL trgctr_arst    : std_logic;
   SIGNAL s_reg4         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg4_stat    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg5         : std_logic_vector(7 DOWNTO 0);
@@ -693,7 +696,9 @@ BEGIN
     rdreq_out           => smif_rdenable,
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
-  sr_areset_n <= s_event_read;  -- control reader with ddl fiber connect
+  -- control reader with ddl fiber connect: when not connected, reset
+  -- also reset when reg0.0 is high
+  sr_areset_n <= s_event_read AND (NOT s_reg0(0));
 --  sr_areset_n <= s_reg0(0);             -- control reader with Register 0 bit 0
 
   -- connect the selected sync'd data to serdes_reader
@@ -958,7 +963,7 @@ BEGIN
 
   -- use a read to reg4 as status register
   s_reg4_stat(7 DOWNTO 2) <= s_reg4(7 DOWNTO 2);
-  s_reg4_stat(1)          <= s_event_read;
+  s_reg4_stat(1)          <= s_event_read;  -- Fiber status (active high)
   s_reg4_stat(0)          <= s_tcd_busy_n;  -- busy status (active low)
 
   -- Micro - FPGA interface state machine
@@ -973,8 +978,8 @@ BEGIN
       reg0          => s_reg0,
       reg1          => s_reg1,
       reg2          => s_reg2,
-      reg3          => s_reg3,
-      reg4          => s_reg4_stat,
+      reg3          => s_reg3_ctr,      -- trigger counter
+      reg4          => s_reg4_stat,     -- status register
       reg5          => s_reg5,
       reg6          => s_reg6,
       reg7          => s_reg7,
@@ -1011,6 +1016,17 @@ BEGIN
       trigger     => s_trigger,
       evt_trg     => s_tcdevt_trg);
 
+  -- count event triggers
+  trg_ctr: PROCESS (s_tcdevt_trg, trgctr_arst) IS
+  BEGIN
+    IF trgctr_arst = '1' THEN         -- asynchronous reset (active high)
+      s_reg3_ctr <= (OTHERS => '0');
+    ELSIF s_tcdevt_trg'event AND s_tcdevt_trg = '1' THEN  -- rising clock edge
+      s_reg3_ctr <= s_reg3_ctr + 1;
+    END IF;
+  END PROCESS trg_ctr;
+  -- clear counter at "Begin Run" or with Register 0 bit 0
+  trgctr_arst <= s_runReset OR s_reg0(0);
 
   -- pulser trigger: choose freq with register 0 bits [5..4]
   WITH s_reg0(5 DOWNTO 4) SELECT
