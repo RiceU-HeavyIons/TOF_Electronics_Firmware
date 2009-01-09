@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.32 2008-05-14 20:45:24 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.33 2009-01-09 16:05:11 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2008-05-14
+-- Last update: 2009-01-09
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -111,11 +111,11 @@ ARCHITECTURE a OF master_fpga IS
       reg_data : IN  std_logic_vector (7 DOWNTO 0);
       reg_addr : IN  std_logic_vector (2 DOWNTO 0);
       reg_load : IN  std_logic;
+      reg0_out : OUT std_logic_vector (7 DOWNTO 0);
       reg1_out : OUT std_logic_vector (7 DOWNTO 0);
       reg2_out : OUT std_logic_vector (7 DOWNTO 0);
       reg3_out : OUT std_logic_vector (7 DOWNTO 0);
-      reg4_out : OUT std_logic_vector (7 DOWNTO 0);
-      reg5_out : OUT std_logic_vector (7 DOWNTO 0)
+      reg4_out : OUT std_logic_vector (7 DOWNTO 0)
       );
   END COMPONENT control_registers;
 
@@ -127,6 +127,7 @@ ARCHITECTURE a OF master_fpga IS
       ctl           : IN  std_logic;
       ds            : IN  std_logic;
       uc_data_in    : IN  std_logic_vector(7 DOWNTO 0);
+      reg0          : IN  std_logic_vector(7 DOWNTO 0);
       reg1          : IN  std_logic_vector(7 DOWNTO 0);
       reg2          : IN  std_logic_vector(7 DOWNTO 0);
       reg3          : IN  std_logic_vector(7 DOWNTO 0);
@@ -134,7 +135,6 @@ ARCHITECTURE a OF master_fpga IS
       reg5          : IN  std_logic_vector(7 DOWNTO 0);
       reg6          : IN  std_logic_vector(7 DOWNTO 0);
       reg7          : IN  std_logic_vector(7 DOWNTO 0);
-      reg8          : IN  std_logic_vector(7 DOWNTO 0);
       serdes_reg    : IN  std_logic_vector(7 DOWNTO 0);
       serdes_statma : IN  std_logic_vector(3 DOWNTO 0);
       serdes_statmb : IN  std_logic_vector(3 DOWNTO 0);
@@ -306,15 +306,15 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg_load     : std_logic;
   SIGNAL s_sreg_load    : std_logic;
   SIGNAL s_reg_clr      : std_logic;
+  SIGNAL s_reg0         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg1         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg2         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg3         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg4         : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_reg4_stat    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg5         : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg5_stat    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg6         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7         : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_reg8         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_serdes_reg   : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_trigger      : std_logic;
   SIGNAL s_evt_trg      : std_logic;
@@ -694,7 +694,7 @@ BEGIN
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
   sr_areset_n <= s_event_read;  -- control reader with ddl fiber connect
---  sr_areset_n <= s_reg1(0);             -- control reader with Register 1 bit 0
+--  sr_areset_n <= s_reg0(0);             -- control reader with Register 0 bit 0
 
   -- connect the selected sync'd data to serdes_reader
   WITH s_serSel SELECT
@@ -755,7 +755,7 @@ BEGIN
     rdreqH => sh_smif_rdenable);
 
   -- ***************** Master-Serdes FPGA Interface Control **************************
---  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_reg1(0);
+--  s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_reg0(0);
   s_smif_trigger <= s_evt_trg AND s_tcd_busy_n AND s_event_read;
   smif_inst : smif
     PORT MAP (
@@ -950,15 +950,16 @@ BEGIN
       reg_data => s_uc_i,
       reg_addr => s_reg_addr,
       reg_load => s_reg_load,
+      reg0_out => s_reg0,
       reg1_out => s_reg1,
       reg2_out => s_reg2,
       reg3_out => s_reg3,
-      reg4_out => s_reg4,
-      reg5_out => s_reg5);
+      reg4_out => s_reg4);
 
-  -- use a read to reg5 as status register
-  s_reg5_stat(7 DOWNTO 1) <= s_reg5(7 DOWNTO 1);
-  s_reg5_stat(0)          <= s_tcd_busy_n;  -- busy status (active low)
+  -- use a read to reg4 as status register
+  s_reg4_stat(7 DOWNTO 2) <= s_reg4(7 DOWNTO 2);
+  s_reg4_stat(1)          <= s_event_read;
+  s_reg4_stat(0)          <= s_tcd_busy_n;  -- busy status (active low)
 
   -- Micro - FPGA interface state machine
   uc_fpga_inst : uc_fpga_interface
@@ -969,14 +970,14 @@ BEGIN
       ctl           => s_ucCTL,
       ds            => s_ucDS,
       uc_data_in    => s_uc_i,
+      reg0          => s_reg0,
       reg1          => s_reg1,
       reg2          => s_reg2,
       reg3          => s_reg3,
-      reg4          => s_reg4,
-      reg5          => s_reg5_stat,
+      reg4          => s_reg4_stat,
+      reg5          => s_reg5,
       reg6          => s_reg6,
       reg7          => s_reg7,
-      reg8          => s_reg8,
       serdes_reg    => s_serdes_reg,
       serdes_statma => sa_smif_datain(13 DOWNTO 10),
       serdes_statmb => sb_smif_datain(13 DOWNTO 10),
@@ -993,8 +994,8 @@ BEGIN
       reg_clr       => s_reg_clr,
       uc_data_out   => s_uc_o);
 
-  -- common bus to SERDES FPGA's is driven by register 2 bits 0 - 3 
-  m_all <= s_reg2(3 DOWNTO 0);
+  -- common bus to SERDES FPGA's is driven by register 1 bits 0 - 3 
+  m_all <= s_reg1(3 DOWNTO 0);
 
   -- ********************************************************************************
   -- Trigger interface
@@ -1011,8 +1012,8 @@ BEGIN
       evt_trg     => s_tcdevt_trg);
 
 
-  -- pulser trigger: choose freq with register 1 bits [5..4]
-  WITH s_reg1(5 DOWNTO 4) SELECT
+  -- pulser trigger: choose freq with register 0 bits [5..4]
+  WITH s_reg0(5 DOWNTO 4) SELECT
     s_internal_plsr <=
     counter23b_q(22) WHEN "00",         -- ~1.2 Hz
     counter23b_q(18) WHEN "01",         -- ~19 Hz
@@ -1029,8 +1030,8 @@ BEGIN
   END PROCESS shorten_pls;
   s_plsevt_trg <= s_stage1 AND (NOT s_stage2);
 
-  -- select trigger with register 1 bit 1
-  WITH s_reg1(1) SELECT
+  -- select trigger with register 0 bit 1
+  WITH s_reg0(1) SELECT
     s_evt_trg <=
     s_tcdevt_trg WHEN '0',
     s_plsevt_trg WHEN OTHERS;
@@ -1063,13 +1064,13 @@ BEGIN
       q       => s_trgfifo_q
       );
 
-  -- let the MCU read from this FIFO via registers 6,7, and 8
+  -- let the MCU read from this FIFO via registers 5,6, and 7
   s_trg_mcu_word <= (OTHERS => '0') WHEN (s_trgfifo_empty = '1') ELSE s_trgfifo_q;
 
-  s_reg8 (7 DOWNTO 4) <= "0000";
-  s_reg8 (3 DOWNTO 0) <= s_trg_mcu_word(19 DOWNTO 16);
-  s_reg7              <= s_trg_mcu_word(15 DOWNTO 8);
-  s_reg6              <= s_trg_mcu_word(7 DOWNTO 0);
+  s_reg7 (7 DOWNTO 4) <= "0000";
+  s_reg7 (3 DOWNTO 0) <= s_trg_mcu_word(19 DOWNTO 16);
+  s_reg6              <= s_trg_mcu_word(15 DOWNTO 8);
+  s_reg5              <= s_trg_mcu_word(7 DOWNTO 0);
 
   -- use a second dual-clock FIFO to store the trigger data FOR
   -- one event, so it can be attached to the ddl FIFO at the
