@@ -1,4 +1,4 @@
--- $Id: tru_top.vhd,v 1.6 2008-11-26 16:32:35 jschamba Exp $
+-- $Id: tru_top.vhd,v 1.7 2009-01-31 20:42:39 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TRU TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-07-25
--- Last update: 2008-11-21
+-- Last update: 2009-01-23
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -63,7 +63,7 @@ ENTITY tru IS
     ALT_DSTB               : OUT   std_logic;  -- (DSTB_GT) Each word are validated by the DataStrobe
     ALT_ACKN               : OUT   std_logic;  -- (ACKN_GT) Asserted by TRU. Ack. read/write.
     ALT_ERROR              : OUT   std_logic;  -- (ERROR_GT) Indicate parity or instruction error
-    ALT_RST_TBC            : IN    std_logic;  -- (RST_GT) Reset from RCU.
+    ALT_RST_TBC            : IN    std_logic;  -- (RST_GT) Reset from RCU (Active low?)
     ALT_L1                 : IN    std_logic;  -- (L1_GT)
     ALT_L2                 : IN    std_logic;  -- (L2_GT)
     ALT_WRITE              : IN    std_logic;  -- (WRITE_GT) Driven by RCU. Def. transf. dir.
@@ -83,7 +83,7 @@ ENTITY tru IS
 
     -- ???
     TRU_INTERRUPT_n              : OUT std_logic;  -- active low
-    BRD_CLK125M_P, BRD_CLK125M_N : IN  std_logic;  -- ?
+--    BRD_CLK125M_P, BRD_CLK125M_N : IN  std_logic;  -- not implemented in BOM
 
     -- LEDs
     LED_LVDS_RXTX : OUT std_logic;
@@ -162,15 +162,17 @@ ARCHITECTURE str OF tru IS
 
   COMPONENT adc_init
     PORT (
-      RESET         : IN  std_logic;
-      CLK10M        : IN  std_logic;
-      LOCKED        : IN  std_logic;
-      RX_DATA_OUT   : IN  std_logic_vector (15 DOWNTO 0);
-      RX_DATA_READY : IN  std_logic;
-      ADC_RESET_n   : OUT std_logic;
-      SDATA         : OUT std_logic;
-      CS_n          : OUT std_logic;
-      READY         : OUT std_logic);
+      RESET       : IN  std_logic;
+      CLK10M      : IN  std_logic;
+      LOCKED      : IN  std_logic;
+      REG_ADDR    : IN  std_logic_vector (7 DOWNTO 0);
+      REG_DATA    : IN  std_logic_vector (15 DOWNTO 0);
+      LOAD_SREG   : IN  std_logic;
+      REG_ACKN    : OUT std_logic;
+      ADC_RESET_n : OUT std_logic;
+      SDATA       : OUT std_logic;
+      CS_n        : OUT std_logic;
+      READY       : OUT std_logic);
   END COMPONENT adc_init;
 
   -- chipscope control core
@@ -256,6 +258,38 @@ ARCHITECTURE str OF tru IS
       chipview : OUT std_logic_vector(41 DOWNTO 0)
       );
   END COMPONENT fake_altro;
+
+  COMPONENT i2c_registers IS
+    PORT (
+      clock       : IN  std_logic;
+      reset       : IN  std_logic;
+      reg_data    : IN  std_logic_vector(15 DOWNTO 0);
+      reg_addr    : IN  std_logic_vector(7 DOWNTO 0);
+      reg_load    : IN  std_logic;
+      acknSAdc    : IN  std_logic;
+      versionStr  : IN  std_logic_vector(15 DOWNTO 0);
+      loadSAdcReg : OUT std_logic;
+      readRegOut  : OUT std_logic_vector(15 DOWNTO 0);
+      reg0_out    : OUT std_logic_vector(15 DOWNTO 0);
+      reg1_out    : OUT std_logic_vector(15 DOWNTO 0);
+      reg2_out    : OUT std_logic_vector(15 DOWNTO 0);
+      reg3_out    : OUT std_logic_vector(15 DOWNTO 0);
+      reg4_out    : OUT std_logic_vector(15 DOWNTO 0);
+      sAdc_addr   : OUT std_logic_vector(7 DOWNTO 0);
+      sAdc_data   : OUT std_logic_vector(15 DOWNTO 0));
+  END COMPONENT i2c_registers;
+
+  COMPONENT ped_average IS
+    GENERIC (
+      WIDTH : integer;
+      POW   : integer);
+    PORT (
+      reset   : IN  std_logic;
+      clk     : IN  std_logic;
+      sample  : IN  std_logic_vector(WIDTH-1 DOWNTO 0);
+      average : OUT std_logic_vector(WIDTH-1 DOWNTO 0));
+  END COMPONENT ped_average;
+
   -----------------------------------------------------------------------------
   -- Internal signal declarations
   -----------------------------------------------------------------------------
@@ -279,6 +313,16 @@ ARCHITECTURE str OF tru IS
   SIGNAL s_intReset     : std_logic;
   SIGNAL s_poReset      : std_logic;
   SIGNAL s_clk0_out     : std_logic;
+  SIGNAL s_loadSAdcReg  : std_logic;
+  SIGNAL i2c_reg0_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL i2c_reg1_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL i2c_reg2_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL i2c_reg3_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL i2c_reg4_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL i2c_sAdc_addr  : std_logic_vector(7 DOWNTO 0);
+  SIGNAL i2c_sAdc_data  : std_logic_vector(15 DOWNTO 0);
+  SIGNAL tx_data_in     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ackn         : std_logic;
 
   SIGNAL chipscope_data : std_logic_vector (195 DOWNTO 0);
 
@@ -288,23 +332,26 @@ ARCHITECTURE str OF tru IS
   SIGNAL rcu_clkio        : std_logic;
   SIGNAL rx_data_out      : std_logic_vector (15 DOWNTO 0);
   SIGNAL rx_data_ready    : std_logic;
+  SIGNAL tx_data_req      : std_logic;
   SIGNAL reg_addr_reg     : std_logic_vector (7 DOWNTO 0);
   SIGNAL chipview         : std_logic_vector (41 DOWNTO 0);
 
-
-  
+  SIGNAL ave_ped : std_logic_vector(11 DOWNTO 0);
   
 BEGIN  -- ARCHITECTURE str
 
   -- internal reset:
---  s_intReset <= NOT BRD_RESET_n;
-  s_intReset <= NOT BRD_RESET_n OR s_poReset;
+--  poreset_inst : poweron
+--    PORT MAP (
+--      RESET_n  => s_dcm_locked,
+--      CLK_10M  => global_clk10M,
+--      PO_RESET => s_poReset);
 
-  poreset_inst : poweron
-    PORT MAP (
-      RESET_n  => s_dcm_locked,
-      CLK_10M  => global_clk10M,
-      PO_RESET => s_poReset);
+--  s_intReset <= NOT BRD_RESET_n;
+--  s_intReset <= NOT BRD_RESET_n OR s_poReset OR ALT_RST_TBC;
+--  s_intReset <= NOT BRD_RESET_n OR ALT_RST_TBC;
+  s_intReset <= NOT (BRD_RESET_n AND ALT_RST_TBC);
+
 
 
   -----------------------------------------------------------------------------
@@ -354,14 +401,14 @@ BEGIN  -- ARCHITECTURE str
   -------------------------------------------------------------------------------
   -- LEDs
   -------------------------------------------------------------------------------
-  LED_LVDS_RXTX <= '0';
---  LED_AUX1    <= '0';
---  LED_AUX2    <= '0';
---  LED_BUSY    <= '0';
+  LED_LVDS_RXTX <= '0'; -- i2c_reg0_data(2);
+  LED_AUX1      <= ctr_val(24);
+  LED_AUX2      <= ctr_val(23);
+  LED_BUSY      <= '0';
   LED_L0        <= '0';
   LED_L1        <= '0';
-  LED_RCU_RXTX  <= '0';
-  LED_SYS_OK    <= '0';
+  LED_RCU_RXTX  <= '0'; -- i2c_reg0_data(1);
+  LED_SYS_OK    <= '0'; -- i2c_reg0_data(0);
   LED_PWR_ERR   <= '0';
   LED_SYS_ERR   <= '0';
 
@@ -378,12 +425,9 @@ BEGIN  -- ARCHITECTURE str
     END IF;
   END PROCESS;
 
-  LED_AUX1 <= ctr_val(24);
-  LED_AUX2 <= ctr_val(23);
-  LED_BUSY <= ctr_val(22);
-
-
--- test pins
+  -------------------------------------------------------------------------------
+  -- test pins
+  -------------------------------------------------------------------------------
   TST_AUX9 <= '0';
   TST_AUX8 <= '0';
   TST_AUX7 <= '0';
@@ -394,20 +438,6 @@ BEGIN  -- ARCHITECTURE str
   TST_AUX2 <= '0';
   TST_AUX1 <= '0';
   TST_AUX0 <= '0';
-
---  TST_AUX0 <= s_adc_fclk(0);
---  TST_AUX1 <= s_adc_dclk(0);
---  TST_AUX2 <= s_adc_quad(0);
---  TST_AUX3 <= s_adc_quad(1);
---  TST_AUX4 <= s_adc_quad(2);
---  TST_AUX5 <= s_adc_quad(3);
---  TST_AUX6 <= s_adc_quad(4);
---  TST_AUX7 <= s_adc_quad(5);
---  TST_AUX8 <= s_adc_quad(6);
---  TST_AUX9 <= '0';                      -- Ground for scope
-
-  TRU_INTERRUPT_n <= '1';
-
 
   -- monitoring ADCs
   snsDataInst : IOBUF PORT MAP (
@@ -422,15 +452,17 @@ BEGIN  -- ARCHITECTURE str
   -- ADC serial control
   -----------------------------------------------------------------------------
   adc_init_inst : adc_init PORT MAP (
-    RESET         => s_intReset,
-    CLK10M        => global_clk10M,
-    LOCKED        => s_dcm_locked,
-    RX_DATA_OUT   => rx_data_out,
-    RX_DATA_READY => rx_data_ready,
-    ADC_RESET_n   => ADC_RESET_n,
-    SDATA         => ADC_SDATA,
-    CS_n          => s_adc_cs_n,
-    READY         => s_adc_ready
+    RESET       => s_intReset,
+    CLK10M      => global_clk10M,
+    LOCKED      => s_dcm_locked,
+    REG_ADDR    => i2c_sAdc_addr,
+    REG_DATA    => i2c_sAdc_data,
+    LOAD_SREG   => s_loadSAdcReg,
+    REG_ACKN    => s_ackn,
+    ADC_RESET_n => ADC_RESET_n,
+    SDATA       => ADC_SDATA,
+    CS_n        => s_adc_cs_n,
+    READY       => s_adc_ready
     );
 
   -- this line configures ADC 3 and 5
@@ -442,7 +474,7 @@ BEGIN  -- ARCHITECTURE str
   -----------------------------------------------------------------------------
   -- ADC Deserializer
   -----------------------------------------------------------------------------
-  serdes_inst : adc_deserializer
+  deser_inst : adc_deserializer
     PORT MAP (
       RESET          => s_intReset,
       ADC_READY      => s_adc_ready,
@@ -456,26 +488,38 @@ BEGIN  -- ARCHITECTURE str
       SERDESo_RDY    => s_serdeso_rdy,
       ADC_SERDES_OUT => s_serdes_out);
 
+  ped_ave_inst : ped_average GENERIC MAP (
+    WIDTH => 12,                        -- 12 bit ADC data
+    POW   => 4)                         -- 32 (= 2^(4+1)) sample average
+    PORT MAP (
+      reset   => s_intReset,
+      clk     => global_clk40M,
+      sample  => s_serdes_out(11 DOWNTO 0),
+      average => ave_ped);
+
   -----------------------------------------------------------------------------
   -- GTL BUS
   -----------------------------------------------------------------------------
+  TRU_INTERRUPT_n <= '1';
+
   ALT_ERROR    <= '1';
   GTL_CTRL_IN  <= '0';                                  --control in
   GTL_CTRL_OUT <= (NOT rcui2c_busy_flag) AND ctrl_out;  --control out 
-  
+
   -- put GTL RDO clock through a global clock buffer
   rdoclk_inst : BUFG PORT MAP (
     I => ALT_RDOCLK,
     O => rcu_clk);
-    
+
   -- slow controls code from Dong:
   rcui2c_top_inst : rcui2c_top PORT MAP (
     reset            => ALT_RST_TBC,
     clk_40m          => rcu_clk,
     rcu_scl_i        => RCU_SCL,
     rcu_sda_in_i     => RCU_SDA_IN,
-    tx_data_in       => x"abcd",
+    tx_data_in       => tx_data_in,
     card_addr        => b"00000",
+    tx_data_req      => tx_data_req,
     rx_data_out      => rx_data_out,
     rx_data_ready    => rx_data_ready,
     reg_addr_reg     => reg_addr_reg,
@@ -513,6 +557,23 @@ BEGIN  -- ARCHITECTURE str
     chipview => chipview
     );             
 
+  i2c_reg_inst : i2c_registers PORT MAP (
+    clock       => global_clk40M,
+    reset       => s_intReset,
+    reg_data    => rx_data_out,
+    reg_addr    => reg_addr_reg,
+    reg_load    => rx_data_ready,
+    acknSAdc    => s_ackn,
+    versionStr  => x"ABCE",             -- version string at address 0xFF
+    loadSAdcReg => s_loadSAdcReg,
+    readRegOut  => tx_data_in,
+    reg0_out    => i2c_reg0_data,
+    reg1_out    => i2c_reg1_data,
+    reg2_out    => i2c_reg2_data,
+    reg3_out    => i2c_reg3_data,
+    reg4_out    => i2c_reg4_data,
+    sAdc_addr   => i2c_sAdc_addr,
+    sAdc_data   => i2c_sAdc_data);
 
   -- This "generate" statement makes it so we can include
   -- or exclude the following code snippet by re-defining
@@ -527,8 +588,9 @@ BEGIN  -- ARCHITECTURE str
     -----------------------------------------------------------------------------
 
     -- the clock for the chipscope analyzer
---    global_ilaclk <= clk_200M;
-    global_ilaclk <= global_clk40M;
+    global_ilaclk <= clk_200M;
+--    global_ilaclk <= global_clk40M;
+
     -- the chipscope controller
     icon_inst : tru_chipscope
       PORT MAP (
@@ -546,32 +608,35 @@ BEGIN  -- ARCHITECTURE str
 --      chipscope_data(i*14+13)             <= s_serdeso_rdy(i);
 --      
 --    END GENERATE GCS;
---
---    chipscope_data(193 DOWNTO 182) <= s_serdes_out(1259 DOWNTO 1248);
---    chipscope_data(194)            <= global_clk40M;
---    chipscope_data(195)            <= s_adc_ready;
 
-    chipscope_data(11 DOWNTO 0)    <= s_serdes_out(71 DOWNTO 60);      -- 5
-    chipscope_data(23 DOWNTO 12)   <= s_serdes_out(83 DOWNTO 72);      -- 6
-    chipscope_data(35 DOWNTO 24)   <= s_serdes_out(155 DOWNTO 144);    -- 12
-    chipscope_data(47 DOWNTO 36)   <= s_serdes_out(911 DOWNTO 900);    -- 75
-    chipscope_data(59 DOWNTO 48)   <= s_serdes_out(1055 DOWNTO 1044);  -- 87
-    chipscope_data(71 DOWNTO 60)   <= s_serdes_out(1331 DOWNTO 1320);  -- 110
-    chipscope_data(83 DOWNTO 72)   <= s_serdes_out(179 DOWNTO 168);    -- 14
-    chipscope_data(95 DOWNTO 84)   <= s_serdes_out(575 DOWNTO 564);    -- 47
-    chipscope_data(107 DOWNTO 96)  <= s_serdes_out(11 DOWNTO 0);       -- 0
-    chipscope_data(119 DOWNTO 108) <= s_serdes_out(23 DOWNTO 12);      -- 1
-    chipscope_data(131 DOWNTO 120) <= s_serdes_out(35 DOWNTO 24);      -- 2
-    chipscope_data(143 DOWNTO 132) <= s_serdes_out(47 DOWNTO 36);      -- 3
---    chipscope_data(155 DOWNTO 144) <= s_serdes_out(59 DOWNTO 48);      -- 4
---    chipscope_data(167 DOWNTO 156) <= s_serdes_out(95 DOWNTO 84);      -- 7
---    chipscope_data(179 DOWNTO 168) <= s_serdes_out(107 DOWNTO 96);     -- 8
---    chipscope_data(191 DOWNTO 180) <= s_serdes_out(119 DOWNTO 108);    -- 9
---    chipscope_data(195 DOWNTO 192) <= (OTHERS => '0');
-    chipscope_data(185 DOWNTO 144) <= chipview;
+    chipscope_data(11 DOWNTO 0)    <= s_serdes_out(71 DOWNTO 60);      -- ADC5
+    chipscope_data(23 DOWNTO 12)   <= s_serdes_out(83 DOWNTO 72);      -- ADC6
+    chipscope_data(35 DOWNTO 24)   <= s_serdes_out(155 DOWNTO 144);    -- ADC12
+    chipscope_data(47 DOWNTO 36)   <= s_serdes_out(911 DOWNTO 900);    -- ADC75
+    chipscope_data(59 DOWNTO 48)   <= s_serdes_out(1055 DOWNTO 1044);  -- ADC87
+    chipscope_data(71 DOWNTO 60)   <= s_serdes_out(1331 DOWNTO 1320);  -- ADC110
+    chipscope_data(83 DOWNTO 72)   <= s_serdes_out(179 DOWNTO 168);    -- ADC14
+    chipscope_data(95 DOWNTO 84)   <= s_serdes_out(575 DOWNTO 564);    -- ADC47
+    chipscope_data(107 DOWNTO 96)  <= s_serdes_out(11 DOWNTO 0);       -- ADC0
+--    chipscope_data(119 DOWNTO 108) <= s_serdes_out(23 DOWNTO 12);      -- ADC1
+    chipscope_data(119 DOWNTO 108) <= ave_ped;  -- pedestal average for 1
+    chipscope_data(131 DOWNTO 120) <= s_serdes_out(35 DOWNTO 24);      -- ADC2
+    chipscope_data(143 DOWNTO 132) <= s_serdes_out(47 DOWNTO 36);      -- ADC3
+--    chipscope_data(155 DOWNTO 144) <= s_serdes_out(59 DOWNTO 48);      -- ADC4
+--    chipscope_data(167 DOWNTO 156) <= s_serdes_out(95 DOWNTO 84);      -- ADC7
+--    chipscope_data(179 DOWNTO 168) <= s_serdes_out(107 DOWNTO 96);     -- ADC8
+--    chipscope_data(191 DOWNTO 180) <= s_serdes_out(119 DOWNTO 108);    -- ADC9
+    chipscope_data(159 DOWNTO 144) <= rx_data_out;
+    chipscope_data(160)            <= rx_data_ready;
+    chipscope_data(176 DOWNTO 161) <= i2c_reg0_data;
+    chipscope_data(184 DOWNTO 177) <= reg_addr_reg;
+    chipscope_data(185)            <= s_loadSAdcReg;
+--    chipscope_data(185 DOWNTO 144) <= chipview;
     chipscope_data(186)            <= ALT_RDOCLK;
     chipscope_data(187)            <= global_clk40M;
-    chipscope_data(195 DOWNTO 188) <= (OTHERS => '0');
+    chipscope_data(188)            <= s_intReset;
+    chipscope_data(189)            <= ALT_RST_TBC;
+    chipscope_data(195 DOWNTO 190) <= (OTHERS => '0');
 
     ila_inst : tru_ila
       PORT MAP (
