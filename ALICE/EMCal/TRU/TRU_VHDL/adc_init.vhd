@@ -1,4 +1,4 @@
--- $Id: adc_init.vhd,v 1.9 2008-11-26 16:31:06 jschamba Exp $
+-- $Id: adc_init.vhd,v 1.10 2009-01-31 20:41:16 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : ADC Initialization
 -- Project    : TRU
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-08-27
--- Last update: 2008-11-19
+-- Last update: 2009-01-23
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -33,15 +33,17 @@ ENTITY adc_init IS
 
 
   PORT (
-    RESET         : IN  std_logic;      -- reset (active high)
-    CLK10M        : IN  std_logic;
-    LOCKED        : IN  std_logic;
-    RX_DATA_OUT   : IN  std_logic_vector (15 DOWNTO 0);
-    RX_DATA_READY : IN  std_logic;
-    ADC_RESET_n   : OUT std_logic;
-    SDATA         : OUT std_logic;
-    CS_n          : OUT std_logic;
-    READY         : OUT std_logic
+    RESET       : IN  std_logic;        -- reset (active high)
+    CLK10M      : IN  std_logic;
+    LOCKED      : IN  std_logic;
+    REG_ADDR    : IN  std_logic_vector (7 DOWNTO 0);
+    REG_DATA    : IN  std_logic_vector (15 DOWNTO 0);
+    LOAD_SREG   : IN  std_logic;
+    REG_ACKN    : OUT std_logic;
+    ADC_RESET_n : OUT std_logic;
+    SDATA       : OUT std_logic;
+    CS_n        : OUT std_logic;
+    READY       : OUT std_logic
     );
 
 END ENTITY adc_init;
@@ -78,20 +80,19 @@ ARCHITECTURE str1 OF adc_init IS
     SStartInit1,
     SWaitInit2,
     SFinish,
-    SetTestPattern,
+    SLoadSReg,
     SStartInit2,
     SWaitInit3
     );
   SIGNAL IState : IState_type;
 
-  CONSTANT NUM_INIT : integer := 8;     -- number of registers to write
+  CONSTANT NUM_INIT      : integer := 8;  -- number of registers to write
+  CONSTANT NUM_BASE_REGS : integer := 4;  -- number of initialization registers
 
-  SIGNAL s_pdata    : std_logic_vector (15 DOWNTO 0);
-  SIGNAL s_addr     : std_logic_vector (7 DOWNTO 0);
-  SIGNAL s_load     : std_logic;
-  SIGNAL s_ready    : std_logic;
-  SIGNAL l_register : std_logic_vector (15 DOWNTO 0) := x"0000";
-  SIGNAL reg_reset  : std_logic;
+  SIGNAL s_pdata : std_logic_vector (15 DOWNTO 0);
+  SIGNAL s_addr  : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_load  : std_logic;
+  SIGNAL s_ready : std_logic;
 
   TYPE data_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (15 DOWNTO 0);
   TYPE addr_array IS ARRAY (0 TO NUM_INIT-1) OF std_logic_vector (7 DOWNTO 0);
@@ -114,27 +115,41 @@ BEGIN  -- ARCHITECTURE str
   iaddr(3) <= x"DE";
   idata(3) <= x"01C0";
 
+  -- these two are from page 3 for AC coupling (undocumented)
+--  iaddr(4) <= x"01";
+--  idata(4) <= x"0010";
+
+--  iaddr(5) <= x"E2";
+--  idata(5) <= x"00C0";
+
+--  iaddr(6) <= x"14";                   -- Low-Frequency Noise Suppression
+--  idata(6) <= x"00FF";                 -- active all 8 channels
+
+-------------------------------------------------------------------------------
+  -- end of base initialization registers
+-------------------------------------------------------------------------------
+
 
   -- these registers determine the test pattern outputs:
-  iaddr(4) <= x"25";                    -- LVDS Test Pattern register
---  idata(4) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
-  idata(4) <= x"0000";                  -- inactive
---  idata(4) <= x"002C";                  -- DUALCUSTOM_PAT: 1 = 0x000, 2 = 0xC00
---  idata(4) <= x"0040";                  -- EN_RAMP
+  iaddr(NUM_BASE_REGS) <= x"25";        -- LVDS Test Pattern register
+--  idata(NUM_BASE_REGS) <= x"0029";                  -- DUALCUSTOM_PAT: 1 = 0x400, 2 = 0x800
+  idata(NUM_BASE_REGS) <= x"0000";      -- inactive
+--  idata(NUM_BASE_REGS) <= x"002C";                  -- DUALCUSTOM_PAT: 1 = 0x000, 2 = 0xC00
+--  idata(NUM_BASE_REGS) <= x"0040";                  -- EN_RAMP
 
-  iaddr(5) <= x"26";                    -- BITS_CUSTOM1
-  idata(5) <= x"5540";                  -- 1 + 0x155 = 0x555
---  idata(5) <= x"0000";                  -- 1 + 0x000 = 0x000
+  iaddr(NUM_BASE_REGS+1) <= x"26";      -- BITS_CUSTOM1
+  idata(NUM_BASE_REGS+1) <= x"5540";    -- 1 + 0x155 = 0x555
+--  idata(NUM_BASE_REGS+1) <= x"0000";                  -- 1 + 0x000 = 0x000
 
-  iaddr(6) <= x"27";                    -- BITS_CUSTOM2
-  idata(6) <= x"AA80";                  -- 2 + 0x2AA = 0xAAA
---  idata(6) <= x"FFC0";                  -- 2 + 0x3FF = 0xFFF
+  iaddr(NUM_BASE_REGS+2) <= x"27";      -- BITS_CUSTOM2
+  idata(NUM_BASE_REGS+2) <= x"AA80";    -- 2 + 0x2AA = 0xAAA
+--  idata(NUM_BASE_REGS+2) <= x"FFC0";                  -- 2 + 0x3FF = 0xFFF
 
-  iaddr(7) <= x"45";
-  idata(7) <= x"0000";                  -- inactive
---  idata(7) <= x"0002";                  -- PAT_SYNC
---  idata(7) <= x"0001";                  -- PAT_DESKEW
-  
+  iaddr(NUM_BASE_REGS+3) <= x"45";
+  idata(NUM_BASE_REGS+3) <= x"0000";    -- inactive
+--  idata(NUM_BASE_REGS+3) <= x"0002";                  -- PAT_SYNC
+--  idata(NUM_BASE_REGS+3) <= x"0001";                  -- PAT_DESKEW
+
   
   adc_serial_tx_inst : adc_serial_tx PORT MAP (
     RESET => RESET,
@@ -159,13 +174,13 @@ BEGIN  -- ARCHITECTURE str
       timeoutCtr  := 0;
       ADC_RESET_n <= '1';
       READY       <= '0';
-      reg_reset   <= '0';
+      REG_ACKN    <= '0';
       
     ELSIF CLK10M'event AND CLK10M = '1' THEN  -- rising clock edge
       s_load      <= '0';
       ADC_RESET_n <= '1';
       READY       <= '0';
-      reg_reset   <= '1';
+      REG_ACKN    <= '0';
 
       CASE IState IS
         WHEN SLock =>
@@ -239,28 +254,37 @@ BEGIN  -- ARCHITECTURE str
           READY <= '1';
           IF LOCKED = '0' THEN
             IState <= SLock;
-          ELSIF l_register /= x"0000" THEN
-            IState <= SetTestPattern;
+          ELSIF LOAD_SREG = '1' THEN
+            IState <= SLoadSReg;
           ELSE
             IState <= SFinish;
           END IF;
 
           -- set a new test pattern when GTL I2c register write
-        WHEN SetTestPattern =>
+        WHEN SLoadSReg =>
+          REG_ACKN   <= '1';
           timeoutCtr := 0;
-          s_addr     <= x"25";
-          
-          IF l_register = x"0001" THEN
-            s_pdata <= x"0040";         -- ramp
-          ELSIF l_register = x"0002" THEN
-            s_pdata <= x"0029";         -- dual pattern 0xAAA 0x555
-          ELSE
-            s_pdata <= x"0000";         -- normal data
-          END IF;
+          s_addr     <= REG_ADDR;
+          s_pdata    <= REG_DATA;
+
+--          IF REG_DATA = x"0001" THEN
+--            s_pdata <= x"0040";         -- ramp
+--          ELSIF REG_DATA = x"0002" THEN
+--            s_pdata <= x"0029";         -- dual pattern 0xAAA 0x555
+--          ELSIF REG_DATA = x"0003" THEN
+--            s_addr  <= x"14";           -- Low Freqency Noise Suppression
+--            s_pdata <= x"00FF";         -- active all 8 channels
+--          ELSIF REG_DATA = x"0004" THEN
+--            s_addr  <= x"14";           -- Low Freqency Noise Suppression
+--            s_pdata <= x"0000";         -- turned off all channels
+--          ELSE
+--            s_pdata <= x"0000";         -- normal data
+--          END IF;
 
           IState <= SStartInit2;
           
         WHEN SStartInit2 =>
+          REG_ACKN   <= '1';
           timeoutCtr := timeoutCtr + 1;
           s_load     <= '1';
 
@@ -269,7 +293,6 @@ BEGIN  -- ARCHITECTURE str
           END IF;
 
         WHEN SWaitInit3 =>
-          reg_reset <= '0';
           IF s_ready = '1' THEN
             IState <= SFinish;
           END IF;
@@ -282,13 +305,5 @@ BEGIN  -- ARCHITECTURE str
     END IF;
   END PROCESS IControl;
 
-  PROCESS (RX_DATA_READY, reg_reset) IS
-  BEGIN
-    IF reg_reset = '0' THEN             -- asynchronous reset (active low)
-      l_register <= x"0000";
-    ELSIF RX_DATA_READY'event AND RX_DATA_READY = '1' THEN  -- rising clock edge
-      l_register <= RX_DATA_OUT;
-    END IF;
-  END PROCESS;
 
 END ARCHITECTURE str1;
