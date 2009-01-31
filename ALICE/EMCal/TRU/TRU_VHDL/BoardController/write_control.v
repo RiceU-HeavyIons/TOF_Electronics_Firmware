@@ -17,7 +17,7 @@
 // Revision 0.01 - File Created
 // Additional Comments:
 //
-// $Id: write_control.v,v 1.1 2008-11-26 16:34:21 jschamba Exp $
+// $Id: write_control.v,v 1.2 2009-01-31 20:43:39 jschamba Exp $
 //
 //////////////////////////////////////////////////////////////////////////////////
 module write_control
@@ -84,6 +84,9 @@ module write_control
    assign write_en = (state == idle) ? 1'b1 : 1'b0;
 
    assign address = counter;
+// JS: temporarily only write to first 128 points, since we are only reading out 128
+//   assign address = {1'b0, counter[6:0]};
+
    assign address_L0 = address_copy;
 
 endmodule
