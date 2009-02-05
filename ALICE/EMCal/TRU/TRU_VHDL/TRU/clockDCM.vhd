@@ -7,11 +7,11 @@
 -- \   \   \/     Version : 10.1.03
 --  \   \         Application : xaw2vhdl
 --  /   /         Filename : clockDCM.vhd
--- /___/   /\     Timestamp : 01/31/2009 16:18:33
+-- /___/   /\     Timestamp : 02/05/2009 09:57:23
 -- \   \  /  \ 
 --  \___\/\___\ 
 --
---Command: xaw2vhdl-intstyle C:/Jo/ALICE/EMCal/TRU/new/TRU_VHDL/TRU/clockDCM.xaw -st clockDCM.vhd
+--Command: xaw2vhdl-intstyle F:/Jo/ALICE/EMCal/TRU/TRU_VHDL/TRU/clockDCM.xaw -st clockDCM.vhd
 --Design Name: clockDCM
 --Device: xc5vlx110-3ff1153
 --
