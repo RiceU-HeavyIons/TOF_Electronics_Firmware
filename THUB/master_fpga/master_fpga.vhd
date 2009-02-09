@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.34 2009-01-09 18:40:23 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.35 2009-02-09 17:44:46 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-01-09
+-- Last update: 2009-02-06
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -230,8 +230,7 @@ ARCHITECTURE a OF master_fpga IS
       triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_empty       : IN  std_logic;
       trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
-      timeout             : IN  std_logic;
-      timeout_clr         : OUT std_logic;
+      clk_10mhz           : IN  std_logic;
       serSel              : OUT std_logic_vector (2 DOWNTO 0);
       trgFifo_rdreq       : OUT std_logic;
       busy                : OUT std_logic;
@@ -350,8 +349,6 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL clk_10mhz       : std_logic;
   SIGNAL pll_locked      : std_logic;
   SIGNAL test_clk        : std_logic;
-  SIGNAL timeout         : std_logic_vector (10 DOWNTO 0);
-  SIGNAL timeout_clr     : std_logic;
 
   SIGNAL s_serSel        : std_logic_vector (2 DOWNTO 0);
   SIGNAL s_serStatus     : std_logic_vector (3 DOWNTO 0);
@@ -473,17 +470,6 @@ BEGIN
       clock  => clk_10mhz,
       clk_en => pll_locked,
       q      => counter23b_q);
-
-  timeoutCtr : lpm_counter
-    GENERIC MAP (
-      LPM_WIDTH     => 11,
-      LPM_TYPE      => "LPM_COUNTER",
-      LPM_DIRECTION => "UP")
-    PORT MAP (
-      clock => clk_10mhz,
-      aclr  => timeout_clr,
-      q     => timeout);
-
 
   -- LEDs
   -- led <= "00";
@@ -687,8 +673,7 @@ BEGIN
     triggerWord         => s_triggerword,
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
-    timeout             => timeout(10),  -- about 100us
-    timeout_clr         => timeout_clr,
+    clk_10mhz           => clk_10mhz,
     serSel              => s_serSel,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
     busy                => s_tcd_busy_n,
@@ -829,7 +814,7 @@ BEGIN
     run_reset  => s_l2runReset,         -- external logic reset at run start
     event_read => s_l2event_read,       -- indicates run in progress
     reset      => '0',                  -- reset,
-    fifo_q     => l2ddl_data,           -- "data" from external FIFO with event data
+    fifo_q     => l2ddl_data,  -- "data" from external FIFO with event data
     fifo_empty => l2ddlfifo_empty,      -- "empty" from external FIFO
     fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
     );
@@ -1017,9 +1002,9 @@ BEGIN
       evt_trg     => s_tcdevt_trg);
 
   -- count event triggers
-  trg_ctr: PROCESS (s_tcdevt_trg, trgctr_arst) IS
+  trg_ctr : PROCESS (s_tcdevt_trg, trgctr_arst) IS
   BEGIN
-    IF trgctr_arst = '1' THEN         -- asynchronous reset (active high)
+    IF trgctr_arst = '1' THEN           -- asynchronous reset (active high)
       s_reg3_ctr <= (OTHERS => '0');
     ELSIF s_tcdevt_trg'event AND s_tcdevt_trg = '1' THEN  -- rising clock edge
       s_reg3_ctr <= s_reg3_ctr + 1;
