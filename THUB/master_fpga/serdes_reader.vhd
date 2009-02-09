@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.14 2008-07-02 21:33:53 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.15 2009-02-09 17:44:10 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2008-06-30
+-- Last update: 2009-02-06
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -47,8 +47,7 @@ ENTITY serdes_reader IS
     triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
     trgFifo_empty       : IN  std_logic;
     trgFifo_q           : IN  std_logic_vector (19 DOWNTO 0);
-    timeout             : IN  std_logic;
-    timeout_clr         : OUT std_logic;
+    clk_10mhz           : IN  std_logic;
     serSel              : OUT std_logic_vector (2 DOWNTO 0);
     trgFifo_rdreq       : OUT std_logic;
     busy                : OUT std_logic;  -- active low
@@ -80,19 +79,27 @@ ARCHITECTURE a OF serdes_reader IS
   SIGNAL shift_areset_n : std_logic;
   SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
   SIGNAL ser_selector   : std_logic_vector (4 DOWNTO 0);
+  SIGNAL l0_trgword     : std_logic_vector(19 DOWNTO 0);
+
+  SIGNAL timeout     : std_logic_vector (10 DOWNTO 0);
+  SIGNAL timeout_clr : std_logic;
+  
 
   TYPE TState_type IS (
     SWaitTrig,
     SLatchTrig,
+    SOutputL0,
     STagWrd,
     SChkChannel,
     SFifoChk,
     SRdSerA,
     SChgChannel,
-    SDelay,
-    STrgEvt,
     SRdTrg,
-    SEnd
+    SEnd,
+    STrgOnlyEvtStart,
+    STrgOnlyEvtRdTrg,
+    STrgOnlyEvtEndNormal,
+    STrgOnlyEvtEndNewTrigger
     );
   SIGNAL TState : TState_type;
   
@@ -148,6 +155,7 @@ BEGIN  -- ARCHITECTURE a
       sl_areset_n    <= '0';
       shift_areset_n <= '0';
       ser_selector   <= (OTHERS => '0');
+      l0_trgword     <= (OTHERS => '0');
       chCtr          := 0;
       serCtr         := 0;
       delayCtr       := 0;
@@ -171,6 +179,7 @@ BEGIN  -- ARCHITECTURE a
           serCtr       := 0;
           busy         <= '1';          -- "not busy" until trigger
           timeout_clr  <= '0';          -- run timeout ctr
+          l0_trgword   <= (OTHERS => '0');
 
           IF timeout_edge = '1' THEN
             delayCtr := delayCtr + 1;
@@ -184,13 +193,20 @@ BEGIN  -- ARCHITECTURE a
             -- timeout pulse has a period of about 205 us, so this is
             -- about 100 ms
           ELSIF ((delayCtr = 488) AND (trgFifo_empty = '0')) THEN
-            TState <= STrgEvt;
+            TState <= STrgOnlyEvtStart;
           END IF;
 
-          -- strobe current trigger word into FIFO
+          -- latch current trigger word internally
+          -- also go busy (default) and stay busy until event is processed
         WHEN SLatchTrig =>
+          l0_trgword <= triggerWord;
+
+          TState <= SOutputL0;
+
+          -- strobe current L0 trigger word into FIFO
+        WHEN SOutputL0 =>
           s_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
-          s_outdata(19 DOWNTO 0)  <= triggerWord;
+          s_outdata(19 DOWNTO 0)  <= l0_trgword;
           s_wrreq_out             <= '1';
 
           TState <= STagWrd;
@@ -235,7 +251,7 @@ BEGIN  -- ARCHITECTURE a
           s_wrreq_out <= s_slatch;
 
           -- when finished, wait for next latch signal
-          IF (block_end AND (s_slatch = '1')) OR (timeout = '1') THEN
+          IF (block_end AND (s_slatch = '1')) OR (timeout(10) = '1') THEN
             block_end <= false;
             TState    <= SChgChannel;
           END IF;
@@ -246,26 +262,12 @@ BEGIN  -- ARCHITECTURE a
           chCtr    := chCtr + 1;
           serCtr   := serCtr + 1;
 
-          IF serCtr = 0 THEN            -- last channel: rollover, Serdes H, Channel 3
-            TState <= SDelay;           -- move on
+          IF serCtr = 0 THEN   -- last channel: rollover, Serdes H, Channel 3
+            TState <= SRdTrg;           -- move on
           ELSE                          -- otherwise repeat from SChkChannel
             ser_selector <= CONV_STD_LOGIC_VECTOR(serCtr, 5);
             TState       <= SChkChannel;
           END IF;
-
-          -- delay for a while (~13 us)
-        WHEN SDelay =>
-          delayCtr := delayCtr + 1;
-          IF delayCtr = 1024 THEN
-            TState <= SRdTrg;
-          END IF;
-
-          -- strobe  trigger word = 0 into FIFO
-        WHEN STrgEvt =>
-          s_outdata   <= X"A0000000";   -- trigger word
-          s_wrreq_out <= '1';
-
-          TState <= SRdTrg;
 
           -- emtpy the trigger FIFO into the DDL FIFO 
         WHEN SRdTrg =>
@@ -289,7 +291,68 @@ BEGIN  -- ARCHITECTURE a
 
           TState <= SWaitTrig;          -- return to the beginning
 
-          -- this should never happen:
+-------------------------------------------------------------------------------
+-- Handle Trigger only events
+-------------------------------------------------------------------------------
+          -- strobe  trigger word = 0 into FIFO
+        WHEN STrgOnlyEvtStart =>
+          busy        <= '1';           -- "not busy" until trigger
+          s_outdata   <= X"A0000000";   -- "Trigger only" trigger word
+          s_wrreq_out <= '1';
+
+          IF evt_trg = '1' THEN
+            TState <= STrgOnlyEvtEndNewTrigger;
+          ELSE
+            TState <= STrgOnlyEvtRdTrg;
+          END IF;
+
+          -- empty trigger FIFO while watching for new events
+        WHEN STrgOnlyEvtRdTrg =>
+          busy                    <= '1';     -- "not busy" until trigger
+          s_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
+          s_outdata(19 DOWNTO 0)  <= trgFifo_q;
+
+          trgFifo_rdreq <= '1';
+          s_wrreq_out   <= NOT trgFifo_empty;
+
+          IF evt_trg = '1' THEN
+            TState <= STrgOnlyEvtEndNewTrigger;
+
+          ELSIF trgFifo_empty = '1' THEN
+            TState <= STrgOnlyEvtEndNormal;
+          END IF;
+
+          -- end the event, while watching for new events
+        WHEN STrgOnlyEvtEndNormal =>
+          busy                    <= '1';  -- "not busy" until trigger
+          s_outdata(31 DOWNTO 24) <= X"EA";
+          s_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
+          s_wrreq_out             <= '1';
+
+          IF evt_trg = '1' THEN
+            TState <= SLatchTrig;       -- new event, latch it
+          ELSE
+            TState <= SWaitTrig;        -- return to the beginning
+          END IF;
+
+          -- a new event occured:
+          -- 1) end the trigger only event
+          -- 2) latch the current trigger word
+          -- 3) then go to process the new event
+          -- 4) go busy
+        WHEN STrgOnlyEvtEndNewTrigger =>
+          s_outdata(31 DOWNTO 24) <= X"EA";
+          s_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
+          s_wrreq_out             <= '1';
+
+          l0_trgword <= triggerWord;
+
+          TState <= SOutputL0;          -- new trigger latched, process it
+
+
+-------------------------------------------------------------------------------
+-- This should never happen
+-------------------------------------------------------------------------------
         WHEN OTHERS =>
           TState <= SWaitTrig;
           
@@ -298,9 +361,19 @@ BEGIN  -- ARCHITECTURE a
       -- get timeout signal edge
       timeout_edge := timeout_r1 AND NOT timeout_r2;
       timeout_r2   := timeout_r1;
-      timeout_r1   := timeout;
+      timeout_r1   := timeout(10);
 
     END IF;
   END PROCESS rdoutControl;
-  
+
+  timeoutCtr : lpm_counter
+    GENERIC MAP (
+      LPM_WIDTH     => 11,
+      LPM_TYPE      => "LPM_COUNTER",
+      LPM_DIRECTION => "UP")
+    PORT MAP (
+      clock => clk_10mhz,
+      aclr  => timeout_clr,
+      q     => timeout);
+
 END ARCHITECTURE a;
