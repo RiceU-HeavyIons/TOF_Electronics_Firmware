@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.7 2008-02-21 17:45:22 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.8 2009-02-12 22:50:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2008-02-21
+-- Last update: 2009-02-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -38,6 +38,7 @@ ENTITY tcd IS
     data        : IN  std_logic_vector (3 DOWNTO 0);   -- TCD data
     clock       : IN  std_logic;        -- 40 MHz clock
     trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
+    master_rst  : OUT std_logic;        -- indicates master reset command
     trigger     : OUT std_logic;        -- strobe signal sync'd to clock
     evt_trg     : OUT std_logic         -- this signal indicates an event
     );
@@ -45,7 +46,7 @@ ENTITY tcd IS
 END ENTITY tcd;
 
 ARCHITECTURE a OF tcd IS
-  TYPE type_sreg IS (S1,S2,S3,S4,S5);
+  TYPE type_sreg IS (S1, S2, S3, S4, S5);
   SIGNAL sreg : type_sreg;
 
   SIGNAL s_reg1       : std_logic_vector (3 DOWNTO 0);
@@ -54,15 +55,19 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_reg4       : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg5       : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg20_1    : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_reg20_2    : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_trg_unsync : std_logic;
   SIGNAL s_trg_short  : std_logic;
   SIGNAL s_stage1     : std_logic;
   SIGNAL s_stage2     : std_logic;
   SIGNAL s_stage3     : std_logic;
-  SIGNAL s_stage4     : std_logic;
+  SIGNAL s_mstage1    : std_logic;
+  SIGNAL s_mstage2    : std_logic;
+  SIGNAL s_mstage3    : std_logic;
   SIGNAL s_l0like     : std_logic;
   SIGNAL s_trigger    : std_logic;
   SIGNAL s_reset      : std_logic;
+  SIGNAL s_mstr_rst   : std_logic;
   
 BEGIN  -- ARCHITECTURE a
 
@@ -73,7 +78,7 @@ BEGIN  -- ARCHITECTURE a
 
   dff_cascade : PROCESS (data_strobe) IS
   BEGIN
-    IF data_strobe'event AND data_strobe = '0' THEN  -- falling clock edge
+    IF falling_edge(data_strobe) THEN
       s_reg1 <= data;
       s_reg2 <= s_reg1;
       s_reg3 <= s_reg2;
@@ -87,7 +92,7 @@ BEGIN  -- ARCHITECTURE a
   -- 20-bit register.
   reg20_1 : PROCESS (rhic_strobe) IS
   BEGIN
-    IF rhic_strobe'event AND rhic_strobe = '1' THEN  -- rising clock edge
+    IF rising_edge(rhic_strobe) THEN
       s_reg20_1 (19 DOWNTO 16) <= s_reg5;
       s_reg20_1 (15 DOWNTO 12) <= s_reg4;
       s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
@@ -96,8 +101,18 @@ BEGIN  -- ARCHITECTURE a
     END IF;
   END PROCESS reg20_1;
 
-  -- use this as the trigger word output
-  trgword <= s_reg20_1;
+  -- use this as the trigger word output, sync to 40MHz clock
+  -- also delay by 1 40MHz clock
+  PROCESS (clock) IS
+  BEGIN  -- PROCESS
+    IF falling_edge(clock) THEN
+      trgword   <= s_reg20_2;
+      s_reg20_2 <= s_reg20_1;
+    END IF;
+  END PROCESS;
+
+
+--  trgword <= s_reg20_1;
 
   -- now check if there is a valid trigger command:
   trg : PROCESS (s_reg20_1(19 DOWNTO 16)) IS
@@ -143,16 +158,23 @@ BEGIN  -- ARCHITECTURE a
         s_trg_unsync <= '0';
         s_l0like     <= '0';
     END CASE;
+
+    -- master reset command
+    IF s_reg20_1(19 DOWNTO 16) = "0010" THEN
+      s_mstr_rst <= '1';
+    ELSE
+      s_mstr_rst <= '0';
+    END IF;
   END PROCESS trg;
 
   -- shorten s_trg_unsync to 2 data strobe clock cycles
   s_reset <= '0';                       -- no reset
-  shorten: PROCESS (data_strobe, s_reset) IS
+  shorten : PROCESS (data_strobe, s_reset) IS
   BEGIN
     IF s_reset = '1' THEN               -- asynchronous reset (active low)
       s_trg_short <= '0';
       sreg        <= S1;
-    ELSIF data_strobe'event AND data_strobe = '0' THEN  -- falling clock edge
+    ELSIF falling_edge(data_strobe) THEN
       s_trg_short <= '0';
 
       CASE sreg IS
@@ -163,7 +185,7 @@ BEGIN  -- ARCHITECTURE a
           END IF;
         WHEN S2 =>
           s_trg_short <= s_trg_unsync;
-          sreg <= S3;
+          sreg        <= S3;
         WHEN S3 =>
           sreg <= S4;
         WHEN S4 =>
@@ -177,16 +199,20 @@ BEGIN  -- ARCHITECTURE a
     END IF;
   END PROCESS shorten;
 
-  
+
   -- when a valid trigger command is found, synchronize the resulting trigger
-  -- to the 40MHz clock with a 4 stage DFF cascade and to make the signal
+  -- to the 40MHz clock with a 3 stage DFF cascade and to make the signal
   -- exactly 1 clock wide
   syncit : PROCESS (clock) IS
   BEGIN
-    IF clock'event AND clock = '1' THEN  -- rising clock edge
+    IF rising_edge(clock) THEN
       s_stage1 <= s_trg_short;
       s_stage2 <= s_stage1;
       s_stage3 <= s_stage2;
+
+      s_mstage1 <= s_mstr_rst;
+      s_mstage2 <= s_mstage1;
+      s_mstage3 <= s_mstage2;
     END IF;
   END PROCESS syncit;
 
@@ -194,5 +220,7 @@ BEGIN  -- ARCHITECTURE a
 
   trigger <= s_trigger;
   evt_trg <= s_trigger AND s_l0like;
+
+  master_rst <= s_mstage2 AND (NOT s_mstage3);
   
 END ARCHITECTURE a;
