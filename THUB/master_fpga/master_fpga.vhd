@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.35 2009-02-09 17:44:46 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.36 2009-02-12 22:49:16 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-02-06
+-- Last update: 2009-02-10
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -45,7 +45,7 @@ ENTITY master_fpga IS
       mgO, mhO      : OUT   std_logic_vector(35 DOWNTO 17);
       m_all         : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
-      cpld          : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus
+      cpld          : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus (0-3 = dip-switches)
       uc_fpga_hi    : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
       uc_fpga_lo    : INOUT std_logic_vector(7 DOWNTO 0);   -- FPGA/Micro bus
       -- Buttons & LEDs
@@ -161,6 +161,7 @@ ARCHITECTURE a OF master_fpga IS
       data        : IN  std_logic_vector (3 DOWNTO 0);
       clock       : IN  std_logic;
       trgword     : OUT std_logic_vector (19 DOWNTO 0);
+      master_rst  : OUT std_logic;
       trigger     : OUT std_logic;
       evt_trg     : OUT std_logic
       );
@@ -318,6 +319,7 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg6         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_serdes_reg   : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_master_rst   : std_logic;
   SIGNAL s_trigger      : std_logic;
   SIGNAL s_evt_trg      : std_logic;
   SIGNAL s_tcdevt_trg   : std_logic;
@@ -998,6 +1000,7 @@ BEGIN
       data        => tcd_d,
       clock       => globalclk,
       trgword     => s_triggerword,
+      master_rst  => s_master_rst,
       trigger     => s_trigger,
       evt_trg     => s_tcdevt_trg);
 
