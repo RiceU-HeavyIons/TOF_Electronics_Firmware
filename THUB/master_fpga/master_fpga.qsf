@@ -506,7 +506,7 @@ set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
 set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE stp1.stp
+set_global_assignment -name USE_SIGNALTAP_FILE stp3.stp
 set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
 set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
 set_global_assignment -name ENABLE_CLOCK_LATENCY ON
@@ -551,3 +551,5 @@ set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
 set_global_assignment -name CRC_ERROR_CHECKING ON
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
+set_global_assignment -name SIGNALTAP_FILE stp3.stp
+set_global_assignment -name MISC_FILE "F:/Jo/TOF/THUB/master_fpga/master_fpga.dpf"
