@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.8 2009-02-12 22:50:00 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.9 2009-02-18 15:47:44 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2009-02-12
+-- Last update: 2009-02-17
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -105,7 +105,7 @@ BEGIN  -- ARCHITECTURE a
   -- also delay by 1 40MHz clock
   PROCESS (clock) IS
   BEGIN  -- PROCESS
-    IF falling_edge(clock) THEN
+    IF rising_edge(clock) THEN
       trgword   <= s_reg20_2;
       s_reg20_2 <= s_reg20_1;
     END IF;
