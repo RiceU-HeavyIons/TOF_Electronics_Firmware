@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.36 2009-02-12 22:49:16 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.37 2009-02-18 15:49:57 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-02-10
+-- Last update: 2009-02-17
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -33,7 +33,7 @@ USE altera.altera_primitives_components.ALL;
 ENTITY master_fpga IS
   PORT
     (
-      clk           : IN    std_logic;                      -- Master clock
+      clk           : IN    std_logic;  -- Master clock
       -- Mictor outputs
       mic           : OUT   std_logic_vector(28 DOWNTO 0);
       -- bus to serdes fpga's
@@ -45,17 +45,17 @@ ENTITY master_fpga IS
       mgO, mhO      : OUT   std_logic_vector(35 DOWNTO 17);
       m_all         : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
-      cpld          : IN    std_logic_vector(9 DOWNTO 0);   -- CPLD/FPGA bus (0-3 = dip-switches)
+      cpld          : IN    std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus (0-3 = dip-switches)
       uc_fpga_hi    : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
-      uc_fpga_lo    : INOUT std_logic_vector(7 DOWNTO 0);   -- FPGA/Micro bus
+      uc_fpga_lo    : INOUT std_logic_vector(7 DOWNTO 0);  -- FPGA/Micro bus
       -- Buttons & LEDs
-      butn          : IN    std_logic_vector(1 DOWNTO 0);   -- buttons
-      led           : OUT   std_logic_vector(1 DOWNTO 0);   -- LEDs
+      butn          : IN    std_logic_vector(1 DOWNTO 0);  -- buttons
+      led           : OUT   std_logic_vector(1 DOWNTO 0);  -- LEDs
       -- TCD
       tcd_d         : IN    std_logic_vector(3 DOWNTO 0);
       tcd_busy_p    : OUT   std_logic;
-      tcd_strb      : IN    std_logic;                      -- RHIC strobe
-      tcd_clk       : IN    std_logic;                      -- RHIC Data Clock
+      tcd_strb      : IN    std_logic;  -- RHIC strobe
+      tcd_clk       : IN    std_logic;  -- RHIC Data Clock
       -- SIU
       fbctrl_n      : INOUT std_logic;
       fbten_n       : INOUT std_logic;
@@ -480,7 +480,8 @@ BEGIN
 
   -- Other defaults
 
-  tcd_busy_p <= s_tcd_busy_n;           -- active "low"
+  tcd_busy_p <= s_tcd_busy_n AND filf_n;  -- active "low"
+--  tcd_busy_p <= s_tcd_busy_n;           -- active "low"
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
 
