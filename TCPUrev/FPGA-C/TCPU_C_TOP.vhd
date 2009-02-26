@@ -1,4 +1,4 @@
--- $Id: TCPU_C_TOP.vhd,v 1.6 2008-12-22 16:35:19 jschamba Exp $
+-- $Id: TCPU_C_TOP.vhd,v 1.7 2009-02-26 19:43:44 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU C TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2008-12-22
+-- Last update: 2009-02-26
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -193,7 +193,7 @@ END TCPU_C_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_C_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"87";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"88";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -804,8 +804,14 @@ BEGIN
       shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
-  s_c1_trigger <= trigger_delay(0);
-  s_c2_trigger <= trigger_delay(0);
+--  s_c1_trigger <= trigger_delay(0);
+--  s_c2_trigger <= trigger_delay(0);
+
+  -- changed this delay from "0" to "2" in version 0x88
+  -- because the start detector didn't work with the
+  -- earlier delay
+  s_c1_trigger <= trigger_delay(2);
+  s_c2_trigger <= trigger_delay(2);
 
 ---------------------------------------------------------------------------
 -- Muxes for AUX / NORMAL serial readout for cable1
