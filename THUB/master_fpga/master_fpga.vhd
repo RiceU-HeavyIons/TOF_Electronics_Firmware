@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.37 2009-02-18 15:49:57 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.38 2009-03-03 20:52:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-02-17
+-- Last update: 2009-02-20
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -160,6 +160,7 @@ ARCHITECTURE a OF master_fpga IS
       data_strobe : IN  std_logic;
       data        : IN  std_logic_vector (3 DOWNTO 0);
       clock       : IN  std_logic;
+      reset_n     : IN  std_logic;
       trgword     : OUT std_logic_vector (19 DOWNTO 0);
       master_rst  : OUT std_logic;
       trigger     : OUT std_logic;
@@ -877,6 +878,7 @@ BEGIN
   ddlfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=7,",
       lpm_numwords           => 8192,
       lpm_showahead          => "OFF",
       lpm_type               => "dcfifo",
@@ -1000,6 +1002,7 @@ BEGIN
       data_strobe => tcd_clk,
       data        => tcd_d,
       clock       => globalclk,
+      reset_n     => pll_locked,        -- reset when pll NOT locked
       trgword     => s_triggerword,
       master_rst  => s_master_rst,
       trigger     => s_trigger,
@@ -1048,6 +1051,7 @@ BEGIN
   tcdfifo_inst : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=7,",
       lpm_numwords           => 256,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
@@ -1077,17 +1081,18 @@ BEGIN
   s_reg6              <= s_trg_mcu_word(15 DOWNTO 8);
   s_reg5              <= s_trg_mcu_word(7 DOWNTO 0);
 
-  -- use a second dual-clock FIFO to store the trigger data FOR
+  -- use a second dual-clock FIFO to store the trigger data for
   -- one event, so it can be attached to the ddl FIFO at the
   -- end after the event is read out from the Serdes channels
   ddltrgFifo_inst : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
-      lpm_numwords           => 16,     -- maximum 16 words
+      lpm_hint               => "MAXIMIZE_SPEED=7,",
+      lpm_numwords           => 32,     -- maximum 32 words
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
       lpm_width              => 20,
-      lpm_widthu             => 4,
+      lpm_widthu             => 5,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 4,
       underflow_checking     => "ON",
