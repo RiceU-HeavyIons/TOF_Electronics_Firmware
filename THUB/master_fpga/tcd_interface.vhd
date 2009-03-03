@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.9 2009-02-18 15:47:44 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.10 2009-03-03 20:49:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2009-02-17
+-- Last update: 2009-02-25
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -22,6 +22,7 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_unsigned.ALL;
 
 LIBRARY lpm;
 USE lpm.lpm_components.ALL;
@@ -37,6 +38,7 @@ ENTITY tcd IS
     data_strobe : IN  std_logic;        -- TCD data clock
     data        : IN  std_logic_vector (3 DOWNTO 0);   -- TCD data
     clock       : IN  std_logic;        -- 40 MHz clock
+    reset_n     : IN  std_logic;
     trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
     master_rst  : OUT std_logic;        -- indicates master reset command
     trigger     : OUT std_logic;        -- strobe signal sync'd to clock
@@ -49,70 +51,114 @@ ARCHITECTURE a OF tcd IS
   TYPE type_sreg IS (S1, S2, S3, S4, S5);
   SIGNAL sreg : type_sreg;
 
-  SIGNAL s_reg1       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg2       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg3       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg4       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg5       : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg20_1    : std_logic_vector (19 DOWNTO 0);
-  SIGNAL s_reg20_2    : std_logic_vector (19 DOWNTO 0);
-  SIGNAL s_trg_unsync : std_logic;
-  SIGNAL s_trg_short  : std_logic;
-  SIGNAL s_stage1     : std_logic;
-  SIGNAL s_stage2     : std_logic;
-  SIGNAL s_stage3     : std_logic;
-  SIGNAL s_mstage1    : std_logic;
-  SIGNAL s_mstage2    : std_logic;
-  SIGNAL s_mstage3    : std_logic;
-  SIGNAL s_l0like     : std_logic;
-  SIGNAL s_trigger    : std_logic;
-  SIGNAL s_reset      : std_logic;
-  SIGNAL s_mstr_rst   : std_logic;
+  TYPE resetState_type IS (rss1, rss2, rss3);
+  SIGNAL resetState : resetState_type;
+
+  TYPE rsState_type IS (R0l, R0h, R1, R2, R3, R4, R5);
+  SIGNAL rsState : rsState_type;
+
+
+  SIGNAL s_reg1           : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg2           : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg3           : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg4           : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg5           : std_logic_vector (3 DOWNTO 0);
+  SIGNAL s_reg20_1        : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_reg20_2        : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_trg_unsync     : std_logic;
+  SIGNAL s_trg_short      : std_logic;
+  SIGNAL s_stage1         : std_logic;
+  SIGNAL s_stage2         : std_logic;
+  SIGNAL s_stage3         : std_logic;
+  SIGNAL s_mstage1        : std_logic;
+  SIGNAL s_mstage2        : std_logic;
+  SIGNAL s_mstage3        : std_logic;
+  SIGNAL s_l0like         : std_logic;
+  SIGNAL s_trigger        : std_logic;
+  SIGNAL s_reset_n        : std_logic;
+  SIGNAL s_mstr_rst       : std_logic;
+  SIGNAL edges            : std_logic_vector(2 DOWNTO 0);
+  SIGNAL missing_strobe_n : std_logic;
+  SIGNAL edgeRst_n        : std_logic;
+  SIGNAL counter          : integer RANGE 0 TO 15;
   
 BEGIN  -- ARCHITECTURE a
 
-  -- inv_data_strobe <= NOT data_strobe;
+  -- reset the state machine on both an external reset (PLL lock)
+  -- and missing RHICstrobes
+  s_reset_n <= reset_n AND missing_strobe_n;
 
   -- capture the trigger data in a cascade of 5 4-bit registers
   -- with the tcd data clock on trailing clock edge.
-
-  dff_cascade : PROCESS (data_strobe) IS
+  latchTrig : PROCESS (data_strobe, s_reset_n) IS
   BEGIN
-    IF falling_edge(data_strobe) THEN
-      s_reg1 <= data;
-      s_reg2 <= s_reg1;
-      s_reg3 <= s_reg2;
-      s_reg4 <= s_reg3;
-      s_reg5 <= s_reg4;
+    IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
+      s_reg1    <= (OTHERS => '0');
+      s_reg2    <= (OTHERS => '0');
+      s_reg3    <= (OTHERS => '0');
+      s_reg4    <= (OTHERS => '0');
+      s_reg5    <= (OTHERS => '0');
+      s_reg20_1 <= (OTHERS => '0');
+      rsState   <= R0l;
+      
+    ELSIF falling_edge(data_strobe) THEN
+
+      CASE rsState IS
+        WHEN R0l =>
+          s_reg1    <= (OTHERS => '0');
+          s_reg2    <= (OTHERS => '0');
+          s_reg3    <= (OTHERS => '0');
+          s_reg4    <= (OTHERS => '0');
+          s_reg5    <= (OTHERS => '0');
+          s_reg20_1 <= (OTHERS => '0');
+          -- wait for RHICstrobe to be low
+          IF rhic_strobe = '0' THEN
+            rsState <= R0h;
+          END IF;
+        WHEN R0h =>
+          s_reg1 <= data;               -- latch current nibble
+          -- wait for RHICstrobe to go hi
+          IF rhic_strobe = '1' THEN
+            rsState <= R2;
+          END IF;
+
+          -- now the state machine should be aligned to the RHICstrobe
+        WHEN R1 =>
+          -- latch current nibbles into 20bit register
+          s_reg20_1 (19 DOWNTO 16) <= s_reg1;
+          s_reg20_1 (15 DOWNTO 12) <= s_reg2;
+          s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
+          s_reg20_1 (7 DOWNTO 4)   <= s_reg4;
+          s_reg20_1 (3 DOWNTO 0)   <= s_reg5;
+
+          s_reg1 <= data;
+
+          -- make sure we see RHICstrobe being high during this nibble
+          IF rhic_strobe = '1' THEN
+            rsState <= R2;
+          ELSE
+            -- try new sync, if not
+            rsState <= R0l;
+          END IF;
+        WHEN R2 =>
+          trgWord <= s_reg20_1;
+          s_reg2  <= data;
+          rsState <= R3;
+        WHEN R3 =>
+          s_reg3  <= data;
+          rsState <= R4;
+        WHEN R4 =>
+          s_reg4  <= data;
+          rsState <= R5;
+        WHEN R5 =>
+          s_reg5  <= data;
+          rsState <= R1;
+
+      END CASE;
       
     END IF;
-  END PROCESS dff_cascade;
+  END PROCESS latchTrig;
 
-  -- On the rising edge of the RHIC strobe, latch the 5 4-bit registers into a
-  -- 20-bit register.
-  reg20_1 : PROCESS (rhic_strobe) IS
-  BEGIN
-    IF rising_edge(rhic_strobe) THEN
-      s_reg20_1 (19 DOWNTO 16) <= s_reg5;
-      s_reg20_1 (15 DOWNTO 12) <= s_reg4;
-      s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
-      s_reg20_1 (7 DOWNTO 4)   <= s_reg2;
-      s_reg20_1 (3 DOWNTO 0)   <= s_reg1;
-    END IF;
-  END PROCESS reg20_1;
-
-  -- use this as the trigger word output, sync to 40MHz clock
-  -- also delay by 1 40MHz clock
-  PROCESS (clock) IS
-  BEGIN  -- PROCESS
-    IF rising_edge(clock) THEN
-      trgword   <= s_reg20_2;
-      s_reg20_2 <= s_reg20_1;
-    END IF;
-  END PROCESS;
-
-
---  trgword <= s_reg20_1;
 
   -- now check if there is a valid trigger command:
   trg : PROCESS (s_reg20_1(19 DOWNTO 16)) IS
@@ -168,10 +214,10 @@ BEGIN  -- ARCHITECTURE a
   END PROCESS trg;
 
   -- shorten s_trg_unsync to 2 data strobe clock cycles
-  s_reset <= '0';                       -- no reset
-  shorten : PROCESS (data_strobe, s_reset) IS
+  -- so two consecutive triggers are distinguished
+  shorten : PROCESS (data_strobe, s_reset_n) IS
   BEGIN
-    IF s_reset = '1' THEN               -- asynchronous reset (active low)
+    IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
       s_trg_short <= '0';
       sreg        <= S1;
     ELSIF falling_edge(data_strobe) THEN
@@ -201,7 +247,7 @@ BEGIN  -- ARCHITECTURE a
 
 
   -- when a valid trigger command is found, synchronize the resulting trigger
-  -- to the 40MHz clock with a 3 stage DFF cascade and to make the signal
+  -- to the 40MHz clock with a 3 stage DFF cascade and make the signal
   -- exactly 1 clock wide
   syncit : PROCESS (clock) IS
   BEGIN
@@ -222,5 +268,59 @@ BEGIN  -- ARCHITECTURE a
   evt_trg <= s_trigger AND s_l0like;
 
   master_rst <= s_mstage2 AND (NOT s_mstage3);
-  
+
+
+-------------------------------------------------------------------------------
+-- Attempt to discover a missing RHICstrobe
+-------------------------------------------------------------------------------
+  -- count the RHICstrobe edges
+  countingEdges : PROCESS (rhic_strobe, edgeRst_n) IS
+  BEGIN
+    IF edgeRst_n = '0' THEN             -- asynchronous reset (active low)
+      edges <= (OTHERS => '0');
+      
+    ELSIF rising_edge(rhic_strobe) THEN
+      edges <= edges + 1;
+    END IF;
+  END PROCESS;
+
+
+  -- if no RHICstrobe edges are seen within 8 40MHz clock periods, reset the
+  -- latchTrigger state machine
+  resetSM : PROCESS (clock, reset_n) IS
+  BEGIN
+    IF reset_n = '0' THEN               -- asynchronous reset (active low)
+      counter          <= 0;
+      missing_strobe_n <= '1';
+      resetState       <= rss1;
+      
+    ELSIF rising_edge(clock) THEN
+      missing_strobe_n <= '1';
+      edgeRst_n        <= '1';
+      CASE resetState IS
+        WHEN rss1 =>
+          counter    <= 0;
+          edgeRst_n  <= '0';
+          resetState <= rss2;
+        WHEN rss2 =>
+          counter <= counter + 1;
+          IF (counter = 8) THEN
+            IF edges = "000" THEN
+              resetState <= rss3;
+            ELSE
+              resetState <= rss1;
+            END IF;
+          END IF;
+        WHEN rss3 =>
+          missing_strobe_n <= '0';
+          resetState       <= rss1;
+
+        WHEN OTHERS =>
+          -- shouldn't happen, just start at beginning
+          resetState <= rss1;
+      END CASE;
+      
+    END IF;
+  END PROCESS;
+
 END ARCHITECTURE a;
