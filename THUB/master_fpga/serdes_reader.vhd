@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.15 2009-02-09 17:44:10 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.16 2009-03-03 20:47:37 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2009-02-06
+-- Last update: 2009-03-03
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -259,8 +259,20 @@ BEGIN  -- ARCHITECTURE a
           -- move on to next channel from same Serdes FPGA
         WHEN SChgChannel =>
           delayCtr := 0;
-          chCtr    := chCtr + 1;
-          serCtr   := serCtr + 1;
+--          chCtr    := chCtr + 1;
+--          serCtr   := serCtr + 1;
+
+          -- gray code counting for the lowest two bits:
+          IF chCtr = 0 THEN
+            chCtr  := chCtr + 1;
+            serCtr := serCtr + 1;
+          ELSIF chCtr = 3 THEN
+            chCtr  := chCtr - 1;
+            serCtr := serCtr - 1;
+          ELSE
+            chCtr  := chCtr + 2;
+            serCtr := serCtr + 2;
+          END IF;
 
           IF serCtr = 0 THEN   -- last channel: rollover, Serdes H, Channel 3
             TState <= SRdTrg;           -- move on
