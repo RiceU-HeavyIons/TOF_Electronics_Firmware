@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.7 2008-12-04 20:38:54 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.8 2009-03-03 21:17:01 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2008-12-04
+-- Last update: 2009-03-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -81,18 +81,15 @@ BEGIN
 
   -- Shift register
   shiftreg_ch : PROCESS (ch_rclk, areset_n) IS
-    VARIABLE b_valid : boolean := false;
   BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
       s_valid    <= '0';
       s_shiftout <= (OTHERS => '0');
-      b_valid    := false;
       
-    ELSIF ch_rclk'event AND ch_rclk = '1' THEN  -- rising clock edge
-      b_valid := (ch_rxd(17) = '1');
-      s_valid <= bool2sl(b_valid);
+    ELSIF rising_edge(ch_rclk) THEN  -- rising clock edge
+      s_valid <= ch_rxd(17);
 
-      IF b_valid THEN                   -- use highest bit as shift enable
+      IF ch_rxd(17) = '1' THEN                   -- use highest bit as shift enable
         s_shiftout(31 DOWNTO 16) <= s_shiftout(15 DOWNTO 0);
         s_shiftout(15 DOWNTO 0)  <= ch_rxd(15 DOWNTO 0);
       END IF;
@@ -100,7 +97,7 @@ BEGIN
     END IF;
   END PROCESS shiftreg_ch;
 
-  WITH (s_shiftout(31 DOWNTO 28) = X"C") SELECT
+  WITH (s_shiftout(31 DOWNTO 16) = X"C000") SELECT
     s_geo_id <=
     geo_id                 WHEN true,
     s_shiftout(7 DOWNTO 1) WHEN OTHERS;
@@ -109,7 +106,7 @@ BEGIN
   rxfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
-      lpm_hint               => "MAXIMIZE_SPEED=5",
+      lpm_hint               => "MAXIMIZE_SPEED=7",
       lpm_numwords           => 2048,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
@@ -132,17 +129,15 @@ BEGIN
       q                 => s_fifo_q
       );
 
-  -- register the outputs of the FIFO with the rising edge
-  -- of the 40MHz clock, and the rdreq with the falling edge
-  dff_inst: PROCESS (clk40mhz, areset_n) IS
+
+  s_dff_q <= s_fifo_q;
+
+  dff_inst1: PROCESS (clk40mhz, areset_n) IS
   BEGIN
     IF areset_n = '0' THEN                   -- asynchronous reset (active low)
-      s_dff_q    <= (OTHERS => '0');
       fifo_empty <= '1';
-      s_fifo_rdreq <= '0';
       
-    ELSIF clk40mhz'event AND clk40mhz = '1' THEN  -- rising clock edge
-      s_dff_q <= s_fifo_q;
+    ELSIF falling_edge(clk40mhz) THEN
       -- Only put out a valid fifo_empty, when rdreq is valid
       -- otherwise, fifo_emtpy = '1'
       IF rdreq_in = '1' THEN
@@ -150,10 +145,20 @@ BEGIN
       ELSE
         fifo_empty <= '1';  
       END IF;
-    ELSIF clk40mhz'event AND clk40mhz = '0' THEN  -- falling clock edge
+    END IF;
+  END PROCESS dff_inst1;
+
+  -- register the incoming rdreq  with the falling edge
+  -- of the 40MHz clock
+  dff_inst2: PROCESS (clk40mhz, areset_n) IS
+  BEGIN
+    IF areset_n = '0' THEN                   -- asynchronous reset (active low)
+      s_fifo_rdreq <= '0';
+      
+    ELSIF falling_edge(clk40mhz) THEN
         s_fifo_rdreq <= rdreq_in;
     END IF;
-  END PROCESS dff_inst;
+  END PROCESS dff_inst2;
 
   WITH clk40mhz SELECT
     dataout <=
