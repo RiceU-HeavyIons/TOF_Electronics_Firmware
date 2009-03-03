@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.29 2008-06-05 15:39:16 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.30 2009-03-03 21:14:42 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2008-06-05
+-- Last update: 2009-03-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -244,6 +244,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_smif_fifo_empty : std_logic;
   SIGNAL s_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL s_smif_rdenable   : std_logic;
+  SIGNAL s_synced_rdenable : std_logic;
   SIGNAL s_smif_datain     : std_logic_vector(11 DOWNTO 0);
   SIGNAL s_smif_datatype   : std_logic_vector(3 DOWNTO 0);
   SIGNAL s_serdes_out      : std_logic_vector(17 DOWNTO 0);
@@ -302,7 +303,7 @@ BEGIN
   -- create 20 MHz clock with TFF:
   div2 : PROCESS (globalclk) IS
   BEGIN
-    IF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
+    IF rising_edge(globalclk) THEN
       div2out <= NOT div2out;
     END IF;
   END PROCESS div2;
@@ -382,10 +383,10 @@ BEGIN
 --  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
 
   -- SERDES (S) to MASTER (M) interface
-  maO(15 DOWNTO 0) <= s_smif_dataout;     -- 16bit data from S to M
+  maO(15 DOWNTO 0) <= s_smif_dataout;   -- 16bit data from S to M
   maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
   s_smif_select    <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
-  s_smif_rdenable  <= maI(19);            -- read enable from M to S for FIFO
+  s_smif_rdenable  <= maI(19);          -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
   s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
@@ -561,11 +562,19 @@ BEGIN
     outclock => pll_80mhz,
     dataout  => s_smif_dataout(7 DOWNTO 0));
 
+  -- sync rd_enable to 40MHz clock
+  PROCESS (globalclk) IS
+  BEGIN
+    IF falling_edge(globalclk) THEN
+      s_synced_rdenable <= s_smif_rdenable;
+    END IF;
+  END PROCESS;
+
   -- sync to 80 MHz clock. put out latch signal on last two bytes when valid transmissions
   latcher : PROCESS (pll_80mhz) IS
   BEGIN
-    IF pll_80mhz'event AND pll_80mhz = '1' THEN  -- rising clock edge
-      s_smif_dataout(8) <= (globalclk NOR s_smif_fifo_empty) AND s_smif_rdenable;
+    IF rising_edge(pll_80mhz) THEN
+      s_smif_dataout(8) <= (globalclk NOR s_smif_fifo_empty) AND s_synced_rdenable;
     END IF;
   END PROCESS latcher;
 
@@ -637,7 +646,7 @@ BEGIN
   -----------------------------------------------------------------------------
   -- SRAM control
   -----------------------------------------------------------------------------
-  
+
   -- SRAM defaults
   sra_addr <= (OTHERS => '0');
   srb_addr <= (OTHERS => '0');
@@ -693,7 +702,7 @@ BEGIN
 --      s_dm            <= (OTHERS => '0');
 --      s_rw_n          <= '0';
 --      s_addr_adv_ld_n <= '1';
---    ELSIF pll_160mhz_p'event AND pll_160mhz_p = '1' THEN  -- rising clock edge
+--    ELSIF rising_edge(pll_160mhz_p) THEN
 --      s_dm            <= (OTHERS => '0');
 --      s_rw_n          <= '0';
 --      s_addr_adv_ld_n <= '1';
@@ -822,7 +831,7 @@ BEGIN
 --      s_txfifo_rdreq <= '0';
 --      s_rxfifo_rdreq <= '0';
 
---    ELSIF serdes_clk'event AND serdes_clk = '0' THEN  -- trailing clock edge
+--    ELSIF falling_edge(serdes_clk) THEN
 --      s_txfifo_rdreq <= '0';
 --      s_rxfifo_rdreq <= '0';
 --      IF ((s_rxfifo_empty = '0') AND (s_txfifo_empty = '0')) THEN
