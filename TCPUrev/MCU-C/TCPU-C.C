@@ -1,8 +1,84 @@
-// $Id: TCPU-C.C,v 1.6 2008-06-23 13:49:25 jschamba Exp $
+// $Id: TCPU-C.C,v 1.7 2009-03-06 16:20:05 jschamba Exp $
 
-// TCPU-C_ver2.c
-// Version for build TCPU-C_2D
+// TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
+//
+// Version 2J - BETA Version
+//      26-thru 27-Feb-2009, W. Burton (WB-2J)
+//          Add timeout to SEND_CAN1_message() so an isolated TCPU on CAN2 only will work.
+//          Routine send_CAN1_data() is no longer used, removed.
+//          Routine send_CAN2_data() is replaced by call to send_CAN2_message() with DATA message type.
+//          Remove code-space 2 different sign-on message and update HLP document per Jo Schambach email 2/25/09.
+//          Remove TDCRESET toggle from FPGA Initialization routine init_regs() in file TCPU-B_MCU_PLD.c
+//          Do not check PLL_LOS status if we are in PLL Bypass condition.
+//          "Alarm" is now "Alert" for consistency.
+//      25-Feb-2009, W. Burton (WB-2J)
+//          Version ID is 02 48
+//          Fix port initialization for download (code-space 2) image for proper operation when started from an "old"
+//          code-space 1 image.
+//          Fix code-space 2 sign-on message to indicate we are really code-space 2 (per CANBus HLP 3 document).
+// Version 2H
+//      16-thru 02-Feb-2009, W. Burton (WB-2H)
+//          Improve CAN1 to CAN2 message passing and define CANBus #1 and #2 errors.
+// Version 2G
+//          Fix EEPROM2 download to allow non-256 byte download
+//          Re-enable WAITFOR_FPGA when EEPROM2 reprogrammed.
+//      16-thru-17-Dec-2008, W. Burton (WB-2G)
+//          Fix recognition of TCPU-targeted Broadcast messages.
+//          Make initialization of FPGA register 12 conditional on definition of TRAY_GEOGRAPHIC (TCPU-C_Board.h)
+//      15-Dec-2008, W. Burton (WB-2G)
+//          Add C_WS_TEMPALERTS: Write Temperature alert limits.
+//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
+//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
+//              over-temperature limit condition appears.
+//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
+//              Note that MCP9801 temperature chip uses only 9-MS bits for alert setting.
+//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
+//      12-Dec-2008, W. Burton (WB-2G)
+//          Deleted FPGA Register 12 initialization in module init_regs_FPGA() (file TCPU-B_MCU_PLD.C)
+//              Argument list did not change but board_position argument no longer used.
+//      04-Dec-2008, W. Burton (WB-2G)
+//          Continued work on CAN1 buffering/FIFO
+//      17-thru-20-Nov-2008, W. Burton (WB-2G)
+//          Version ID is 02 47 (2G)
+//          Fix spurious TCPU reply to 0x6xx messages on CAN#1.
+//          Fix spurious TCPU reply to 0x6xx messages on CAN#2.
+//          Begin implementation of Broadcast message on CAN#1.
+//          Begin implementation of Broadcast message on CAN#2.
+//          Fixed CAN Message Filtering to avoid extra tests and spurious reply to 6xx messages.
+// Version 2F
+//      05-Sep-2008, W. Burton (WB-2F)
+//          Version ID is still 02 46 (2F)
+//          Migrate to single CANBus HLP Header file for both TCPU and TDIG; DEFINE the TCPU symbol.
+//          Implement C_RS_EEPROM2 reading function.
+//      04-Sep-2008, W. Burton (WB-2F)
+//          Clean up Alert message sending.
+//          Implement C_RS_CLKSTATUS for reading MCU clock status word
+//      03-Sep-2008, W. Burton (WB-2F)
+//          Add FPGA CRC-error detect and message transmit.
+//          ** THIS CHANGES THE WAY THE DODATATEST CODE WORKS! **
+//             The value defined in DODATATEST determines the maximum number of cycles thru the
+//             data transmit loop before rechecking for incoming message, switches, CRC error, etc.
+//             Increasing the value increases the "data rate" but decreases responsiveness to
+//             other conditions.
+//          Clean up PLD Ident reading.
+//          Limit MCU memory reads to available range to avoid spurious reset (C_RS_MCUMEM)
+//      02-Sep-2008, W. Burton (WB-2F)
+//          Add MCU program memory checksum (C_RS_MCUCKSUM)
+//      29-Aug-2008, W. Burton (WB-2F)
+//          Add eeprom2 checksum command (C_RS_EEP2CKSUM)
+//      27-Aug-2008, W. Burton (WB-2F)
+//          Version ID is 02 46 (2F)
+//          Add memory address limits to C_WS_TARGETMCU
+//              Memory addresses outside the ranges 0x100..0x200 or 0x4000..0x8FFF will not be programmed.
+//
+// Version 2E - originated as TCPU-C_BNL_20080623
+//  Changes from Version 2D
+//    Firmware ID updated to 2E
+//    JS startup timer and "Magic Number" message added.
+//    Downloaded code Firmware ID changed to 0x92
+//    Comments added 8/27/2008 by WB
+//
 // Program # 2D - Extra Version for download debugging
 //      21-Jun-2008, W. Burton. (Changes identified WB-02D)
 //          Rework initializations (especially clock and ports) for download second image.
@@ -28,15 +104,16 @@
 //    #define DOREGTEST 0x5A      // Do the register test
                                 // This overrides DODATATEST
 
+
 /* WB-02D
- * The new source-code and MPLAB project structure takes care of this definition 
+ * The new source-code and MPLAB project structure takes care of this definition
  * by means of -DDOWNLOAD_CODE macro definition in the workspace "Build Options".
  * WB-02D end  */
 //JS: Uncomment this for version to be downloaded via CANbus
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'E'   // WB version 2E (WB-02D) 'E' = 0x45
+#define FIRMWARE_ID_0 'J'   // WB version 2J (WB-2J) 'J' = 0x4A
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -46,6 +123,7 @@
 // WB-11H end
 
 // Define implementation on the TCPU board (I/O ports, etc)
+#define TCPU 1              // We are building TCPU
 #define CONFIG_CPU 1        // Make TCPU-C_Board.h define the CPU options
 #include "TCPU-C_Board.h"
 
@@ -64,28 +142,41 @@
 #include "TCPU-C_MCU_PLD.h" // Include for our parallel interface to FPGA
 
 /* DEFINE the HLP_version_3 Packet IDs */
-#include "TCPU-C_CAN_HLP3.h"
+// WB-2F: Use common include file for both TPCU and TDIG (must #DEFINE TCPU prior to use
+#include "CAN_HLP3.h"
+// #include "TCPU-C_CAN_HLP3.h"     // WB-2F: removed
 
 // Spin Counter
 #define SPINLIMIT 20
 
 // Special Test Configurations
-#define DODATATEST 1
+#define DODATATEST 1        // ONE cycle thru data transmit before checking messages, switches, etc.
 
-/* ECAN1 stuff */
-#define NBR_ECAN_BUFFERS 4
-
-typedef unsigned int ECAN1MSGBUF [NBR_ECAN_BUFFERS][8];
-ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
+/* ECAN1 stuff (TCPU <--> TDIG "Tray level" CANbus) */
+#define NBR_ECAN1_BUFFERS 32
+// Note: Alignment must be #buffers * words/buffer * bytes/word = 32*8*2 = 512.
+typedef unsigned int ECAN1MSGBUF [NBR_ECAN1_BUFFERS][8];
+ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(512)));
+// Buffer[0] = transmit
+// Buffer[1] = receive dedicated (std address filtered)
+// Buffer[2] = <not used>
+// Buffer[3] = receive broadcast (std address filtered)
+// Buffers[4..15] = <not used>
+// Buffers[16..31] = receive using FIFO, msgs to be retransmitted on CAN2
 
 void ecan1Init(unsigned int board_id);
 void dma0Init(void);
 void dma2Init(void);
 
-/* ECAN2 stuff */
-
-typedef unsigned int ECAN2MSGBUF [NBR_ECAN_BUFFERS][8];
-ECAN2MSGBUF  ecan2msgBuf __attribute__((space(dma),aligned(NBR_ECAN_BUFFERS*16)));  // Buffer to TRANSMIT
+/* ECAN2 stuff (TCPU <--> Host CANbus) */
+#define NBR_ECAN2_BUFFERS 4
+// Note: Alignment must be #buffers * words/buffer * bytes/word = 4*8*2 = 64.
+typedef unsigned int ECAN2MSGBUF [NBR_ECAN2_BUFFERS][8];
+ECAN2MSGBUF  ecan2msgBuf __attribute__((space(dma),aligned(64)));  // Buffer to TRANSMIT
+// Buffer[0] = transmit
+// Buffer[1] = receive dedicated (standard-address filtered)
+// Buffer[2] = receive extended-address message to be retransmitted on CAN1 as standard-address message.
+// Buffer[3] = receive broadcast (standard-address filtered)
 
 void ecan2Init(unsigned int board_id);
 void dma1Init(void);
@@ -114,17 +205,17 @@ void clearIntrflags(void);	// Clear interrupt flags
 
 /* CAN message routines     */
 // Messgaes common to both busses
-void send_CAN_alerts (unsigned int board_id);
+void send_CAN_alerts (unsigned int board_id, unsigned int length, unsigned char *msg);
 
 // CANBus #1 ("tray")
 // Send a CAN message - fills in     board id               message type  number of payload bytes    &payload[0]
 void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
-void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
+// WB-2J: void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 // CANBus #2 ("System")
 void send_CAN2_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
 void send_CAN2_message_extended (unsigned int ext_id, unsigned int std_id, unsigned int bytes, unsigned char *bp);
-void send_CAN2_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
+// WB-2J: void send_CAN2_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 /* MCU Memory and Reprogramming */
 typedef unsigned short UWord16;
@@ -159,17 +250,33 @@ unsigned long int eeprom_address;
 // Current DAC setting
 // unsigned int current_dac;
 
+// WB-2G: - Temperature alert limits
+unsigned int mcu_hilimit=0;   // gets upper limit setting for MCU temperature
+unsigned int mcu_lolimit=0;   // gets hysteresis setting for MCU temperature
+unsigned int temp_alert=0;    // signals necessity for sending alert message
+unsigned int temp_alert_throttle=0; // delays successive temperature alert messges
+// WB-2G: end
+
 // WB-1L CAN2 timeout
 unsigned int CAN2timeout;
 
+// WB-2G CAN1 error flag
+unsigned int can1error = 0;      // mark for no CAN1 error condition
+unsigned int can2error = 0;      // mark for no CAN2 error condition
+
+
 // Image of PLD control / configuration registers read-back
-unsigned int pld_ident;
+// unsigned int pld_ident;
 // unsigned int pld_config_0;
 // unsigned int pld_config_1;
 // unsigned int pld_config_2;
 // unsigned int pld_config_3;
 
 unsigned int board_posn = 0;    // Gets board-position from switch
+unsigned int clock_status;      // will get identification from Clock switch/select (OSCCON)
+unsigned int clock_failed = 0;      // will get set by clock fail interrupt
+unsigned int clock_requested;   // will get requested clock ID
+                                // 00 = board, 01= PLL, 08= tray
 
 //JS: TIMER STUFF *******************************************************
 #ifndef DOWNLOAD_CODE
@@ -181,15 +288,16 @@ int main()
 {
 /* WB-02D start */
 #if !defined (DOWNLOAD_CODE)
-    unsigned long int lwork2;
     unsigned int k;
 	unsigned char bwork[10];
 #endif
 /* WB-02D end */
+    unsigned long int lwork2;
+    unsigned long int lwork3;
     unsigned long int laddrs;
 	unsigned int save_SR;
 
-//    unsigned long int fifovalue;      // WB-02D not used 
+//    unsigned long int fifovalue;      // WB-02D not used
 //    unsigned long int expectedvalue;  // WB-02D not used
     unsigned long int lwork;
 	unsigned int i, j;
@@ -202,11 +310,14 @@ int main()
 //	unsigned int buttoncount = 0x0;    // WB-02D not used
 //	unsigned int tdcpowerbit = 0x0;    // WB-02D not used
 	unsigned int ledbits = NO_LEDS;
+    unsigned int fpga_crc = 0;      // will get image of CRC Error bit from ECSR (Assume no error to start)
 	unsigned int board_temp = 0;	// will get last-read board temperature word
     unsigned int replylength;       // will get length of reply message
     unsigned int rcvmsgtype = 0;    // will get received message type for dispatch
     unsigned int rcvmsglen = 0;     // will get received message length for dispatch
     unsigned int rcvmsgfrom = 0;    // source of message (CAN1 or CAN2)
+    unsigned int rcvmsgindx = 0;   // message buffer index
+    unsigned int rcvmsg1indx = 0;   // message buffer index for FIFO'd CAN1
     unsigned char sendbuf[10], retbuf[10];
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
@@ -216,9 +327,11 @@ int main()
 /* WB-02D - Begin significant rework in this area
  * This section applies to second-image (Downloaded) code only
  * NOTE Second Image does not re-initialize I/O Ports/Pins/or Expander I/Os!
+ *      EXCEPT for MCU_HEAT_ALERT made output (WB-2J) for download image
 */
 #if  defined (DOWNLOAD_CODE)
     INTCON2 |= 0x8000;      // This is the ALTIVT bit, use alternate interrupt space
+    TRISFbits.TRISF6 = 0;   // WB-2J: Make sure downloaded version enables MCU_HEAT_ALERT direction output
 #else
 /* This section applies to first-image code, does not apply to second "download" image.
  */
@@ -334,7 +447,8 @@ int main()
 
 // Initialize and Read Temperature Monitor
 	#if defined (TMPR_ADDR)
-		Initialize_Temp (MCP9801_CFGR_RES12);	// configure 12 bit resolution
+//        Initialize_Temp (MCP9801_CFGR_RES12);   // configure 12 bit resolution
+        Initialize_Temp (MCP9801_CFGR_RES12|MCP9801_CFGR_FQUE4);   // WB-2G: configure 12 bit res. fault queue=4
 		board_temp = Read_Temp ();
 		j = board_temp ^ 0xFFFF;		// flip bits for LED
     	Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (j&0xFF)); // display LSByte
@@ -370,6 +484,7 @@ int main()
 //        MCU_EN_LOCAL_OSC  = 1;      // turns on en-local-osc
         Initialize_OSC ((OSCSEL_BOARD|i));       //  Use BOARD clock W or W/O PLL
     }                               // end else turn ON local osc
+    clock_status = OSCCON;     // read the OSCCON reg - returns clock status
 #endif // #ifndef (DOWNLOAD_CODE)
 
 // Clear all interrupts
@@ -391,9 +506,11 @@ int main()
     dma2Init();                     // defined in ECAN1Config.c (copied here)
 
 /* Enable ECAN1 Interrupt */
-    IEC2bits.C1IE = 1;                  // Interrupt Enable ints from ECAN1
-    C1INTEbits.TBIE = 1;                // ECAN1 Transmit Buffer Interrupt Enable
-    C1INTEbits.RBIE = 1;                // ECAN1 Receive  Buffer Interrupt Enable
+    IEC2bits.C1IE     = 1;          // Interrupt Enable ints from ECAN1
+    C1INTEbits.TBIE   = 1;          // ECAN1 Transmit Buffer Interrupt Enable
+    C1INTEbits.RBIE   = 1;          // ECAN1 Receive  Buffer Interrupt Enable
+    C1INTEbits.RBOVIE = 1;          // ECAN1 Receive  Buffer Overflow Interrupt Enable
+    C1INTEbits.ERRIE  = 1;          // ECAN1 Error    Interrupt Enable
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* ECAN2 Initialization
@@ -405,9 +522,11 @@ int main()
     dma3Init();                     // defined in ECAN1Config.c (copied here)
 
 /* Enable ECAN2 Interrupt */
-    IEC3bits.C2IE = 1;                  // Interrupt Enable ints from ECAN2
-    C2INTEbits.TBIE = 1;                // ECAN2 Transmit Buffer Interrupt Enable
-    C2INTEbits.RBIE = 1;                // ECAN2 Receive  Buffer Interrupt Enable
+    IEC3bits.C2IE = 1;              // Interrupt Enable ints from ECAN2
+    C2INTEbits.TBIE = 1;            // ECAN2 Transmit Buffer Interrupt Enable
+    C2INTEbits.RBIE = 1;            // ECAN2 Receive  Buffer Interrupt Enable
+    C2INTEbits.RBOVIE = 1;          // ECAN2 Receive  Buffer Overflow Interrupt Enable
+    C2INTEbits.ERRIE  = 1;          // ECAN2 Error    Interrupt Enable
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* Initialize large-block download */
@@ -482,7 +601,17 @@ int main()
 // WB-1L end
 
 /* Send an "Alert" message to both CANBus to say we are on-line */
-    send_CAN_alerts (board_posn);
+// WB-2J: previous WB-2J changes in this area are removed.  Only 1 type of sign-on is
+// issued regardless of code-space-1 or -2 running.
+    lwork = C_ALERT_ONLINE;     // on-line message
+    send_CAN_alerts (board_posn, C_ALERT_ONLINE_LEN, (unsigned char *)&lwork);
+
+/* WB-2J start: We might have had errors marked while starting up and changing clocks. */
+// Clear CANBus error flags
+    can1error = 0;      // mark for no CAN1 error condition
+    can2error = 0;      // mark for no CAN2 error condition
+/* WB-2J end: We might have had errors marked while starting up and changing clocks.   */
+
 
 //JS: TIMER STUFF **********************************************************
 #ifndef DOWNLOAD_CODE
@@ -540,24 +669,103 @@ int main()
 	*/
     do {                            // Do Forever
         rcvmsgfrom = 0;
-        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive TDIG message on Tray CAN#1 */
-                                                    // Add Extended Address and transmit on CAN#2
-            i = 0xFFF;                              // WB-1L add timeout
-//            while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
-            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
-                                                    // copy the message from CAN#1 Receive buffer #2 to
-                                                    // CAN#2 transmit buffer#0
+// WB-2G        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive message from TDIG on Tray CAN#1 buffer[2] */
+        if ( C1RXFUL2 != 0) {           // if any "full" bit is set in the buffer[16..31] group
+                                            // yes,
+            j = C_LOOP_LIMIT;               // Limit time spent in loop
+            while ((C1RXFUL2 != 0) && (j != 0) ) {         // high priority activity
+                j--;
+// WB-2H: - indexing problem during overflow
+//                rcvmsg1indx = C1FIFO & 0x3F;         // pick up index of buffer to be read
+//                rcvmsg1indx = C1FIFObits.FNRB;           // pick up index of buffer to be read
+//                if ( (C1RXFUL2 & (1<<(rcvmsg1indx & 0x0F) ) ) == 0) rcvmsg1indx++;   // workaround possible problem.
+                while ( (C1RXFUL2 & (1<<rcvmsg1indx) ) == 0) { // for workaround where bits get out of sequence
+                    rcvmsg1indx++;   // workaround possible problem.
+                    rcvmsg1indx &= 0xF;
+                } // end while workaround
+                                                    // Add Extended Address and transmit resulting msg on CAN#2
+                i = 0xFFFF;                     // WB-2G increase timeout; WB-1L add timeout
+//          while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
+                while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
+                                                // WB-2G: copy the message from CAN#1 Receive buffer # rcvmsg1indx to
+                                                // CAN#2 transmit buffer#0
             //JS for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[3][i];
-            for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
-            C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
-                                            // Mark CAN#2 Buffer #0 for extended ID
-            ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
-            ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
-            ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
-            C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+// WB-2G                for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
+                for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[(rcvmsg1indx|0x10)][i]; // WB-2G
 
-        } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 */
-            if ( (ecan2msgBuf[2][0] & C_EXT_ID_BIT) != 0) {  // It must be an "extended" message in order to be retransmitted
+        // DIAGNOSTIC - copy some register values into message (overwriting what was there)
+        //        ecan2msgBuf[0][3] = rcvmsg1indx;    // DIAG - message index value
+        //        ecan2msgBuf[0][4] = C1FIFO;         // DIAG - C1 FIFO Status Register
+        //        ecan2msgBuf[0][5] = C1RXFUL2;       // DIAG - C1 Buffer Full Register 2
+        //        ecan2msgBuf[0][2] = 6;              // DIAG - 6 bytes in message
+        // DIAGNOSTIC - end
+
+// WB-2G                C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
+// WB-2H restored
+                i = ~(1 << rcvmsg1indx);        // Fix the bit to be cleared
+                C1RXFUL2 &= i;        // CAN#1 Receive Buffer indexed OK to re-use (This construction is dangerous)
+/* WB-2H trial removed
+                switch (rcvmsg1indx) {
+                    case (0):
+                        C1RXFUL2bits.RXFUL16 = 0;
+                        break;
+                    case (1):
+                        C1RXFUL2bits.RXFUL17 = 0;
+                        break;
+                    case (2):
+                        C1RXFUL2bits.RXFUL18 = 0;
+                        break;
+                    case (3):
+                        C1RXFUL2bits.RXFUL19 = 0;
+                        break;
+                    case (4):
+                        C1RXFUL2bits.RXFUL20 = 0;
+                        break;
+                    case (5):
+                        C1RXFUL2bits.RXFUL21 = 0;
+                        break;
+                    case (6):
+                        C1RXFUL2bits.RXFUL22 = 0;
+                        break;
+                    case (7):
+                        C1RXFUL2bits.RXFUL23 = 0;
+                        break;
+                    case (8):
+                        C1RXFUL2bits.RXFUL24 = 0;
+                        break;
+                    case (9):
+                        C1RXFUL2bits.RXFUL25 = 0;
+                        break;
+                    case (10):
+                        C1RXFUL2bits.RXFUL26 = 0;
+                        break;
+                    case (11):
+                        C1RXFUL2bits.RXFUL27 = 0;
+                        break;
+                    case (12):
+                        C1RXFUL2bits.RXFUL28 = 0;
+                        break;
+                    case (13):
+                        C1RXFUL2bits.RXFUL29 = 0;
+                        break;
+                    case (14):
+                        C1RXFUL2bits.RXFUL30 = 0;
+                        break;
+                    case (15):
+                        C1RXFUL2bits.RXFUL31 = 0;
+                        break;
+                } // end switch on bit to clear
+WB-2H End */
+                                        // Mark CAN#2 Buffer #0 for extended ID
+                ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+                ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+                ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
+                C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+                rcvmsgindx = 0;                     // Mark nothing doing now
+            } // end while have something in CAN1 FIFO
+        } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] */
+// WB-2G don't need this test because extended-address message filtering is now working properly
+//            if ( (ecan2msgBuf[2][0] & C_EXT_ID_BIT) != 0) {  // It must be an "extended" message in order to be retransmitted
                 i = 0xFFF;                      // WB-1M add timeout
                 while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
 //                while (C1TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#1 to complete
@@ -571,21 +779,40 @@ int main()
                 ecan1msgBuf[0][1] = 0;          // clear extended ID
                 ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
                 C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-            } // end if it was an extended message
+// WB-2G           } // end if it was an extended message
             C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
-        } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2
+
+        } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2 buffer[1]
             rcvmsgfrom = 2;                     // source of message is CAN#2
+            rcvmsgindx = 1;                     // buffer[1]
             rcvmsgtype = ecan2msgBuf[1][0];     // Save message type code
             //JS rcvmsglen= ecan2msgBuf[1][2];  // Save message length
             rcvmsglen= ecan2msgBuf[1][2] & 0x000F;   // Save message length //JS
             wps = (unsigned char *)&ecan2msgBuf[1][3];  // pointer to source buffer (message data)
-        } else if ( C1RXFUL1bits.RXFUL1 ) {     // Receive standard msg via CAN#1
+
+        } else if ( C1RXFUL1bits.RXFUL1 ) {     // Receive standard msg via CAN#1 buffer[1]
             rcvmsgfrom = 1;                     // source of message is CAN#1
+            rcvmsgindx = 1;                     // buffer[1]
             rcvmsgtype = ecan1msgBuf[1][0];     // Save message type code
             //JS rcvmsglen= ecan1msgBuf[1][2];  // Save message length
             rcvmsglen= ecan1msgBuf[1][2] & 0x000F;   // Save message length
             wps = (unsigned char *)&ecan1msgBuf[1][3];  // pointer to source buffer
+
+        } else if ( C1RXFUL1bits.RXFUL3 ) {     // Receive broadcast msg via CAN#1 buffer[3]
+            rcvmsgfrom = 1;                     // source of message is CAN#1 buffer[3]
+            rcvmsgindx = 3;
+            rcvmsgtype = ecan1msgBuf[3][0];     // Save message type code
+            rcvmsglen= ecan1msgBuf[3][2] & 0x000F;   // Save message length
+            wps = (unsigned char *)&ecan1msgBuf[3][3];  // pointer to source buffer
+
+        } else if ( C2RXFUL1bits.RXFUL3 ) {     // Receive broadcast msg via CAN#2 buffer[3]
+            rcvmsgfrom = 2;                     // source of message is CAN#2 buffer[3]
+            rcvmsgindx = 3;
+            rcvmsgtype = ecan2msgBuf[3][0];     // Save message type code
+            rcvmsglen= ecan2msgBuf[3][2] & 0x000F;   // Save message length
+            wps = (unsigned char *)&ecan2msgBuf[3][3];  // pointer to source buffer
         } // end checking for messages
+
 // Dispatch to Message Code handlers.
 // Note that Function Code symbolics are defined already shifted.
         if (rcvmsgfrom != 0) {
@@ -597,6 +824,21 @@ int main()
                     replylength = 2;                    // Assume 2 byte reply
                     switch ((*wps++)&0xFF) {       // look at and dispatch SUB-command, point to remainder of message
 
+// WB-2G: Add temperature alert limit setting.
+// NOTE that temperature alert setting in chip ignores the lower 7-bits of the value (always reads back 0).
+                        case C_WS_TEMPALERTS:
+                            if (rcvmsglen == TEMPALERTS_LEN) {   // check length for proper value
+                                memcpy ((unsigned char *)&mcu_hilimit, wps, 2);   // copy 2 bytes from incoming message
+                                wps += 2;
+                                temp_alert = 0;         // clear any temperature alert status
+                                // Initialize the MCP9801 temperature chip (U37) registers
+                                mcu_lolimit = 0;
+                                if (mcu_hilimit > 0x500) mcu_lolimit = mcu_hilimit - 0x500;       // lower limit is upper limit - 5 degrees C.
+                                Write16_Temp(MCP9801_LIMT, mcu_hilimit); // Set upper limit
+                                Write16_Temp(MCP9801_HYST, mcu_lolimit); // Set upper limit
+                            } else retbuf[1] = C_STATUS_INVALID;    // else mark invalid
+                            break;
+// WB-2G: End Add temperature alert limit setting
                         case C_WS_LED:              // Write to LED register
                             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ~(*wps));
                             break;  // end case C_WS_LED
@@ -688,15 +930,18 @@ int main()
                                 } while ((i != 0) && (j != 0));       // try til either both were used or no error
                                 reset_FPGA();       // reset FPGA
                                 init_regs_FPGA(board_posn);   // initialize FPGA
-                                pld_ident = read_FPGA (IDENT_7_R);
-                                retbuf[2] = pld_ident;  // tell the magic ID code value
+// WB-2F:                         pld_ident = read_FPGA (IDENT_7_R);
+// WB-2F:                         retbuf[2] = pld_ident;  // tell the FPGA ID code value
+                                retbuf[2] = (unsigned char)read_FPGA (IDENT_7_R); // tell the FPGA ID code value
                                 replylength = 3;
+                                fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // WB-2F: Read CRC state
                             } // end if we could really do it
                             break;      // end case C_WS_RECONFIGEE?
 
                         case C_WS_TARGETEEPROM2:
                             if (block_status == BLOCK_ENDED) {
-                                if (block_bytecount == 256) {    // if bytecount OK
+                                if ((block_bytecount != 0) && (block_bytecount <= 256) ){    // WB-2G if bytecount OK
+// WB-2G                                if (block_bytecount == 256) {    // if bytecount OK
                                     // copy eeprom address
                                     memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
                                     eeprom_address &= 0xFFFF00L; // mask off lowest bits (byte in page)
@@ -728,7 +973,8 @@ int main()
                                     set_EENCS;      //
                                     MCU_CONFIG_PLD = 1; // re-enable FPGA
 // This is commented out for speed test
-//                                    waitfor_FPGA(); // wait for FPGA to reconfigure
+// WB-2G restored
+                                    waitfor_FPGA(); // wait for FPGA to reconfigure
                                     reset_FPGA();   // reset FPGA
                                     init_regs_FPGA(board_posn); // initialize FPGA
                                 } else {  // Length is not right
@@ -750,43 +996,48 @@ int main()
                                     j = 0;          // assume start is begin of buffer
                                     k = block_bytecount;        // assume just going block
                                     memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 address bytes from incoming message
-                                    lwork = laddrs;        // save for later
-                                    wps += 4;
-                                    if ((*wps)==ERASE_PRESERVE) {     // need to preserve before erase
-                                        lwork = laddrs & PAGE_MASK;   // mask to page start
-                                        for (i=0; i<PAGE_BYTES; i+=4) {
-                                            read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
-                                            lwork += 2;
-                                        } // end for loop over all bytes in save block
-                                        lwork = laddrs & PAGE_MASK;
-                                        j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
-                                        j <<= 1;        // *2 for bytes
-                                        k = PAGE_BYTES;                   // reprogram whole block
-                                    } // end if need to save before copy
+                                    // WB-2F check starting address and length for OK
+                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) || ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
+                                        lwork = laddrs;        // save for later
+                                        wps += 4;
+                                        if ((*wps)==ERASE_PRESERVE) {     // need to preserve before erase
+                                            lwork = laddrs & PAGE_MASK;   // mask to page start
+                                            for (i=0; i<PAGE_BYTES; i+=4) {
+                                                read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
+                                                lwork += 2;
+                                            } // end for loop over all bytes in save block
+                                            lwork = laddrs & PAGE_MASK;
+                                            j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
+                                            j <<= 1;        // *2 for bytes
+                                            k = PAGE_BYTES;                   // reprogram whole block
+                                        } // end if need to save before copy
 
-                                    // put the new data over the old[j] thru old[j+block_bytecount-1]
-                                    memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
-                                    save_SR = SR;           // save the Status Register
-                                    SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
-                                    if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
-                                        erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
-                                    } // end if need to erase the page
-                                    // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
-                                    lwork2 = lwork;
-                                    for (i=0; i<k; i+=4) {
-                                        write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
-                                        lwork += 2L;    // next write address
-                                    } // end loop over bytes
-                                    SR = save_SR;           // restore the saved status register
-                                    // now check for correct writing
-                                    lwork = lwork2;                             // recall the start address
-                                    for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
-                                        read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
-                                        for (j=0; j<4; j++) {       // check each word
-                                            if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
-                                        } // end loop checking 4 bytes within each word
-                                        lwork += 2L;    // next write address
-                                    } // end loop over bytes
+                                        // put the new data over the old[j] thru old[j+block_bytecount-1]
+                                        memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
+                                        save_SR = SR;           // save the Status Register
+                                        SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
+                                        if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
+                                            erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+                                        } // end if need to erase the page
+                                        // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+                                        lwork2 = lwork;
+                                        for (i=0; i<k; i+=4) {
+                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
+                                            lwork += 2L;    // next write address
+                                        } // end loop over bytes
+                                        SR = save_SR;           // restore the saved status register
+                                        // now check for correct writing
+                                        lwork = lwork2;                             // recall the start address
+                                        for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
+                                            read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
+                                            for (j=0; j<4; j++) {       // check each word
+                                                if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
+                                            } // end loop checking 4 bytes within each word
+                                            lwork += 2L;    // next write address
+                                        } // end loop over bytes
+                                    } else { // else wasn't valid address for write
+                                        retbuf[1] = C_STATUS_BADADDRS;     // SET ERROR REPLY
+                                    } // end WB-2F, check for valid addresses to write
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -807,7 +1058,8 @@ int main()
                             	} // end loop over any bytes in message
 
 								// magic address at end of PIC24HJ64 device program memory
-								laddrs = 0xABFE;		// magic address
+//						laddrs = 0xABFE;		// magic address
+								laddrs = MAGICADDRESS;  // Magic address
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                 erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
@@ -887,9 +1139,39 @@ int main()
                             } else {        // allow continued reads w/o address
                                 lwork += 2L;
                             } // end else continued reads
-                            read_MCU_pm ((unsigned char *)&retbuf[1], lwork); // Read from requested location
-                            replylength = 5;
+                            if (lwork <= (MCU2UPLIMIT+2)) {     // WB-2F: if in range, read it
+                                read_MCU_pm ((unsigned char *)&retbuf[1], lwork); // Read from requested location
+                                replylength = 5;
+                            } // WB-2F: end if in range
                             break; // end case C_RS_MCUMEM
+
+// WB-2F start
+                        case (C_RS_MCUCKSUM ):            // Return MCU Memory checksum
+                            if (rcvmsglen == 8) { // check for correct length of incoming message
+                                memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 bytes from incoming message, address
+                                wps+=4;     // step to count
+                                lwork2 = 0L;         // clear checksum
+                                lwork = 0L;         // clear count
+                                memcpy ((unsigned char *)&lwork, wps, 3);   // copy 3 bytes from incoming message, length
+                                while ((lwork != 0L) && (laddrs <= (MCU2UPLIMIT+2))) {
+                                    read_MCU_pm ((unsigned char *)&lwork3, laddrs); // Read from requested location
+                                    lwork2 += lwork3;
+                                    laddrs += 2L;
+                                    lwork--;
+                                }
+                                memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork2, 4);   // copy checksum to reply
+                                replylength = 5;
+                            }
+                            break; // end case C_RS_MCUCKSUM
+
+                        case (C_RS_CLKSTATUS):        // Read MCU Clock Status
+                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
+                            memcpy ((unsigned char *)&retbuf[3], (unsigned char *)&clock_failed, 1);
+                            memcpy ((unsigned char *)&retbuf[4], (unsigned char *)&clock_requested, 1);
+                            replylength = 5;
+                            break;  // end case C_RS_CLKSTATUS
+
+// WB-2F end
 
                         case (C_RS_TEMPBRD):                // READ Temperature
                             board_temp = Read_Temp();
@@ -926,6 +1208,21 @@ int main()
                             }
                             break;  // end case C_RS_FPGAREG
 
+                        case (C_RS_EEPROM2):
+                            replylength = 8;        // fixed length reply
+                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
+                            MCU_CONFIG_PLD = 0; // disable FPGA configuration
+                            sel_EE2;            // select EEPROM #2
+                            // Read back data (Altera .RBF was written LSbit to MSbit)  7-bytes
+                            spi_read_adr (EE_AL_RDDA, (unsigned char *)&eeprom_address, LS2MSBIT, 7, (unsigned char *)&retbuf[1]);
+                            sel_EE1;        // de-select EEPROM #2
+                            set_EENCS;      //
+                            MCU_CONFIG_PLD = 1; // re-enable FPGA
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+                            break;      // end C_RS_EEPROM2
+
                         case (C_RS_JSW):              // Return the Jumper/Switch settings (U35)
                             retbuf[1] = (unsigned char)Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
                             replylength = 2;
@@ -942,6 +1239,36 @@ int main()
                             replylength = 5;
                             break; // end case C_RS_MCUSTATUS
 
+// WB-2F starts
+                        case (C_RS_EEP2CKSUM):
+                            replylength = 5;        // fixed length reply
+                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom start address
+                            wps+=4;
+                            laddrs = 0L;        // clear sector count
+                            memcpy ((unsigned char *)&laddrs, wps, 3);             // copy number of sectors to read
+                            MCU_CONFIG_PLD = 0; // disable FPGA configuration
+                            sel_EE2;            // select EEPROM #2
+                            // Read back data (Altera .RBF was written LSbit to MSbit)
+                            lwork = 0L;         // will build-up checksum
+                            while (laddrs != 0L) {    // while we have sectors to read (sector = 256 bytes)
+                                // read the sector
+                                spi_read_adr (EE_AL_RDDA, (unsigned char *)&eeprom_address, LS2MSBIT, 256, (unsigned char *)&block_buffer[0]);
+                                // Add the bytes to the checksum
+                                for (i=0; i<256; i++) lwork += (block_buffer[i]&0xFF);
+                                eeprom_address += 256;      // increment the block address'
+                                laddrs--;                   // count down blocks to do
+                            }   // end while have blocks to do
+                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork, 4);   // copy result to reply
+//                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&laddrs, 4);  // copy diagnostic to reply
+                            sel_EE1;        // de-select EEPROM #2
+                            set_EENCS;      //
+                            MCU_CONFIG_PLD = 1; // re-enable FPGA
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+                            break;      // end C_RS_EEPCKSUM
+// WB-2F ends
+
                         default:    // Undecodable
                             replylength = 1;        // just return the code
                             break; // end case default
@@ -955,14 +1282,53 @@ int main()
                     break;
             }                               // end MAJOR switch on WRITE or READ COMMAND
             //  Mark buffers OK to re-use
-            if (rcvmsgfrom == 1) C1RXFUL1bits.RXFUL1 = 0;       // receive buffer 1 OK to re-use
-            if (rcvmsgfrom == 2) C2RXFUL1bits.RXFUL1 = 0;       // receive buffer 2 OK to re-use
+            if (rcvmsgfrom == 1) {
+                if (rcvmsgindx == 1) C1RXFUL1bits.RXFUL1 = 0;      // receive buffer[1] OK to re-use
+                if (rcvmsgindx == 2) C1RXFUL1bits.RXFUL2 = 0;      // receive buffer[2] OK to re-use
+                if (rcvmsgindx == 3) C1RXFUL1bits.RXFUL3 = 0;      // receive buffer[3] OK to re-use
+                rcvmsgindx = 0;
+                rcvmsgfrom = 0;
+            } else if (rcvmsgfrom == 2) {
+                if (rcvmsgindx == 1) C2RXFUL1bits.RXFUL1 = 0;      // receive buffer[1] OK to re-use
+                if (rcvmsgindx == 2) C2RXFUL1bits.RXFUL2 = 0;      // receive buffer[2] OK to re-use
+                if (rcvmsgindx == 3) C2RXFUL1bits.RXFUL3 = 0;      // receive buffer[3] OK to re-use
+                rcvmsgindx = 0;
+                rcvmsgfrom = 0;
+            } // end else if rcvmsgfrom
+
         } else {    // do not have message to process, check switch / jumper settings, loss-of-lock, etc.
+
+// WB-2G: Add CAN1 and CAN2 Error / Overflow messages
+            if (can1error) {          // see if we have CAN1 error flag (overflow)
+                lwork = C_ALERT_ERRCAN1_CODE | (can1error<<8);
+                send_CAN_alerts (board_posn, C_ALERT_ERRCAN1_LEN, (unsigned char *)&lwork);
+                can1error = 0;        // clear overflow message
+            } // end if we have CAN1 error flag (overflow)
+            if (can2error) {          // see if we have CAN1 error flag (overflow)
+                lwork = C_ALERT_ERRCAN2_CODE | (can2error<<8);
+                send_CAN_alerts (board_posn, C_ALERT_ERRCAN2_LEN, (unsigned char *)&lwork);
+                can2error = 0;        // clear overflow message
+            } // end if we have CAN1 error flag (overflow)
+
+// WB-2F: CRC Error check - Start
+    		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
+	    	if ( j != fpga_crc) {  // see if it has changed
+                fpga_crc = j;
+                lwork = C_ALERT_CKSUM_CODE | (j<<8);
+//                send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+//                send_CAN2_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+                send_CAN_alerts (board_posn, C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+            } // end if CRC bit changed
+// WB-2F: end
+
 	        if (oldswitch != Read_MCP23008(SWCH_ADDR, MCP23008_GPIO) ) { // see if switches changed
                 // posn #  =  (SW5 * 10) + SW4  == switches are BCD decimal
                 oldswitch = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO); // see if switches changed
                 j = (((oldswitch&0xF0)>>4)*10) + (oldswitch & 0xF);
-                write_FPGA (CONFIG_12_W, j);        // write it to FPGA
+// WB-2G: made conditional
+                #if defined (TRAY_GEOGRAPHIC)
+                    write_FPGA (TRAY_GEOGRAPHIC, j);        // write it to FPGA
+                #endif
             } // end if sw4 or sw5 changed
 // Check button and issue strobe_12 if pressed
             jumpers = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & JUMPER_MASK;
@@ -1013,17 +1379,22 @@ int main()
                 oldswitch = jumpers;        // remember for next time
                 jumpers = (((oldswitch&0xF0)>>4)*10) + (oldswitch & 0xF);
 // Put board-position switch into CONFIG_12_W of FPGA
-                write_FPGA (CONFIG_12_W, jumpers);
+// WB-2G: made conditional
+                #if defined (TRAY_GEOGRAPHIC)
+                    write_FPGA (Tray_GEOGRAPHIC, jumpers);
+                #endif
             } // end if switch changed.
 
 /* --------------- 04/23/2007
 ** Add check of PLL_Loss_of_Lock signal and copy to LED D5
 */
-            if (PLL_LOS== 0) {     // zero is OK
-                ledbits |= LED5;        // LED D5 is OFF if OK
-            } else {
-                ledbits &= ~LED5;        // LED D5 is ON if LOSS-OF-LOCK
-            } // end else it was not OK
+            if ((clock_requested & PLL_SELECT) == PLL_SELECT) { // WB-2J: see if using PLL or Bypass
+                if (PLL_LOS== 0) {     // zero is OK
+                    ledbits |= LED5;        // LED D5 is OFF if OK
+                } else {
+                    ledbits &= ~LED5;        // LED D5 is ON if LOSS-OF-LOCK
+                } // end else it was not OK
+            } // WB-2J: end if using PLL
 
             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ledbits);
 
@@ -1033,6 +1404,30 @@ int main()
             PORTCbits.RC15 = tglbit;        // make it like RG15
 #endif
 //            spin(15);
+
+// WB-2G - Temperature alert Monitoring
+        MCU_HEAT_ALERT = 1;     // WB-2G - Activate the bit
+        if (temp_alert_throttle == 0) {     // if time to send another one
+            if (temp_alert != 0) {          // if temperature alert
+                lwork = (temp_alert<<8) | C_ALERT_OVERTEMP_CODE;  // upper byte is event mask
+                send_CAN2_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_OVERTEMP_LEN, (unsigned char *)&lwork);
+                temp_alert_throttle = TEMPALERTS_INTERVAL;
+                temp_alert = 0;             // clear alert status
+            } else {  // else do not have temperature alert
+                temp_alert_throttle = 0;    // arm ourselves for next trip.
+            } // end else do not have temperature alert
+        } else { // else just count down delay
+            temp_alert_throttle--;
+        } // end else just count down delay
+// WB-2G: Check for MCP9801 alert
+        if (MCU_HEAT_ALERT == 0) {      // stays low if alert condition
+            temp_alert |= ALERT_MASK_MCU;
+        } else {                        // else no alert condition
+            temp_alert &= ~ALERT_MASK_MCU;
+        }
+        MCU_HEAT_ALERT = 0;     // WB-11V turn it off until next time
+// WB-2G - End Temperature alert Monitoring
+
 #if defined (DOREGTEST)
     #undef DODATATEST
 /* Register Write/Read/Read test
@@ -1044,20 +1439,23 @@ int main()
                 sendbuf[1] = (unsigned char)read_FPGA (7);  // Read register 7
                 sendbuf[0] = (unsigned char)read_FPGA (0);  // Read register 0
                 j = 2;
-                send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
+// WB-2J:                send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
+                // WB-2J: changed to use generic send_CAN2_message
+                send_CAN2_message (board_posn, (C_BOARD | C_DATA), j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                 j = 0;
             } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in
-#endif
+#endif // defined (DOREGTEST)
 
 #if defined (DODATATEST)
 /* Data transmission test
 ** Once we enter here, we keep reading and sending until a CAN message comes in
+** or until DATALIMIT has been satisfied
 */
+            i = DODATATEST;
             j = 0;
 // See if we have data to send
             do {
-				i = read_FPGA (FIFO_STATUS_R);
-				if ((i&FIFO_EMPTY_BIT) == 0) {  // Do we have data to send?
+                if ((read_FPGA (FIFO_STATUS_R)&FIFO_EMPTY_BIT) == 0) {  // any data?
                 // bit was not 0, we have data, send it
                     sendbuf[0] = (unsigned char)read_FPGA (FIFO_BYTE0_R);
                     sendbuf[1] = (unsigned char)read_FPGA (FIFO_BYTE1_R);
@@ -1076,31 +1474,34 @@ int main()
                         sendbuf[7] = (unsigned char)read_FPGA (FIFO_BYTE3_R);
                         j += 4;
                         read_FPGA (FIFO_STATUS_R);          // extra read-status
-                    } // end if had more, send message
+                    } // end if had more
 #endif          // endif defined SENDTWO
-
-                    if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
+                    // any in message to send?
+// WB-2J:                    if (j != 0) send_CAN2_data (board_posn, j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
+// WB-2J: Changed to use generic send_CAN2_message()
+                    if (j != 0) send_CAN2_message (board_posn, (C_BOARD | C_DATA), j, (unsigned char *)&sendbuf[0] ); // fixed indexing 08-Mar-07
                     j = 0;
-                } // end if have data to send
+                } // end if had data
 
 //JS: TIMER STUFF **************************************
 #ifndef DOWNLOAD_CODE
 				if (timerExpired == 1) {
 					timerExpired = 0;
 					// magic address at end of PIC24HJ64 device program memory
-                    read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE); 
+//                    read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE);
+                    read_MCU_pm ((unsigned char *)readback_buffer, MAGICADDRESS);
 		#ifdef NOTNOW
 					// for now, just send back a CAN message indicating the memory content
 					retbuf[0] = readback_buffer[0];
 					retbuf[1] = readback_buffer[1];
 					retbuf[2] = readback_buffer[2];
 					retbuf[3] = readback_buffer[3];
-		#endif
+        #endif      // ifdef NOTNOW
 					if (*((unsigned int *)readback_buffer) == 0x3412) {
 						// in the future, the reset code would go here
 		#ifdef NOTNOW
 						retbuf[4] = 1;
-		#endif
+        #endif      // ifdef NOTNOW
                         // stop interrupts
                         CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
                         save_SR = SR;          // save the Status Register
@@ -1108,23 +1509,25 @@ int main()
 						// be sure we are running from alternate interrupt vector
                         INTCON2 |= 0x8000;     // This is the ALTIVT bit
                         jumpto();    // jump to new code
-					} 
+					}
 		#ifdef NOTNOW
 					else {
 						retbuf[4] = 0;
 					}
                     send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
-		#endif
+        #endif      // ifdef NOTNOW
 				}
-#endif
+#endif      // ifndef DOWNLOAD_CODE
 //JS: END TIMER STUFF ***********************************
 
 //            } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes CAN1
 //            } while ( ! C2RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in CAN2
-            } while ( ! (C1RXFUL1bits.RXFUL1|C2RXFUL1bits.RXFUL1|C1RXFUL1bits.RXFUL2 | C2RXFUL1bits.RXFUL2) );      // send-data loop until a message comes in either port
-
-#endif
+            --i;
+            // while ends do { checking for data, i counts limit
+//            } while ( (! (C1RXFUL1bits.RXFUL1|C2RXFUL1bits.RXFUL1|C1RXFUL1bits.RXFUL2 | C2RXFUL1bits.RXFUL2)) & (i != 0));      // send-data loop until a message comes in either port
+            } while ( ((C1RXFUL1|C2RXFUL1|C1RXFUL2|C2RXFUL2)==0) & (i != 0));      // WB-2G: send-data loop until a message comes in either port
         } // end else did not have message
+#endif      // if defined DODATATEST
     } while (1); // end do forever
 }
 
@@ -1141,7 +1544,7 @@ int Initialize_OSC (unsigned int selectosc){
 **
 */
     int retstat = 1;                    // Assume BAD return
-
+    clock_requested = selectosc;        // global request monitor
 /*  First, switch to FRCPLL so we are sure to keep MCU running */
     Switch_OSC(MCU_FRCPLL);     /* Switch MCU to FRCPLL */
     PLLFBD=20;                  /* M= 20*/
@@ -1301,10 +1704,11 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 	C1CFG2bits.SAM = 0x0;
 /* -------------------------------*/
 
-/* 4 CAN Message (FIFO) Buffers in DMA RAM (minimum number) */
-    C1FCTRLbits.DMABS=0b000;            // Page 189
+/* WB-2G: 32 CAN Message Buffers in DMA RAM */
+// WB-2G    C1FCTRLbits.DMABS=0b000;            // Page 189
+    C1FCTRLbits.DMABS=0b110;            // Page 181
+    C1FCTRLbits.FSA = 16;                // WB-2G Start FIFO buffering at Buffer[16]
 
-/* --------- Filter/Buffer for messages TCPU will act on ---------- */
 /*	Filter Configuration
     ecan1WriteRxAcptFilter(int n, long identifier, unsigned int exide,
         unsigned int bufPnt, unsigned int maskSel)
@@ -1321,15 +1725,17 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 */
     C1CTRL1bits.WIN = 1;                  // SFR maps to filter window
 
+/* -----CAN1 Filter[0]/Buffer[1] for messages TCPU will act on ---------- */
 // Select Acceptance Filter Mask 0 for Acceptance Filter 0
     C1FMSKSEL1bits.F0MSK = 0x0;
 
 // Configure Acceptance Filter Mask 0 register to
 //      Mask board_id in SID<6:4> per HLP 3 protocol
-    C1RXM0SIDbits.SID = 0x03F1; // 0b011 1brd 0000 << LSBit ==0
+// WB-2G    C1RXM0SIDbits.SID = 0x03F1; // 0b011 1brd 0000 << LSBit ==0
+    C1RXM0SIDbits.SID = 0x07F1; //WB-2G 0b111 1brd xxx1 << LSBit ==0
 
 // Configure Acceptance Filter 0 to match Standard Identifier
-    C1RXF0SIDbits.SID = (C_BOARD>>2)|((board_id&0x1F)<<4);  // 0biii ibrd xxxx
+    C1RXF0SIDbits.SID = (C_BOARD>>2)|((board_id&0x1F)<<4);  // 0biii ibrd xxx0
 
 // Configure Acceptance Filter for Standard Identifier
     C1RXM0SIDbits.MIDE = 0x1;
@@ -1340,9 +1746,11 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 
 // Filter 0 enabled
     C1FEN1bits.FLTEN0 = 0x1;
+/* end -CAN1 Filter[0]/Buffer[1] for messages TCPU will act on ---------- */
 
-/* --------- Filter/Buffer for messages TCPU will pass along  ---------- */
-/* Set up Filter 1 to accept NON-TCPU type messages */
+/* ---- CAN1 Filter[1]/Buffer[2] for messages TCPU will pass along  ---------- */
+/* WB-2G -- USE FIFO FOR THESE MESSAGES                                        */
+/* Set up Filter 1 to accept NON-TCPU type messages                            */
 // Select Acceptance Filter Mask 1 for Acceptance Filter 1
     C1FMSKSEL1bits.F1MSK = 0x1;
 
@@ -1360,10 +1768,32 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
     C1RXM0SIDbits.EID = 0x0;
 
 // Acceptance Filter 1 uses message buffer 2 to store message
-    C1BUFPNT1bits.F1BP = 2;
+// WB-2G    C1BUFPNT1bits.F1BP = 2;
+// WB-2G: Acceptance Filter 1 uses message buffer 0b1111 to store message (This is the FIFO area per page 21-49)
+    C1BUFPNT1bits.F1BP = 0b1111;        // WB-2G
 
 // Filter 1 enabled
     C1FEN1bits.FLTEN1 = 0x1;
+/* end -CAN1 Filter[1]/Buffer[2] for messages TCPU will pass along  ---------- */
+
+/* -----CAN1 Filter[2]/Buffer[3] for broadcast messages TCPU will act on  ---- */
+
+// Select Acceptance Filter Mask 0 for Acceptance Filter 2
+    C1FMSKSEL1bits.F2MSK = 0x0;
+
+// Configure Acceptance Filter 2 to match Broadcast Identifier
+    C1RXF2SIDbits.SID = 0x7F<<4;  // 0b111 1111 xxxx
+
+// Configure Acceptance Filter for Standard Identifier
+    C1RXM0SIDbits.MIDE = 0x1;
+    C1RXM0SIDbits.EID = 0x0;
+
+// Acceptance Filter 2 uses message buffer 3 to store message
+    C1BUFPNT1bits.F2BP = 3;
+
+// Filter 2 enabled
+    C1FEN1bits.FLTEN2 = 0x1;
+/* end ----- Filter[2]/Buffer[3] for broadcast messages TCPU will act on  ---- */
 
 // Clear window bit to access ECAN control registers
     C1CTRL1bits.WIN = 0;
@@ -1380,7 +1810,7 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 	C1TR01CONbits.TXEN0=1;			/* ECAN1, Buffer 0 is a Transmit Buffer */
 	C1TR01CONbits.TXEN1=0;			/* ECAN1, Buffer 1 is a Receive Buffer */
     C1TR23CONbits.TXEN2=0;          /* ECAN1, Buffer 2 is a Receive Buffer */
-//    C1TR23CONbits.TXEN3=0;          /* ECAN1, Buffer 3 is a Receive Buffer */
+    C1TR23CONbits.TXEN3=0;          /* ECAN1, Buffer 3 is a Receive Buffer */
     C1TR01CONbits.TX0PRI=0b11;      /* Message Buffer 0 Priority Level highest */
     C1TR01CONbits.TX1PRI=0b11;      /* Message Buffer 1 Priority Level highest */
     C1TR23CONbits.TX2PRI=0b11;      // Message Buffer 2 Priority Level highest */
@@ -1491,14 +1921,15 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
         maskSel = 2 ->  Acceptance Mask 2 register contains mask
         maskSel = 3 ->  No Mask Selection
 */
-    C2CTRL1bits.WIN = 1;                  // SFR maps to filter window
+    C2CTRL1bits.WIN = 0x1;                  // SFR maps to filter window
 
+/* -----CAN2 Mask[0]/Filter[0]/Buffer[1] for Std. Explicit Addrs messages TCPU will act on ----------- */
 // Select Acceptance Filter Mask 0 for Acceptance Filter 0
     C2FMSKSEL1bits.F0MSK = 0x0;
 
 // Configure Acceptance Filter Mask 0 register to
 //      Mask board_id in SID<6:4> per HLP 3 protocol
-    C2RXM0SIDbits.SID = 0x03F0; // 0b011 1brd 0000
+    C2RXM0SIDbits.SID = 0x07F0; //WB-2G: 0b111 1brd 0000
 
 // Configure Acceptance Filter 0 to match Standard Identifier
     C2RXF0SIDbits.SID = (C_BOARD>>2)|((board_id&0x1F)<<4);  // 0biii ibrd xxxx
@@ -1512,37 +1943,79 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 
 // Filter 0 enabled
     C2FEN1bits.FLTEN0 = 0x1;
+/* end -CAN2 Mask[0]/Filter[0]/Buffer[1] for Std. Explicit Addrs messages TCPU will act on ----------- */
 
-/* --------- Filter/Buffer for messages TCPU will pass along  ---------- */
+/* -----CAN2 Mask[1]/Filter[1]/Buffer[2] for Ext. Explicit Addrs messages TCPU will pass along to TDIG */
 /* Set up Filter 1 to accept TCPU extended type messages */
 // Select Acceptance Filter Mask 1 for Acceptance Filter 1
     C2FMSKSEL1bits.F1MSK = 0x1;
 
 // Configure Acceptance Filter Mask 1 register to
 //      Mask TCPU specific bits per HLP 3 protocol
-//     only the "reply-type" messages (bit 0 set) will get passed along
     C2RXM1SIDbits.SID = 0x0000; // SID<10..0>/EID<28..18> 0bxxx xxxx xxxx (any part of standard ID)
     C2RXM1SIDbits.EID = 0x0000; // EID<17..16> 0bxx
-    //JS C2RXM1EIDbits.EID = 0x0000; // EID<15..0> 0bxxx xx11 1111 (low bits of EID)
-    C2RXM1EIDbits.EID = 0x003f; // EID<15..0> 0bxxx xx11 1111 (low bits of EID) //JS
+    C2RXM1EIDbits.EID = 0x007f; // WB-2G: EID<15..0> 0bxxx x111 1111 (low bits of EID) //JS
+                                // WB-2G: 7F includes broadcast
 
-// Configure Acceptance Filter 1 to match Standard Identifier for Any TDIG (ID xx1)
+// Configure Acceptance Filter 1 to match Extended Identifier for Any TDIG (ID xx1)
     C2RXF1SIDbits.SID = 0b00000000000;  //
     C2RXF1SIDbits.EID = 0b00;           //
-//    C2RXF1EIDbits.EID = (board_id & 0x1F);
     C2RXF1EIDbits.EID = (C_BOARD>>6)|(board_id & 0x1F);      // WB-1L include C_BOARD bits
 
 // Configure Acceptance Filter 1 for Extended Identifier
-    C2RXM0SIDbits.MIDE = 0x1;
-    C2RXM0SIDbits.EID = 0x1;
+    C2RXM1SIDbits.MIDE = 0x1;           // Mask for extended
+    C2RXF1SIDbits.EXIDE= 0x1;           // Filter for extended
 
 // Acceptance Filter 1 uses message buffer 2 to store message
     C2BUFPNT1bits.F1BP = 2;
 
 // Filter 1 enabled
     C2FEN1bits.FLTEN1 = 0x1;
-/* ----- End Filter/Buffer for messages TCPU will pass along  ---------- */
 
+/* end -CAN2 Mask[1]/Filter[1]/Buffer[2] for Ext. Explicit Addrs messages TCPU will pass along to TDIG */
+
+/* -----CAN2 Mask[1]/Filter[2]/Buffer[2] for broadcast messages TCPU will pass along to TDIG --- */
+/* Set up Filter 1 to accept TCPU extended type messages */
+// Select Acceptance Filter Mask 1 for Acceptance Filter 2
+    C2FMSKSEL1bits.F2MSK = 0x1;
+
+// Use same mask setup as for Filter 1
+
+// Configure Acceptance Filter 2 to match Extended Identifier for Any TCPU
+    C2RXF2SIDbits.SID = 0b00000000000;  // SID<10..0>
+    C2RXF2SIDbits.EID = 0b00;           // EID<17,16>
+    C2RXF2EIDbits.EID = 0x007F;         // EID<15..0> WB-2G: Any TCPU
+
+// Configure Acceptance Filter 2 for Extended Identifier
+//    C2RXF2SIDbits.MIDE = 0x1;           // Match only Extended ID
+    C2RXF2SIDbits.EXIDE= 0x1;           // Match only Extended ID
+
+// Acceptance Filter 2 also uses message buffer 2 to store message
+    C2BUFPNT1bits.F2BP = 2;
+
+// Filter 2 enabled
+    C2FEN1bits.FLTEN2 = 0x1;
+/* end--CAN2 Filter[2]/Buffer[2] for messages TCPU will pass along to TDIG --- */
+
+/*    --CAN2 Filter[3]/Buffer[3] for Broadcast messages TCPU will act on ---- */
+
+// Select Acceptance Filter Mask 0 for Acceptance Filter 3
+    C2FMSKSEL1bits.F3MSK = 0x0;
+
+// Configure Acceptance Filter 3 to match Broadcast Identifier
+    C2RXF3SIDbits.SID = 0x7F<<4;  // 0b111 1111 xxxx
+
+// Configure Acceptance Filter for Standard Identifier
+    C2RXM0SIDbits.MIDE = 0x1;
+    C2RXM0SIDbits.EID = 0x0;
+
+// Acceptance Filter 3 uses message buffer 3 to store message
+    C2BUFPNT1bits.F3BP = 3;
+
+// Filter 3 enabled
+    C2FEN1bits.FLTEN3 = 0x1;
+
+/* end--CAN2 Filter[3]/Buffer[3] for Broadcast messages TCPU will act on ---- */
 
 // Clear window bit to access ECAN control registers
     C2CTRL1bits.WIN = 0;
@@ -1559,10 +2032,11 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
     C2TR01CONbits.TXEN0=1;          /* ECAN2, Buffer 0 is a Transmit Buffer */
     C2TR01CONbits.TXEN1=0;          /* ECAN2, Buffer 1 is a Receive Buffer */
     C2TR23CONbits.TXEN2=0;          /* ECAN2, Buffer 2 is a Receive Buffer */
-//    C2TR23CONbits.TXEN3=0;          /* ECAN2, Buffer 3 is a Receive Buffer */
+    C2TR23CONbits.TXEN3=0;          /* WB-11V: ECAN2, Buffer 3 is a Receive Buffer */
     C2TR01CONbits.TX0PRI=0b11;      /* Message Buffer 0 Priority Level highest */
     C2TR01CONbits.TX1PRI=0b11;      /* Message Buffer 1 Priority Level highest */
     C2TR23CONbits.TX2PRI=0b11;      // Message Buffer 2 Priority Level highest */
+    C2TR23CONbits.TX3PRI=0b11;      // WB-11V: Message Buffer 3 Priority Level highest */
 }
 
 
@@ -1617,12 +2091,11 @@ void dma3Init(void){
      DMA3CONbits.CHEN=1;
 }
 
-void send_CAN_alerts (unsigned int board_posn)
+void send_CAN_alerts (unsigned int board_posn, unsigned int length, unsigned char *msg)
 {
-    unsigned long lwork = C_ALERT_ONLINE;
 /* Sends "Alert" messge to both CANBusses */
-    send_CAN1_message (board_posn, (C_BOARD | C_ALERT), 4, (unsigned char *)&lwork);
-    send_CAN2_message (board_posn, (C_BOARD | C_ALERT), 4, (unsigned char *)&lwork);
+    send_CAN1_message (board_posn, (C_BOARD | C_ALERT), length, msg);
+    send_CAN2_message (board_posn, (C_BOARD | C_ALERT), length, msg);
 //  send_CAN2_message_extended ((board_posn+1), ((board_posn<<6) | C_BOARD | C_ALERT), 4, (unsigned char *)&lwork);
 }
 
@@ -1636,6 +2109,9 @@ void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsign
 **      *payload = pointer to payload buffer
 **          payload[0] is usually the "subcommand" (HLP 3.0)
 **          payload[1] is usually "status" (HLP 3.0)
+**  Modified 27-Feb-09 (WB-2J)
+**      Add timeout to SEND_CAN1_message() so an isolated TCPU on CAN2 only will work.
+
 */
 /* ------------------------------------------------
 Builds ECAN1 message ID into buffer[0] words [0..2]
@@ -1643,9 +2119,16 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 	unsigned long msg_id;
     unsigned char *cp;
 	unsigned int i;
+    unsigned int j=0xFFF;       // WB-2J: counter for timeout
     i = bytes;
     if (i > 8) i=8;         // at most 8 bytes of payload
-    while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
+
+// WB-2J:    while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
+    do {            // WB-2J: loop until transmit complete or timeout
+        --j;
+// WB-2J    while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
+    } while ((C1TR01CONbits.TXREQ0==1) && (j != 0));    // WB-2J: wait for transmit to complete
+
     msg_id = (unsigned long)((board_id&0x1F)<<6); // stick in board ID
     msg_id |= message_type;
     ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
@@ -1663,11 +2146,13 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
 }
 
-
+#if defined (SENDCAN1DATA)      // WB-2J start: Remove unused routine
 void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp)
 {
 /* Write a Data Message to ECAN1 Transmit Buffer
    Request Message Transmission			*/
+
+
 /* ------------------------------------------------
 Builds ECAN1 message ID into buffer[0] words [0..2]
  -------------------------------------------------- */
@@ -1695,6 +2180,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
         C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
     } // end if have proper length to send
 }
+#endif //defined (SENDCAN1DATA)      // WB-2J end: Remove unused routine
 
 void send_CAN2_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *payload)
 {
@@ -1797,7 +2283,8 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
     } // WB-1L end if didn't time out
 }
 
-
+// WB-2J start: this routine no longer used.
+#if defined (SENDCAN2DATA)      // WB-2J
 void send_CAN2_data (unsigned int board_id, unsigned int bytes, unsigned char *bp)
 {
 /* Write a Data Message to ECAN2 Transmit Buffer
@@ -1830,7 +2317,8 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
         C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
     } // end if have proper length to send
 }
-
+#endif  // defined (SENDCAN2DATA)      WB-2J
+// WB-2J: end
 
 
 /* -----------------12/8/2006 10:15AM----------------
@@ -1839,24 +2327,40 @@ How do these get hooked to hardware???
  --------------------------------------------------*/
 void __attribute__((__interrupt__))_C1Interrupt(void)
 {
-    IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
-    if(C1INTFbits.TBIF) {     // If interrupt was from Tx Buffer
+    if (C1INTFbits.RBOVIF) {    // If interrupt was from Overflow
+        can1error = C1VEC;     // Mark which one caused interrupt
+        C1INTFbits.RBOVIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Overflow
+    if (C1INTFbits.ERRIF) {    // If interrupt was from Error
+        can1error = C1VEC;     // Mark which one caused interrupt
+        C1INTFbits.ERRIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Error
+    if (C1INTFbits.TBIF) {     // If interrupt was from Tx Buffer
         C1INTFbits.TBIF = 0;            // Clear Tx Buffer Interrupt
-    }
-    if(C1INTFbits.RBIF) {     // If interrupt was from Rx Buffer
+    } // end if interupt was from Tx Buffer
+    if (C1INTFbits.RBIF) {     // If interrupt was from Rx Buffer
         C1INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
-	}
+    } // end if interrupt was from Rx Buffer
+    IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
 }
 
 void __attribute__((__interrupt__))_C2Interrupt(void)
 {
-    IFS3bits.C2IF = 0;        // clear interrupt flag ECAN2 Event
+    if (C2INTFbits.RBOVIF) {    // If interrupt was from Overflow
+        can2error = C2VEC;     // Mark which one caused interrupt
+        C2INTFbits.RBOVIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Overflow
+    if (C2INTFbits.ERRIF) {    // If interrupt was from Error
+        can2error = C2VEC;     // Mark which one caused interrupt
+        C2INTFbits.ERRIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Error
     if(C2INTFbits.TBIF) {     // If interrupt was from Tx Buffer
         C2INTFbits.TBIF = 0;            // Clear Tx Buffer Interrupt
-    }
+    } // end if interrupt was from Tx buffer
     if(C2INTFbits.RBIF) {     // If interrupt was from Rx Buffer
         C2INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
-	}
+    } // end if interrupt was from Rx buffer
+    IFS3bits.C2IF = 0;        // clear interrupt flag ECAN2 Event
 }
 
 

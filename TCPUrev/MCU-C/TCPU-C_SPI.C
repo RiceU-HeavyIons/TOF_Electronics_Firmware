@@ -1,7 +1,7 @@
-// $Id: TCPU-C_SPI.C,v 1.2 2008-06-21 21:31:13 jschamba Exp $
-/* TDIG-D_SPI.c
+// $Id: TCPU-C_SPI.C,v 1.3 2009-03-06 16:20:05 jschamba Exp $
+/* TCPU-C_SPI.c
 ** Version for build TCPU-C_2A
-** This file defines TIDG-D routines for SPI access to EEPROM #2
+** This file defines routines for SPI access to EEPROM #2
 **
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
 ** BNL Contract No. 79217.  For a period of 4 years after acceptance of all items delivered
@@ -19,6 +19,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**    27-Aug-2008, W. Burton
+**        Remove references to TDIG where appropriate.
 **    20-Jun-2008, W. Burton
 **        Add missing function prototype spin() and clean up unused variables
 **    04-May-2007, W. Burton
@@ -53,7 +55,7 @@ void spi_read_adr ( unsigned int instrn, unsigned char *ap, unsigned int dir, un
 **          instrn = unsigned int Instruction (Read Bytes, Read Status, Read ID, etc)
 **          ap = POINTER to Address to read from, must be at least 3 bytes; bytes are sent [2][1][0].
 **          dir = unsigned int Direction of read (0=LS2MSBIT =0= transfer is LSBit to MSBit,
-**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TDIG-D_SPI.h
+**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TCPU-C_SPI.h
 **                NOTE: Instructions and Addresses are always sent MS bit FIRST
 **          bplim = unsigned int byte limit (size) of return buffer.
 **          *bp = pointer to unsigned char buffer to receive return data
@@ -128,7 +130,7 @@ void spi_read ( unsigned int instrn, unsigned int dir, unsigned int bplim, unsig
 **      Call with:
 **          instrn = unsigned int Instruction (Read Bytes, Read Status, Read ID, etc)
 **          dir = unsigned int Direction of read (0=LS2MSBIT =0= transfer is LSBit to MSBit,
-**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TDIG-D_SPI.h
+**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TCPU-C_SPI.h
 **                NOTE: Instructions and Addresses are always sent MS bit FIRST
 **          bplim = unsigned int byte limit (size) of return buffer.
 **          *bp = pointer to unsigned char buffer to receive return data
@@ -192,7 +194,7 @@ void spi_write_adr ( unsigned int instrn, unsigned char *ap, unsigned int dir, u
 **          ap = POINTER to Address (within chip) to write to, must be at least 3 bytes; bytes are sent [2][1][0].
 **               For some Write instructions, these are "dummy" bytes; but they still must be specified here.
 **          dir = unsigned int Direction of read (0=LS2MSBIT =0= transfer is LSBit to MSBit,
-**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TDIG-D_SPI.h
+**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TCPU-C_SPI.h
 **                NOTE: Instructions and Addresses are always sent MS bit FIRST
 **          bplim = unsigned int byte limit (size) of source buffer (number of bytes to be written).
 **               May be zero if no data is to be transferred (the Instruction and Address/Dummy are still sent).
@@ -270,7 +272,7 @@ void spi_write ( unsigned int instrn, unsigned int dir, unsigned int bplim, unsi
 **      Call with:
 **          instrn = unsigned int Instruction (Write Bytes, Write Status, etc)
 **          dir = unsigned int Direction of read (0=LS2MSBIT =0= transfer is LSBit to MSBit,
-**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TDIG-D_SPI.h
+**                  else MS2LSBIT goes MSBit to LSBit).  Symbolic names are in TCPU-C_SPI.h
 **                NOTE: Instructions and Addresses are always sent MS bit FIRST
 **          bplim = unsigned int byte limit (size) of number of bytes to write.
 **              May be zero, in which case only the instruction is written.

@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.4 2008-06-21 22:20:06 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.5 2009-03-06 16:20:05 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** This header file defines the TCPU-C rev 0 board layout per schematic
@@ -25,12 +25,27 @@
 **
 **
 **  Modified:
+**     27-Feb-2009, W. Burton (WB-2J)
+**          FUID bits updated to indicate version 2J
+**     17-Dec-2008, W. Burton
+**          Initialization of register 12 is now conditional on TRAY_GEOGRAPHIC symbol
+**     15-Dec-2008, W. Burton
+**          This is for version 2G
+**          Define MCP9801_CFGR_FQUEx bits for temperature alarm "Fault Queue"
+**          Define MCU_HEAT_ALERT in register F
+**          Firmware ID is now 2G
+**     29-Aug-2008, W. Burton
+**          This is for version 2F
+**          Adjusted magic number location for large-memory processor
+**     27-Aug-2008, W. Burton
+**          This is version 2E for TCPU-C
+**          Made a symbolic name for the magic number location
 **     29-Feb-2008, W. Burton
 **          Changed version to 2.A for TCPU-C
 **     28-Feb-2008, W. Burton
 **          Added more control over Clock/PLL Selection:
 **          JU2 pins 1-2 Jumper Installed =
-**          JU2 pins 3-4 Jumper Installed = 
+**          JU2 pins 3-4 Jumper Installed =
 **     27-Feb-2008, W. Burton
 **          Revised for TCPU-C board.
 **               Changed RD0 thru RD3 direction assignments and intitalizations.
@@ -57,7 +72,18 @@
 //
 // Define some characteristics
 // Base address of second code image (for download)
-    #define MCU2ADDRESS 0x4000
+    #define MCU2ADDRESS 0x4000          // second image lower limit
+    #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
+    #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
+    #define MCU2CODEL   0x4000          // Second-image Code space start
+    #if defined (__24HJ256GP610_H)      // IF using 256K processor
+        #define MCU2UPLIMIT 0x2ABFD     // Second-image Code space upper end of physical memory not including magic
+        #define MAGICADDRESS 0x2ABFE    // Jo's Magic Number Location
+    #else
+        #define MCU2UPLIMIT 0xABFD      // Second-image Code space upper end
+        #define MAGICADDRESS 0xABFE     // Jo's Magic Number Location
+    #endif
+
 // External oscillator frequency
 	#define SYSCLK          40000000
 
@@ -106,7 +132,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-	_FUID0( 'E')        // 'D' = 0x45
+    _FUID0( 'J')        // WB-2J: 'J' = 0x4A
 	_FUID1( 0x02)       // WB-2A 0x02
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
@@ -119,6 +145,7 @@
 
 #undef CONFIG_CPU
 #endif // (CONFIG_CPU)
+
 
 // I2C Baud Rate Configuration Divisor
 	#define I2C_BAUD 200000
@@ -152,6 +179,10 @@
      #define MCP9801_CFGR_RES10 0x20    // Config bit 6,5 = Resolution 10-bits
      #define MCP9801_CFGR_RES11 0x40    // Config bit 6,5 = Resolution 11-bits
      #define MCP9801_CFGR_RES12 0x60    // Config bit 6,5 = Resolution 12-bits
+     #define MCP9801_CFGR_FQUE1 0x00    // Fault Queue = 1 (default)
+     #define MCP9801_CFGR_FQUE2 0x08    // Fault Queue = 2
+     #define MCP9801_CFGR_FQUE4 0x10    // Fault Queue = 4
+     #define MCP9801_CFGR_FQUE6 0x18     // Fault Queue = 6
      #define MCP9801_CFGR_ALTH  0x4     // Config bit 2 = Alert Polarity active high
      #define MCP9801_CFGR_INTM  0x2     // Config bit 1 = Alert is Interrupt Mode
      #define MCP9801_CFGR_SHDN  0x1     // Config bit 0 = Shutdown
@@ -178,11 +209,11 @@
      #define JUMPER_3_4 0x40         // Jumper 3-4 in
      #define JUMPER_5_6 0x20         // Jumper 5-6 in
      #define BUTTON 0x10             // Button Press bit
-     #define ESCR_PLD_NSTATUS 0x08        // PLD Status
-     #define ESCR_PLD_CRC_ERROR 0x04        // PLD CRC Error Detect
-     #define ESCR_PLD_INIT_DONE 0x02        // PLD Initialization Done
-     #define ESCR_PLD_CONFIG_DONE 0x01        // PLD Configuration Done
-     #define PLD_READY (ESCR_PLD_INIT_DONE | ESCR_PLD_CONFIG_DONE)
+     #define ECSR_PLD_NSTATUS 0x08        // PLD Status
+     #define ECSR_PLD_CRC_ERROR 0x04        // PLD CRC Error Detect
+     #define ECSR_PLD_INIT_DONE 0x02        // PLD Initialization Done
+     #define ECSR_PLD_CONFIG_DONE 0x01        // PLD Configuration Done
+     #define PLD_READY (ECSR_PLD_INIT_DONE | ECSR_PLD_CONFIG_DONE)
      #define MCP23008_ALL     0xFF       // All GP bits
      #define MCP23008_NONE    0x00       // None
      #define MCP23008_IPOL    0x1        // Input Polarity Control 1=invert, 0=normal
@@ -279,6 +310,7 @@
     #define FIFO_BYTE0_R 11             // FIFO LSbyte
     #define FIFO_BYTE1_R 12
     #define CONFIG_12_W 12              // Board ID configuration
+//    #define TRAY_GEOGRAPHIC CONFIG_12_W // Defined for forcing initialization
     #define FIFO_BYTE2_R 13
     #define FIFO_BYTE3_R 14             // FIFO MSbyte
     #define FIFO_STATUS_R 15            // FIFO Status
@@ -291,9 +323,13 @@
 
 // WB-1L
 /* Port F bits default to inputs */
-    #define PORTF_dirmask 0x31FF        // all live bits are input
+//    #define PORTF_dirmask 0x31FF        // all live bits are input
+    #define PORTF_dirmask 0x31BF        // WB-2G RF6 is output for heat alert
     #define PORTF_initial 0x0           // initial value doesn't really matter
 // WB-1L end
+/* WB-2G: Port F bit used for overtemperature alert (U37 MCP9801)        */
+        #define MCU_HEAT_ALERT (PORTFbits.RF6)
+// WB-2G end
 
 /* Port G bits used for various control functions */
     #define MCU_TEST (LATGbits.LATG15)

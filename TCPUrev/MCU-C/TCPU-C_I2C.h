@@ -1,8 +1,12 @@
-// $Id: TCPU-C_I2C.h,v 1.1 2008-03-05 19:36:40 jschamba Exp $
+// $Id: TCPU-C_I2C.h,v 1.2 2009-03-06 16:20:05 jschamba Exp $
 
 /* TCPU-C_I2C.h ----------------------------------------------
 **
 ** Header file defining prototypes for routines in TCPU-C_I2C.c
+**
+** Modified:
+**   12-Dec-2008, W. Burton
+**      Added prototypes for Read16_Temp() and Write16_Temp() to support temperature alarm.
 **
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
 ** BNL Contract No. 79217.  For a period of 4 years after acceptance of all items delivered
@@ -28,5 +32,9 @@
 	extern void Initialize_LEDS (void);	// Initialize LED port and turn off
 	extern void Initialize_MCP23008 (int i2caddr, int iodir, int ipol, int gpinten, int defval, int intcon, int iocon, int gppu);
 	extern void Write_device_I2C1 (int i2caddr, int reg, int val); // write I2C #1
+    extern void Write_device16_I2C1 (int i2caddr, int reg, int val); // write 16-bit value to I2C #1
+    extern unsigned int Read_16 (int reg); // DIAG read 16-bit Temperature register
 	extern unsigned int Read_MCP23008 (int i2caddr, int reg); // Read from I2C #1
 	extern int Read_Temp (void); // Read temperature sensor
+    extern int Read16_Temp (int reg);    // Read 16-bit register from temperature chip on I2C #1.
+    extern void Write16_Temp (int reg, int val); // Write 16-bit value to temperature register

@@ -1,4 +1,4 @@
-// $Id: TCPU-C_MCU_PLD.c,v 1.2 2008-06-21 21:33:51 jschamba Exp $
+// $Id: TCPU-C_MCU_PLD.c,v 1.3 2009-03-06 16:20:05 jschamba Exp $
 
 /* TCPU-C_MCU_PLD.c
 ** Version for build TCPU-C_2A
@@ -20,6 +20,12 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**      26-Feb-2009, W. Burton (WB-2J)
+**          init_regs_FPGA() routine no longer toggles TDC HARDWARE RESET bit in CONFIG_2 register.
+**      17-Dec-2008, W. Burton
+**          Initialization of register 12 is now conditional on TRAY_GEOGRAPHIC symbol (from TCPU-C_Board.h)
+**      12-Dec-2008, W. Burton
+**          Delete initialization of register 12 in module init_regs_FPGA().
 **      20-Jun-2008, W. Burton
 **          Correct some missing function definitions and Includes.
 **      20-Jun-2007, W. Burton
@@ -156,8 +162,14 @@ unsigned int waitfor_FPGA (void){
     if (timeout == 0) { return (1); } else return (0);
 }
 
-void init_regs_FPGA(unsigned int reg12) {
+void init_regs_FPGA(unsigned int trayid) {
 /* Write default initial values into FPGA registers (MCU_PLD_xx).
+**      26-Feb-2009, W. Burton (WB-2J)
+**          init_regs_FPGA() routine no longer toggles TDC HARDWARE RESET bit in CONFIG_2 register.
+**      17-Dec-2008, W. Burton
+**          Initialization of register 12 is now conditional on TRAY_GEOGRAPHIC
+**      12-Dec-2008, W. Burton
+**          Deleted initialization of register 12.  Argument is still in list but is not used.
 **      23-May-2007, W. Burton
 **          Change FPGA initialization to do the latest reset sequence in init_regs_FPGA() in file TCPU-C_MCU_PLD.C and .H
 **          "TDIG-FPGA MCU interface registers.xls" dated 4/17/2007
@@ -171,9 +183,15 @@ void init_regs_FPGA(unsigned int reg12) {
         write_FPGA (i, 0);
     }
 /* d) Toggle TDC HARDWARE RESET bit in CONFIG_2 register */
+    /* WB-2J START:TCPU Does not do this.
     write_FPGA (CONFIG_2_RW, CONFIG_2_TDCRESET);
     write_FPGA (CONFIG_2_RW, 0);
+     WB-2J END */
 
 /* and the value passed as "reg12" is placed in register 12 */
-    write_FPGA (CONFIG_12_W, reg12);        // write the value passed
+// WB-2G deleted initialization
+// WB-2G Conditionalized initialization
+    #if defined (TRAY_GEOGRAPHIC)
+        write_FPGA (TRAY_GEOGRAPHIC, trayid);        // write the value passed into the tray_geographic register
+    #endif
 }
