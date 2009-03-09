@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.28 2009-03-09 16:41:49 jschamba Exp $
+; $Id: main.asm,v 1.29 2009-03-09 17:58:53 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -129,6 +129,7 @@ temp_2          RES     1
 
 ;; use the first 32 EEPROM entries as the geographical IDs to be programmed into
 ;; the SerDes FPGAs
+#ifndef THUB_is_upper
 DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
 		DE	0x66,0x67,0x68,0x69     ; FPGA A
         DE  0x6a,0x6b,0x6c,0x6d     ; FPGA B
@@ -138,6 +139,7 @@ DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
         DE  0x0C,0x0D,0x0E,0x0F     ; FPGA F
         DE  0x10,0x11,0x12,0x13     ; FPGA G
         DE  0x14,0x15,0x16,0x17     ; FPGA H 
+#endif
 
 #ifdef THUB_is_upper
 ;   upper memory code has redefined vector locations:
