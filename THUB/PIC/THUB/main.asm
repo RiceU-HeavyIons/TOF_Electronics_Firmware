@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.27 2008-05-14 20:50:27 jschamba Exp $
+; $Id: main.asm,v 1.28 2009-03-09 16:41:49 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -270,14 +270,12 @@ Main:
     bcf     INTCON, TMR0IF  ; clear Timer 1 interrupt flag
 
     ;;; Check that FPGAs are initialized
-    mAsSelect 0         ;  Set FPGA progamming lines to FPGA M (0)
-;    movff   asPORT, TXB0D4
+    mAsSelect 5         ;  Set FPGA progamming lines to FPGA E (5)
     btfss   as_CONFIG_DONE  ; check if FPGA M is configured
-	bra		$ - 2
+	bra		FPGA_NOT_PROGRAMMED
     mAsSelect 1             ;  Set FPGA progamming lines to FPGA A (1)
-;    movff   asPORT, TXB0D5
     btfss   as_CONFIG_DONE  ; check if FPGA A is configured
-	bra		$ - 2
+	bra		FPGA_NOT_PROGRAMMED
     
     ;;; Now setup the EEPROM address
     clrf    EECON1
@@ -344,11 +342,26 @@ eeloop1:
     movwf   POSTINC0
 ; Send ALERT message (command = 7, msgID = 0x407)
     mCANSendAlert  4
-;    mCANSendAlert  8
 
 	bcf		RXB0CON, RXFUL			; Clear the receive flag
+    bra     MicroLoop
 
+; If the FPGA's didn't check programmed, send a startup message with all FFs
+FPGA_NOT_PROGRAMMED:
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
 
+    lfsr    FSR0, TXB0D0
+    movlw   0xFF
+    movwf   POSTINC0
+    movwf   POSTINC0
+    movwf   POSTINC0
+    movwf   POSTINC0
+; Send ALERT message (command = 7, msgID = 0x407)
+    mCANSendAlert  4
+
+	bcf		RXB0CON, RXFUL			; Clear the receive flag
 
 ;**************************************************************
 ;* Default Receive Loop
