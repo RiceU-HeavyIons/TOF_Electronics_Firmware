@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.30 2009-03-03 21:14:42 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.31 2009-03-09 15:29:22 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-03-03
+-- Last update: 2009-03-06
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -149,14 +149,6 @@ ARCHITECTURE a OF serdes_fpga IS
       clock  : IN  std_logic;
       d      : OUT std_logic_vector(16 DOWNTO 0));
   END COMPONENT LFSR;
-
-  COMPONENT mux18x2 IS
-    PORT (
-      data0x : IN  std_logic_vector (17 DOWNTO 0);
-      data1x : IN  std_logic_vector (17 DOWNTO 0);
-      sel    : IN  std_logic;
-      result : OUT std_logic_vector (17 DOWNTO 0));
-  END COMPONENT mux18x2;
 
   COMPONENT mux17x4 IS
     PORT (
@@ -456,12 +448,10 @@ BEGIN
   -----------------------------------------------------------------------------
 
   -- MUX for serdes TX
-  mux_inst : mux18x2 PORT MAP (
-    data0x => serdes_tst_data,          -- test data
-    data1x => s_serdes_out,             -- "real" data
-    sel    => s_serdes_reg(4),
-    result => serdes_data);             -- goes to poweron sm first to be muxed
-                                        -- with poweron data
+  WITH s_serdes_reg(4) SELECT
+    serdes_data <=  -- goes to poweron sm first to be muxed with poweron data
+    serdes_tst_data WHEN '0',           -- test data
+    s_serdes_out    WHEN OTHERS;        -- "real" data
 
   -- test data is currently commented out, so just set it to all 0's
   serdes_tst_data <= (OTHERS => '0');
