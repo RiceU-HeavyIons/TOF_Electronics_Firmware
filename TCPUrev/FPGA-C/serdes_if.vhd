@@ -1,4 +1,4 @@
--- $Id: serdes_if.vhd,v 1.3 2008-03-25 20:11:02 jschamba Exp $
+-- $Id: serdes_if.vhd,v 1.4 2009-03-13 19:06:35 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_IF
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-11-14
--- Last update: 2008-03-25
+-- Last update: 2009-03-11
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -65,19 +65,26 @@ ARCHITECTURE a OF serdes_if IS
       areset_n    : IN  std_logic);
   END COMPONENT serdes_poweron;
 
-  SIGNAL s_ch_ready  : std_logic;
-  SIGNAL s_txd       : std_logic_vector (17 DOWNTO 0);
-  SIGNAL dff1_q      : std_logic;
-  SIGNAL dff2_q      : std_logic;
-  SIGNAL dff3_q      : std_logic;
-  SIGNAL dff4_q      : std_logic;
-  SIGNAL dff5_q      : std_logic;
-  SIGNAL dff6_q      : std_logic;
-  SIGNAL dff7_q      : std_logic;
-  SIGNAL ff1_aresetn : std_logic;
-  SIGNAL ff2_aresetn : std_logic;
-  SIGNAL trg_phase0  : std_logic;
-  SIGNAL trg_phase1  : std_logic;
+  SIGNAL s_ch_ready   : std_logic;
+  SIGNAL s_txd        : std_logic_vector (17 DOWNTO 0);
+  SIGNAL dff1_q       : std_logic;
+  SIGNAL dff2_q       : std_logic;
+  SIGNAL dff3_q       : std_logic;
+  SIGNAL dff4_q       : std_logic;
+  SIGNAL dff5_q       : std_logic;
+  SIGNAL dff6_q       : std_logic;
+  SIGNAL dff7_q       : std_logic;
+  SIGNAL ff1_aresetn  : std_logic;
+  SIGNAL ff2_aresetn  : std_logic;
+  SIGNAL trg_phase0   : std_logic;
+  SIGNAL trg_phase1   : std_logic;
+  SIGNAL brst_phase1  : std_logic;
+  SIGNAL brst_phase0  : std_logic;
+  SIGNAL bff1_aresetn : std_logic;
+  SIGNAL bff2_aresetn : std_logic;
+  SIGNAL bdff1_q      : std_logic;
+  SIGNAL bdff2_q      : std_logic;
+  SIGNAL bdff3_q      : std_logic;
 
   FUNCTION bool2sl (b : boolean) RETURN std_logic IS
   BEGIN
@@ -110,8 +117,10 @@ BEGIN
     txd         => s_txd,
     areset_n    => areset_n);
 
-  ff1_aresetn <= s_ch_ready;
-  ff2_aresetn <= s_ch_ready;
+  ff1_aresetn  <= s_ch_ready;
+  ff2_aresetn  <= s_ch_ready;
+  bff1_aresetn <= s_ch_ready;
+  bff2_aresetn <= s_ch_ready;
 
 ------------------------------------------------------------------------------------
 --      Trigger decode
@@ -128,7 +137,7 @@ BEGIN
       dff2_q <= '0';
       dff3_q <= '0';
       
-    ELSIF clk'event AND clk = '1' THEN
+    ELSIF rising_edge(clk) THEN
       IF rxd(15 DOWNTO 12) = "0000" THEN
         dff1_q <= rxd(17);
       ELSE
@@ -141,7 +150,7 @@ BEGIN
 
   trg_phase0 <= dff2_q AND (NOT dff3_q);
 
-  -- Trigger Phase B: sync to 40MHz and shorten
+  -- Trigger Phase B: sync to 40MHz, delay and shorten
   ff2 : PROCESS (clk, ff2_aresetn)
   BEGIN
     IF ff2_aresetn = '0' THEN           -- asynchronous reset (active low)
@@ -150,7 +159,7 @@ BEGIN
       dff6_q <= '0';
       dff7_q <= '0';
       
-    ELSIF clk'event AND clk = '1' THEN
+    ELSIF rising_edge(clk) THEN
       IF rxd(15 DOWNTO 12) = "0001" THEN
         dff4_q <= rxd(17);
       ELSE
@@ -170,7 +179,44 @@ BEGIN
 ------------------------------------------------------------------------------------
 --      Bunch Reset decode
 ------------------------------------------------------------------------------------
+  -- bunch reset command from Serdes:
+  -- rxd[17:11] = 0100100 (phase A) or 0100101 (phase B)
 
-  bunch_rst <= s_ch_ready AND bool2sl(rxd(17 DOWNTO 12) = "010010");
+  -- Bunch Reset Phase A: sync to 40MHz
+  bff1 : PROCESS (clk, bff1_aresetn)
+  BEGIN
+    IF bff1_aresetn = '0' THEN          -- asynchronous reset (active low)
+      bdff1_q <= '0';
+      
+    ELSIF rising_edge(clk) THEN
+      IF rxd(17 DOWNTO 11) = "0100100" THEN
+        bdff1_q <= '1';
+      ELSE
+        bdff1_q <= '0';
+      END IF;
+      brst_phase0 <= bdff1_q;
+    END IF;
+  END PROCESS bff1;
+
+  -- Bunch Reset Phase B: sync to 40MHz and delay
+  bff2 : PROCESS (clk, bff2_aresetn)
+  BEGIN
+    IF bff2_aresetn = '0' THEN          -- asynchronous reset (active low)
+      bdff2_q <= '0';
+      bdff3_q <= '0';
+      
+    ELSIF rising_edge(clk) THEN
+      IF rxd(17 DOWNTO 11) = "0100101" THEN
+        bdff2_q <= '1';
+      ELSE
+        bdff2_q <= '0';
+      END IF;
+      bdff3_q     <= bdff2_q;
+      brst_phase1 <= bdff3_q;
+    END IF;
+  END PROCESS bff2;
+
+  -- Final bunch reset is either Phase A or Phase B bunch reset:
+  bunch_rst <= brst_phase0 OR brst_phase1;
   
 END a;
