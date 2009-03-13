@@ -497,13 +497,16 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch1_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch2_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch3_lock_n
 set_global_assignment -name SMART_RECOMPILE ON
+set_global_assignment -name USE_CONFIGURATION_DEVICE ON
+set_global_assignment -name CRC_ERROR_CHECKING ON
+set_global_assignment -name MISC_FILE "F:/Jo/TOF/THUB/serdes_fpga/serdes_fpga.dpf"
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE mux18x2.vhd
 set_global_assignment -name VHDL_FILE ddio_out.vhd
 set_global_assignment -name VHDL_FILE LFSR.vhd
 set_global_assignment -name VHDL_FILE decoder.vhd
 set_global_assignment -name VHDL_FILE mux17x4.vhd
-set_global_assignment -name VHDL_FILE mux18x2.vhd
 set_global_assignment -name VHDL_FILE serdes_poweron.vhd
 set_global_assignment -name VHDL_FILE serdes_rcvr.vhd
 set_global_assignment -name VHDL_FILE smif.vhd
@@ -516,6 +519,3 @@ set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name USE_CONFIGURATION_DEVICE ON
-set_global_assignment -name CRC_ERROR_CHECKING ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
