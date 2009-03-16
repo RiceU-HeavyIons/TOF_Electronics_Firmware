@@ -519,3 +519,6 @@ set_global_assignment -name VHDL_FILE pll.vhd
 set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
 set_global_assignment -name SIGNALTAP_FILE stp1.stp
+
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+set_global_assignment -name SAFE_STATE_MACHINE ON
