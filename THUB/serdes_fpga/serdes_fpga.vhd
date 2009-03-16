@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.31 2009-03-09 15:29:22 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.32 2009-03-16 14:16:26 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-03-06
+-- Last update: 2009-03-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -353,10 +353,10 @@ BEGIN
   -- maO[7..0]   : 8 bit (Serdes FIFO) data from Serdes DDIO to Master (output)
   -- maO[8]      : latch signal, valid on the last two bytes of each 4 byte transmission
   -- maO[9]      : '0'
-  -- ma[10]      : channel 2 "ready" (locked and synch'ed) signal
-  -- ma[11]      : channel 3 "ready" (locked and synch'ed) signal
-  -- ma[12]      : channel 0 "ready" (locked and synch'ed) signal
-  -- ma[13]      : channel 1 "ready" (locked and synch'ed) SIGNAL
+  -- maO[10]     : channel 2 "ready" (locked and synch'ed) signal
+  -- maO[11]     : channel 3 "ready" (locked and synch'ed) signal
+  -- maO[12]     : channel 0 "ready" (locked and synch'ed) signal
+  -- maO[13]     : channel 1 "ready" (locked and synch'ed) SIGNAL
   -- (the above four signals are reordered so they correspond to the actual layout)
   -- maO[14]     : '0'
   -- maO[15]     : 80MHz clock for synchronization
