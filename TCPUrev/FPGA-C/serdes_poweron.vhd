@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.6 2009-03-16 15:09:36 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.7 2009-03-17 19:59:27 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron for TCPU
 -- Project    : TCPU_B_TOP
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2009-03-13
+-- Last update: 2009-03-17
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -118,7 +118,7 @@ BEGIN
       ch_ready        <= '0';
       s_serdes_tx_sel <= '0';
       
-    ELSIF rising_edge(clk) THEN              -- rising clock edge
+    ELSIF rising_edge(clk) THEN         -- rising clock edge
 
       tpwdn_n         <= '0';           -- tx default: powered down
       rpwdn_n         <= '0';           -- rx default: powered down
@@ -173,6 +173,8 @@ BEGIN
 
           IF s2_rxd = LOCK_PATTERN_THUB THEN  -- wait for pattern on Rx
             poweron_present <= PO_PATTERN;
+          ELSIF s2_ch_lock_n = '1' THEN       -- if we loose hardware lock
+            poweron_present <= PO_INIT;       -- start all over
           END IF;
 
           -- reply with TCPU LOCK pattern
