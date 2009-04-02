@@ -1,4 +1,4 @@
-# $Id: TCPU_C_TOP.qsf,v 1.8 2009-03-13 19:04:19 jschamba Exp $
+# $Id: TCPU_C_TOP.qsf,v 1.9 2009-04-02 17:55:21 jschamba Exp $
 # Copyright (C) 1991-2006 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
 # and other software and tools, and its AMPP partner logic 
@@ -29,7 +29,7 @@ set_global_assignment -name DEVICE EP2C20F484C8
 set_global_assignment -name TOP_LEVEL_ENTITY TCPU_C_TOP
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION 6.0
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:42:40  APRIL 02, 2007"
-set_global_assignment -name LAST_QUARTUS_VERSION 8.1
+set_global_assignment -name LAST_QUARTUS_VERSION 9.0
 set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
 set_global_assignment -name DEVICE_FILTER_PIN_COUNT 484
 set_global_assignment -name DEVICE_FILTER_SPEED_GRADE 8
