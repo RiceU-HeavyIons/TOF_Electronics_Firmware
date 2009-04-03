@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.38 2009-03-03 20:52:06 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.39 2009-04-03 20:12:17 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-02-20
+-- Last update: 2009-04-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -136,6 +136,8 @@ ARCHITECTURE a OF master_fpga IS
       reg5          : IN  std_logic_vector(7 DOWNTO 0);
       reg6          : IN  std_logic_vector(7 DOWNTO 0);
       reg7          : IN  std_logic_vector(7 DOWNTO 0);
+      alert_data    : IN  std_logic_vector(7 DOWNTO 0);
+      alert_latch   : IN  std_logic;
       serdes_reg    : IN  std_logic_vector(7 DOWNTO 0);
       serdes_statma : IN  std_logic_vector(3 DOWNTO 0);
       serdes_statmb : IN  std_logic_vector(3 DOWNTO 0);
@@ -960,7 +962,7 @@ BEGIN
   uc_fpga_inst : uc_fpga_interface
     PORT MAP (
       clock         => globalclk,
-      arstn         => arstn,
+      arstn         => pll_locked,
       dir           => s_ucDIR,
       ctl           => s_ucCTL,
       ds            => s_ucDS,
@@ -973,6 +975,8 @@ BEGIN
       reg5          => s_reg5,
       reg6          => s_reg6,
       reg7          => s_reg7,
+      alert_data    => "01010101",
+      alert_latch   => s_master_rst,
       serdes_reg    => s_serdes_reg,
       serdes_statma => sa_smif_datain(13 DOWNTO 10),
       serdes_statmb => sb_smif_datain(13 DOWNTO 10),
