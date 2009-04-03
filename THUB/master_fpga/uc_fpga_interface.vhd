@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.8 2009-01-09 16:03:13 jschamba Exp $
+-- $Id: uc_fpga_interface.vhd,v 1.9 2009-04-03 20:11:19 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-06-27
--- Last update: 2009-01-09
+-- Last update: 2009-04-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -22,6 +22,10 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+LIBRARY lpm;
+USE lpm.lpm_components.ALL;
+LIBRARY altera_mf;
+USE altera_mf.altera_mf_components.ALL;
 
 ENTITY uc_fpga_interface IS
   PORT (
@@ -39,6 +43,8 @@ ENTITY uc_fpga_interface IS
     reg5          : IN  std_logic_vector(7 DOWNTO 0);
     reg6          : IN  std_logic_vector(7 DOWNTO 0);
     reg7          : IN  std_logic_vector(7 DOWNTO 0);
+    alert_data    : IN  std_logic_vector(7 DOWNTO 0);
+    alert_latch   : IN  std_logic;
     serdes_reg    : IN  std_logic_vector(7 DOWNTO 0);
     serdes_statma : IN  std_logic_vector(3 DOWNTO 0);
     serdes_statmb : IN  std_logic_vector(3 DOWNTO 0);
@@ -68,6 +74,10 @@ ARCHITECTURE SYN OF uc_fpga_interface IS
   SIGNAL addr       : std_logic_vector(4 DOWNTO 0);
   SIGNAL ser_regrd  : std_logic_vector(7 DOWNTO 0);
 
+  SIGNAL s_fifo_rdclk          : std_logic;
+  SIGNAL s_reg8A               : std_logic_vector(7 DOWNTO 0) := x"00";
+  SIGNAL s_reg8                : std_logic_vector(7 DOWNTO 0);
+
 BEGIN  -- ARCHITECTURE SYN
 
   is_address <= (ctl = '1') AND (ds = '1') AND (dir = '0');
@@ -77,18 +87,24 @@ BEGIN  -- ARCHITECTURE SYN
   sreg_addr <= addr(3 DOWNTO 0);
 
   uc_fpga_sm : PROCESS (clock, arstn) IS
-  BEGIN  -- PROCESS uc_fpga_sm
+  BEGIN
     IF arstn = '0' THEN                     -- asynchronous reset (active low)
       addr      <= (OTHERS => '1');
       reg_load  <= '0';
       sreg_load <= '0';
-    ELSIF clock'event AND clock = '1' THEN  -- rising clock edge
+    ELSIF rising_edge(clock) THEN
       reg_load  <= '0';
       sreg_load <= '0';
       reg_clr   <= '0';
 
       IF is_address AND (uc_data_in(7 DOWNTO 5) = "100") THEN
         addr <= uc_data_in(4 DOWNTO 0);
+      END IF;
+
+      IF is_address AND (uc_data_in = x"88") THEN           -- alert data read clock
+        s_fifo_rdclk <= '1';            -- on address "0x88"
+      ELSE
+        s_fifo_rdclk <= '0';
       END IF;
 
       IF is_data_w AND (addr(4) = '1') THEN  -- Serdes register load
@@ -101,6 +117,31 @@ BEGIN  -- ARCHITECTURE SYN
 
     END IF;
   END PROCESS uc_fpga_sm;
+
+  -- reset reg8A with arstn asynchronously
+  -- latch the alert data in reg8A with the alert latch ("preset")
+  -- clear reg8A after it is read by fifo_rdclk ("clear")
+  PROCESS (alert_latch, s_fifo_rdclk, alert_data, arstn) IS
+  BEGIN
+    IF arstn = '0' THEN                 -- asynchronous reset (active low)
+      s_reg8A <= (OTHERS => '0');
+    ELSIF alert_latch = '1' THEN
+      s_reg8A <= alert_data;
+    ELSIF falling_edge(s_fifo_rdclk) THEN
+      s_reg8A <= (OTHERS => '0');
+    END IF;
+  END PROCESS;
+
+  -- latch data  from reg8A into reg8 on fifo_rdclk to make it
+  -- available to the MCU to read
+  PROCESS (s_fifo_rdclk, arstn) IS
+  BEGIN
+    IF arstn = '0' THEN                 -- asynchronous reset (active low)
+      s_reg8 <= (OTHERS => '0');
+    ELSIF rising_edge(s_fifo_rdclk) THEN
+      s_reg8 <= s_reg8A;
+    END IF;
+  END PROCESS;
 
   ser_regrd(7 DOWNTO 4) <= serdes_reg(7 DOWNTO 4);
   ser_regrd(3 DOWNTO 0) <=
@@ -123,6 +164,7 @@ BEGIN  -- ARCHITECTURE SYN
     reg5      WHEN addr = "00101" ELSE
     reg6      WHEN addr = "00110" ELSE
     reg7      WHEN addr = "00111" ELSE
+    s_reg8    WHEN addr = "01000" ELSE
     ser_regrd WHEN addr(4) = '1' ELSE
     "11111111";
   
