@@ -1,4 +1,4 @@
--- $Id: TCPU_C_TOP.vhd,v 1.10 2009-03-17 19:59:58 jschamba Exp $
+-- $Id: TCPU_C_TOP.vhd,v 1.11 2009-04-06 14:28:36 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU C TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2009-03-17
+-- Last update: 2009-04-01
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -193,7 +193,7 @@ END TCPU_C_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_C_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"8b";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"8c";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -794,13 +794,14 @@ BEGIN
     serdes_trigger WHEN OTHERS;
 
   -- shift register to delay the trigger pulse phase relative to the 40MHz clock:
+  -- move to opposite clock edge of 240MHz in version 0x8c to move another 2.2ns
   trigger_shiftreg : lpm_shiftreg GENERIC MAP (
     lpm_direction => "RIGHT",
     lpm_type      => "LPM_SHIFTREG",
     lpm_width     => 6)
     PORT MAP (
       sclr    => sm_reset,
-      clock   => pll_240mhz,
+      clock   => NOT pll_240mhz,
       shiftin => trigger_pulse,
       q       => trigger_delay);
   -- trigger_delay vector provides 6 different phases of trigger pulse
