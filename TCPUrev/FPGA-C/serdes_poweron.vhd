@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.7 2009-03-17 19:59:27 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.8 2009-04-07 22:27:44 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron for TCPU
 -- Project    : TCPU_B_TOP
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2009-03-17
+-- Last update: 2009-04-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -54,14 +54,6 @@ ARCHITECTURE a OF serdes_poweron IS
   CONSTANT LOCK_PATTERN_THUB : std_logic_vector := "000001001000110100";
   CONSTANT LOCK_PATTERN_TCPU : std_logic_vector := "000100001100100001";
   CONSTANT SYNC_PATTERN      : std_logic_vector := "000000000111111111";
-
-  COMPONENT mux18x2 IS
-    PORT (
-      data0x : IN  std_logic_vector (17 DOWNTO 0);
-      data1x : IN  std_logic_vector (17 DOWNTO 0);
-      sel    : IN  std_logic;
-      result : OUT std_logic_vector (17 DOWNTO 0));
-  END COMPONENT mux18x2;
 
   TYPE poweron_state IS (
     PO_INIT,
