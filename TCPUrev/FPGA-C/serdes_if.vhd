@@ -1,4 +1,4 @@
--- $Id: serdes_if.vhd,v 1.4 2009-03-13 19:06:35 jschamba Exp $
+-- $Id: serdes_if.vhd,v 1.5 2009-04-07 21:31:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_IF
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-11-14
--- Last update: 2009-03-11
+-- Last update: 2009-04-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -67,6 +67,7 @@ ARCHITECTURE a OF serdes_if IS
 
   SIGNAL s_ch_ready   : std_logic;
   SIGNAL s_txd        : std_logic_vector (17 DOWNTO 0);
+  SIGNAL s_rxd        : std_logic_vector (17 DOWNTO 0);
   SIGNAL dff1_q       : std_logic;
   SIGNAL dff2_q       : std_logic;
   SIGNAL dff3_q       : std_logic;
@@ -85,6 +86,7 @@ ARCHITECTURE a OF serdes_if IS
   SIGNAL bdff1_q      : std_logic;
   SIGNAL bdff2_q      : std_logic;
   SIGNAL bdff3_q      : std_logic;
+  SIGNAL latch_rst_n  : std_logic;
 
   FUNCTION bool2sl (b : boolean) RETURN std_logic IS
   BEGIN
@@ -121,7 +123,20 @@ BEGIN
   ff2_aresetn  <= s_ch_ready;
   bff1_aresetn <= s_ch_ready;
   bff2_aresetn <= s_ch_ready;
+  latch_rst_n  <= s_ch_ready;
 
+-----------------------------------------------------------------------------
+-- Latch received serdes data with receive clock
+-----------------------------------------------------------------------------
+  PROCESS (rclk, latch_rst_n) IS
+  BEGIN
+    IF latch_rst_n = '0' THEN           -- asynchronous reset (active low)
+      s_rxd <= (OTHERS => '0');
+    ELSIF rising_edge(rclk) THEN
+      s_rxd <= rxd;
+    END IF;
+  END PROCESS;
+  
 ------------------------------------------------------------------------------------
 --      Trigger decode
 ------------------------------------------------------------------------------------
@@ -138,8 +153,8 @@ BEGIN
       dff3_q <= '0';
       
     ELSIF rising_edge(clk) THEN
-      IF rxd(15 DOWNTO 12) = "0000" THEN
-        dff1_q <= rxd(17);
+      IF s_rxd(15 DOWNTO 12) = "0000" THEN
+        dff1_q <= s_rxd(17);
       ELSE
         dff1_q <= '0';
       END IF;
@@ -160,8 +175,8 @@ BEGIN
       dff7_q <= '0';
       
     ELSIF rising_edge(clk) THEN
-      IF rxd(15 DOWNTO 12) = "0001" THEN
-        dff4_q <= rxd(17);
+      IF s_rxd(15 DOWNTO 12) = "0001" THEN
+        dff4_q <= s_rxd(17);
       ELSE
         dff4_q <= '0';
       END IF;
@@ -189,7 +204,7 @@ BEGIN
       bdff1_q <= '0';
       
     ELSIF rising_edge(clk) THEN
-      IF rxd(17 DOWNTO 11) = "0100100" THEN
+      IF s_rxd(17 DOWNTO 11) = "0100100" THEN
         bdff1_q <= '1';
       ELSE
         bdff1_q <= '0';
@@ -206,7 +221,7 @@ BEGIN
       bdff3_q <= '0';
       
     ELSIF rising_edge(clk) THEN
-      IF rxd(17 DOWNTO 11) = "0100101" THEN
+      IF s_rxd(17 DOWNTO 11) = "0100101" THEN
         bdff2_q <= '1';
       ELSE
         bdff2_q <= '0';
