@@ -1,4 +1,4 @@
--- $Id: TCPU_C_TOP.vhd,v 1.11 2009-04-06 14:28:36 jschamba Exp $
+-- $Id: TCPU_C_TOP.vhd,v 1.12 2009-04-08 16:49:24 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCPU C TOP
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2009-04-01
+-- Last update: 2009-04-07
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -75,6 +75,7 @@ ENTITY TCPU_C_TOP IS
       c1_trigger        : OUT std_logic;
       c1_clk_10mhz      : OUT std_logic;
       c1_dmult          : IN  std_logic_vector (3 DOWNTO 0);  -- W1 thru V1
+      c1_mcu_resetb     : OUT std_logic;
 
       --
       -- BANK 2, Schematic Sheet 8, USB Interface --
@@ -193,7 +194,7 @@ END TCPU_C_TOP;  -- end.entity
 
 ARCHITECTURE a OF TCPU_C_TOP IS
 
-  CONSTANT TCPU_VERSION : std_logic_vector := x"8c";
+  CONSTANT TCPU_VERSION : std_logic_vector := x"8d";
 
   TYPE SState_type IS (s1, s2, s3, s4);
   SIGNAL sState, sStateNext : SState_type;
@@ -402,6 +403,7 @@ ARCHITECTURE a OF TCPU_C_TOP IS
   SIGNAL serdes_areset_n : std_logic;
   SIGNAL serdes_ready    : std_logic;
   SIGNAL serdes_b_rst    : std_logic;
+  SIGNAL ser_tx_clk      : std_logic;
 
   SIGNAL serdesFifo_rdreq : std_logic;
   SIGNAL serdesFifo_aclr  : std_logic;
@@ -439,6 +441,7 @@ BEGIN
 
   -- these signals have no source, so set them to some default now
   c2_mcu_resetb     <= '1';
+  c1_mcu_resetb     <= '1';
   pld_serout        <= '0';
   c1_ddaisy_clk     <= '0';
   c1_dspare_out1    <= '0';
@@ -448,21 +451,27 @@ BEGIN
   c2_dspare_out1    <= '0';
   c2_flex_reset_out <= '0';
   c2_dconfig_out    <= '0';
-  test17            <= '0';
-  test15            <= '0';
-  test13            <= '0';
-  test11            <= '0';
-  test9             <= '0';
-  test7             <= '0';
-  test6             <= '0';
-  test5             <= '0';
-  test3             <= '0';
-  test2             <= '0';
   reg_clr           <= '0';
   pll_bwsel         <= "00";
   pll_frqsel        <= "000";
   pll_infrqsel      <= "010";
   pll_bwboost       <= '0';
+
+  -- test header:
+  test17 <= '0';
+  test15 <= '0';
+  test13 <= '0';
+  test11 <= '0';
+  test9  <= '0';
+  test7  <= '0';
+  test6  <= '0';
+  test5  <= '0';
+--  test4 <= s_c1_trigger;
+  test4  <= '0';
+  test3  <= '0';
+  test2  <= '0';
+--  test1 <= pld_clkin1;
+  test1  <= '0';
 
   pld_led <= NOT pll_locked;
 
@@ -477,15 +486,13 @@ BEGIN
   global_clk_buffer1 : global PORT MAP (a_in => pld_clkin1, a_out => clk_40mhz);
   global_clk_buffer2 : global PORT MAP (a_in => pll_20mhz, a_out => clk_20mhz);
 
-  -- test header:
-  test1 <= pld_clkin1;
-  test4 <= s_c1_trigger;
-
 --**********************************************************************************
 -- Control for serial THUB link
 --********************************************************************************** 
+  ser_tx_clk <= clk_20mhz;
+--  ser_tx_clk  <= ser_rec_clk;
 
-  th_tclk     <= ser_rec_clk;           -- recovered receive clock
+  th_tclk     <= ser_tx_clk;
   th_refclk   <= clk_20mhz;
   th_local_le <= '0';                   -- DISABLE LOCAL LOOPBACK
   th_line_le  <= '0';                   -- DISABLE LINE LOOPBACK
@@ -794,7 +801,7 @@ BEGIN
     serdes_trigger WHEN OTHERS;
 
   -- shift register to delay the trigger pulse phase relative to the 40MHz clock:
-  -- move to opposite clock edge of 240MHz in version 0x8c to move another 2.2ns
+  -- use trailing edge to move trigger by another half 240MHz clock cycle 
   trigger_shiftreg : lpm_shiftreg GENERIC MAP (
     lpm_direction => "RIGHT",
     lpm_type      => "LPM_SHIFTREG",
@@ -1002,10 +1009,10 @@ BEGIN
       wrsync_delaypipe       => 4)
     PORT MAP (
       wrclk   => clk_40mhz,
-      rdreq   => serdesFifo_rdreq,
-      aclr    => serdesFifo_aclr,
-      rdclk   => ser_rec_clk,
       wrreq   => finalFifo_wrreq,
+      rdreq   => serdesFifo_rdreq,
+      rdclk   => ser_tx_clk,
+      aclr    => serdesFifo_aclr,
       data    => finalFifo_data,
       rdempty => serdesFifo_empty,
       q       => serdesFifo_q
@@ -1069,7 +1076,7 @@ BEGIN
 
   -- "Serialize" the data from the Serdes FIFO and send it over SerDes to THUB
   serdes_ser_inst : serdes_serializer PORT MAP (
-    clk20mhz     => ser_rec_clk,
+    clk20mhz     => ser_tx_clk,
     areset_n     => serdes_ready,
     txfifo_empty => serdesFifo_empty,
     txfifo_q     => serdesFifo_q,
