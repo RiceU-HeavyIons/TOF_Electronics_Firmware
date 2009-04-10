@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.26 2008-09-17 21:06:14 jschamba Exp $
+; $Id: CANHLP.asm,v 1.27 2009-04-10 14:37:32 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -43,7 +43,7 @@
 
 #define		_CAN_TXB0SIDH	(HLP_CAN_NODEID & 0x7F) << 1	; SIDH for TX ID
 
-    EXTERN  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+    EXTERN  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay, checkAlertFlag
 
     EXTERN  jtGetIDCode, jtGetUserCode
 
@@ -155,20 +155,22 @@ TofHandleWrite:
     bra     is_it_MCU_RDOUT_MODE    ; false: test next command
     call    TofWriteReg             ; true: write PLD register
     return
+
 is_it_MCU_RDOUT_MODE:
     ;**************************************************************
     ;****** Set MCU DATA Readout Mode: ****************************
     ;* msgID = 0x402
     ;* RxData[0] = 0xa
-    ;* RxData[1] = 1: Don't read PLD data
-    ;*           = 0: Read PLD data and send it
+    ;* RxData[1] = 0: Don't read PLD TCD data
+    ;*           != 0: Read PLD TCD data and send it
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0A                ; if (RxData[0] == 0x0a)
     bnz     is_it_CAN_TESTMSG_MODE  ; false: test next command
-    call    TofSetRDOUT_MODE        ; true: set MCU DATA Readout Mode
+    movff   RxData+1, QuietFlag     ; set QuietFlag to received data
     call    HLPSendWriteResponseOK  ; send response    
     return
+
 is_it_CAN_TESTMSG_MODE:
     ;**************************************************************
     ;****** Set MCU CAN Test Message Mode: ************************
@@ -179,7 +181,7 @@ is_it_CAN_TESTMSG_MODE:
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0B                ; if (RxData[0] == 0x0b)
-    bnz     is_it_programPLD    ; false: test next command
+    bnz     is_it_SETALERT_MODE     ; false: test next command
     call    TofSetCANTestMsg_MODE   ; true: set CAN Test Msg Mode
     call    HLPSendWriteResponseOK  ; send response    
 	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
@@ -187,6 +189,22 @@ is_it_CAN_TESTMSG_MODE:
     clrf    TXB0D1
     clrf    TXB0D0
     return
+
+is_it_SETALERT_MODE:
+    ;**************************************************************
+    ;****** Set MCU ALERT DATA Readout Mode: **********************
+    ;* msgID = 0x402
+    ;* RxData[0] = 0xc
+    ;* RxData[1] = 0: read PLD Alert data and send it
+    ;*           != 0: don't read PLD Alert data
+    ;**************************************************************
+    movf    RxData,W            ; WREG = RxData
+    sublw   0x0C                ; if (RxData[0] == 0x0a)
+    bnz     is_it_programPLD  ; false: test next command
+    movff   RxData+1, checkAlertFlag     ; set checkAlertFlag to received data
+    call    HLPSendWriteResponseOK  ; send response    
+    return
+
 is_it_programPLD:
     movf    RxData,W            ; WREG = RxData
     andlw   0xF8
@@ -363,13 +381,6 @@ unknown_message:
 ;**************************************************************
 ;* CAN "Write" Commands
 ;**************************************************************
-TofSetRDOUT_MODE:
-    ;**************************************************************
-    ;****** Set Readout Mode **************************************
-    ;**************************************************************
-    movff   RxData+1, QuietFlag
-    return
-
 TofSetCANTestMsg_MODE:
     ;**************************************************************
     ;****** Set CAN Test Msg Mode *********************************
