@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.29 2009-03-09 17:58:53 jschamba Exp $
+; $Id: main.asm,v 1.30 2009-04-10 14:40:00 jschamba Exp $
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *
@@ -112,9 +112,10 @@ RxDtLngth       RES     01  ; CAN Message length
 RxFlag          RES     01  ; Receive flag
 QuietFlag       RES     01  ; Boolean for micro loop
 CANTestDelay    RES     01  ; Boolean and delay for sending CAN test messages in a loop
+checkAlertFlag  RES     01  ; Boolean for Alert messages from PLD
 temp_1          RES     1
 temp_2          RES     1
-        GLOBAL  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay
+        GLOBAL  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay, checkAlertFlag
 
 ;		UDATA_ACS
 ;
@@ -237,7 +238,8 @@ Main:
 
 	call InitMicro  	;  Initialize all features / IO ports
     mAsSelect 0         ;  Set FPGA progamming lines to FPGA M (0)
-    setf QuietFlag,0    ;  Initially don't send any PLD data (QuietFlag = 0xff)
+    clrf QuietFlag,0    ;  Initially don't send any PLD TCD data (QuietFlag = 0)
+    setf checkAlertFlag,0    ;  Initially don't send any PLD Alert data (checkAlertFlag = 0xff)
     clrf CANTestDelay,0 ;  Initially don't send CAN test messages (CANTestDelay = 0)
 
 ;; calibrate the PLL:
@@ -360,6 +362,7 @@ FPGA_NOT_PROGRAMMED:
     movwf   POSTINC0
     movwf   POSTINC0
     movwf   POSTINC0
+
 ; Send ALERT message (command = 7, msgID = 0x407)
     mCANSendAlert  4
 
@@ -372,12 +375,63 @@ MicroLoop:
     tstfsz  CANTestDelay,0  ; CANTestDelay in access bank
     bra     CanTxTestMsg    ; send CAN test message in a loop
     tstfsz  QuietFlag,0     ; QuietFlag in access bank   
-    bra     QuietLoop       ; if QuietFlag != 0, don't get PLD data
-; get data from the PLD, if any, and send it over CANbus
-    call    getPLDData
+    call    getPLDData      ; if QuietFlag != 0, get PLD Trigger data
+    tstfsz  checkAlertFlag,0    ; if checkAlertFlag is 0, check register 0x88
+    bra     QuietLoop       ; otherwise just check for received CAN message
+
+    ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+    ;; send PLD data in register 0x88 as ALERT message, if there are any
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    ; setup address pointer to CAN payload
+    lfsr    FSR0, TXB0D0
+    ; fill Txbuffer with default data
+    movlw   0xFF
+    movwf   POSTINC0
+    movlw   0x00
+    movwf   POSTINC0
+    movwf   POSTINC0
+    movwf   POSTINC0
+
+    ; read register 0x88, 
+    ; contains PLD data to send or 0x0 if nothing to send
+    banksel uc_fpga_DATA
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
+    movlw   0x88   
+    movwf   uc_fpga_DATA    ; put WREG as register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+
+    setf    uc_fpga_DATADIR ; set DATA PORT as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
+    bsf     uc_fpga_DS      ; DS hi
+    movff   uc_fpga_DATA, TXB0D1 ; move DATA PORT data to CAN TX buffer
+    bcf     uc_fpga_DS      ; DS lo
+
+    ; test if PLD data not zero:
+    tstfsz  TXB0D1,1      	; if (TXB0D2 == 0), use BSR
+    bra     sendMsg         ; true: valid PLD Data read, send alert message
+    bra     QuietLoop       ; false: continue checking for received messages
+
+sendMsg:
+    ; Fill in transmit buffer and send alert message
+    lfsr    FSR0, TXB0D0
+    movlw   0xFF
+    movwf   INDF0
+    lfsr    FSR0, TXB0D2
+    movlw   0x00
+    movwf   POSTINC0
+    movwf   POSTINC0
+    mCANSendAlert  4
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; now continue with checking the CAN receive buffer for messages
 ; loop until we receive a CANbus message with the above filters
 QuietLoop:
-
 	btfss	RXB0CON, RXFUL		; Is there a message waiting?
     bra     MicroLoop           ; If not, continue looping
 
@@ -457,7 +511,7 @@ getPLDData:
 	bra		$ - 2
 
     ; setup address pointer to CAN payload
-    ; send TCD data with LSB in Rx[0], 0xa in Rx[3]
+    ; send TCD data with LSB in Tx[0], 0xa in Tx[3]
     lfsr    FSR0, TXB0D3
 
     movlw   0xa0
