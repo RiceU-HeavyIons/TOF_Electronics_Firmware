@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.27 2009-04-10 14:37:32 jschamba Exp $
+; $Id: CANHLP.asm,v 1.28 2009-04-13 15:11:28 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -925,6 +925,7 @@ TofReadSiID:
     mAsReadSiliconID    TXB0D0
     ; set FPGA programming lines to device H (= 8)
     mAsSelect 8
+    banksel TXB0CON
     mCANSendRdResponse  1
     return                  ; back to receiver loop
 
