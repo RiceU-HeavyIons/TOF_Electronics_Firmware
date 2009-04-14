@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.39 2009-04-03 20:12:17 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.40 2009-04-14 16:18:14 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-04-03
+-- Last update: 2009-04-10
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -184,6 +184,7 @@ ARCHITECTURE a OF master_fpga IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
+      special_wr : OUT std_logic;       -- FECTRL with "special" parameter "0xabc0"
       event_read : OUT std_logic;
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
@@ -331,6 +332,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_l2runReset   : std_logic;
   SIGNAL s_event_read   : std_logic;
   SIGNAL s_l2event_read : std_logic;
+  SIGNAL s_special_wr   : std_logic;
+  SIGNAL s_l2special_wr : std_logic;
   SIGNAL s_stage1       : std_logic;
   SIGNAL s_stage2       : std_logic;
 
@@ -818,6 +821,7 @@ BEGIN
     foTEN_N    => s_l2foTEN_N,
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_l2runReset,         -- external logic reset at run start
+    special_wr => s_l2special_wr,       -- indicates FECTRL with parameter "0xabc0"
     event_read => s_l2event_read,       -- indicates run in progress
     reset      => '0',                  -- reset,
     fifo_q     => l2ddl_data,  -- "data" from external FIFO with event data
@@ -867,6 +871,7 @@ BEGIN
     foTEN_N    => s_foTEN_N,
     ext_trg    => '0',                  -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
+    special_wr => s_special_wr,         -- use this for CANbus alert message
     event_read => s_event_read,         -- indicates run in progress
     reset      => '0',                  -- reset,
     fifo_q     => ddl_data,       -- "data" from external FIFO with event data
@@ -976,7 +981,7 @@ BEGIN
       reg6          => s_reg6,
       reg7          => s_reg7,
       alert_data    => "01010101",
-      alert_latch   => s_master_rst,
+      alert_latch   => s_special_wr,
       serdes_reg    => s_serdes_reg,
       serdes_statma => sa_smif_datain(13 DOWNTO 10),
       serdes_statmb => sb_smif_datain(13 DOWNTO 10),
