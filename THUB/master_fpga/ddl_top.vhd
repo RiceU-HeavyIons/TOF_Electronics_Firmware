@@ -1,4 +1,4 @@
--- $Id: ddl_top.vhd,v 1.2 2008-03-11 15:59:17 jschamba Exp $
+-- $Id: ddl_top.vhd,v 1.3 2009-04-14 16:16:20 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : DDL
 -- Project    : TOF
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2004-12-09
--- Last update: 2008-03-05
+-- Last update: 2009-04-10
 -- Platform   : 
 -------------------------------------------------------------------------------
 -- Description: Top Level Component for the DDL interface
@@ -39,6 +39,7 @@ ENTITY ddl IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
+      special_wr : OUT std_logic;       -- FECTRL with "special" parameter "0xabc0"
       event_read : OUT std_logic;       -- indicates run in progress
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
@@ -84,6 +85,7 @@ ARCHITECTURE a OF ddl IS
       reg_load    : OUT std_logic;
       reg_read    : OUT std_logic;
       reg_lock    : OUT std_logic;
+      special_wr  : OUT std_logic;
       tid         : OUT std_logic_vector (3 DOWNTO 0);
       fiD         : IN  std_logic_vector (31 DOWNTO 0);
       fiTEN_N     : IN  std_logic;
@@ -264,6 +266,7 @@ BEGIN
     reg_load    => s_reg_load,
     reg_read    => s_reg_read,
     reg_lock    => s_reg_lock,
+    special_wr  => special_wr,
     tid         => s_tid,
     fiD         => fiD,
     fiTEN_N     => fiTEN_N,
