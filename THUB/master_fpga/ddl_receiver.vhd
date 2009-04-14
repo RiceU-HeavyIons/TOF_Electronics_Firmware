@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_receiver.vhd,v 1.2 2006-12-06 21:45:44 jschamba Exp $
+-- $Id: ddl_receiver.vhd,v 1.3 2009-04-14 16:15:21 jschamba Exp $
 --******************************************************************************
 --*  ddl_receiver.vhd
 --*
@@ -31,6 +31,7 @@ ENTITY ddl_receiver IS
     reg_load    : OUT std_logic;
     reg_read    : OUT std_logic;
     reg_lock    : OUT std_logic;
+    special_wr  : OUT std_logic;
     tid         : OUT std_logic_vector (3 DOWNTO 0);
     fiD         : IN  std_logic_vector (31 DOWNTO 0);
     fiTEN_N     : IN  std_logic;
@@ -127,6 +128,13 @@ BEGIN
       ELSE
         im_dinval <= '0';
         im_din    <= (OTHERS => '0');
+      END IF;
+
+      -- raise the "special_wr" when the parameter to a FECTRL is 0xabc0
+      IF ((input_present = IS_FECTRL) AND (command_param(15 DOWNTO 0) = x"abc0")) THEN
+        special_wr <= '1';
+      ELSE
+        special_wr <= '0';
       END IF;
 
       IF (input_present = IS_FECTRL) THEN
