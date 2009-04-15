@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.7 2008-06-19 16:49:10 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.8 2009-04-15 19:52:35 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -197,7 +197,7 @@ END TDIG;  -- end.entity
 
 ARCHITECTURE a OF TDIG IS
 
-  CONSTANT TDIG_VERSION : std_logic_vector := x"74";
+  CONSTANT TDIG_VERSION : std_logic_vector := x"78";
 
   SIGNAL global_40mhz                       : std_logic;  -- global clock signal
   SIGNAL byteblaster_tdi                    : std_logic;
@@ -624,9 +624,9 @@ BEGIN
 
 -- 5. TEST STROBES ********************************************************************
 
-  h2_rst <= TDC_reset;
-  h1_rst <= TDC_reset;
-  h3_rst <= TDC_reset;
+  h2_rst <= TDC_reset OR bunch_rst;
+  h1_rst <= TDC_reset OR bunch_rst;
+  h3_rst <= TDC_reset OR bunch_rst;
 
   -- *****************************************************************************************
   --            6. JTAG readout from TDCs
@@ -723,9 +723,13 @@ BEGIN
 
 
   -- Bunch reset
-  h1_bunch_rst <= bunch_rst;
-  h2_bunch_rst <= bunch_rst;
-  h3_bunch_rst <= bunch_rst;
+  h1_bunch_rst <= '0';
+  h2_bunch_rst <= '0';
+  h3_bunch_rst <= '0';
+
+--  h1_bunch_rst <= bunch_rst;
+--  h2_bunch_rst <= bunch_rst;
+--  h3_bunch_rst <= bunch_rst;
 
   -- Event reset select logic
   event_reset <= mcu_strobe_short8 WHEN config0_data(6) = '1' ELSE '0';
@@ -784,6 +788,10 @@ BEGIN
 
   -- END OF BYTEBLASTER / TDC HOOKUP
   --------------------------------------------------------------------------------------------
+
+--  test3  <= pld_clkin1;
+--  test5  <= trigger;
+--  test7  <= bunch_rst;
 
   test3  <= '0';
   test5  <= '0';
