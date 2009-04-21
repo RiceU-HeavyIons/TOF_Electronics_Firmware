@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.40 2009-04-14 16:18:14 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.41 2009-04-21 16:11:00 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-04-10
+-- Last update: 2009-04-20
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -1034,8 +1034,8 @@ BEGIN
     s_internal_plsr <=
     counter23b_q(22) WHEN "00",         -- ~1.2 Hz
     counter23b_q(18) WHEN "01",         -- ~19 Hz
-    counter23b_q(16) WHEN "10",         -- ~76 Hz
-    counter23b_q(13) WHEN OTHERS;       -- ~610 Hz
+    counter23b_q(15) WHEN "10",         -- ~152 Hz
+    counter23b_q(11) WHEN OTHERS;       -- ~2440 Hz
 
   -- pulser trigger: shorten counter signal to 25ns
   shorten_pls : PROCESS (globalclk) IS
