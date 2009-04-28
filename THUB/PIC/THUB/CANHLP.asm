@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.28 2009-04-13 15:11:28 jschamba Exp $
+; $Id: CANHLP.asm,v 1.29 2009-04-28 22:59:28 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -450,6 +450,13 @@ TofProgramPLD:
     movf    RxData,W        ; WREG = RxData
     sublw   0x20
     bnz     is_it_writeAddress
+    
+    ; first turn off all PLD register stuff
+    clrf QuietFlag,0        ;  don't send any PLD TCD data (QuietFlag = 0)
+    setf checkAlertFlag,0   ;  don't send any PLD Alert data (checkAlertFlag = 0xff)
+    clrf CANTestDelay,0     ;  don't send CAN test messages (CANTestDelay = 0)
+
+    ; PLD number is in RxData[1]
     movf    RxData+1,W
     call    asSelect
     call    asStart
