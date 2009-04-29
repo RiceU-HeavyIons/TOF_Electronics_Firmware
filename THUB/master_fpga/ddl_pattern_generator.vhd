@@ -1,4 +1,4 @@
--- $Id: ddl_pattern_generator.vhd,v 1.2 2007-11-26 22:01:56 jschamba Exp $
+-- $Id: ddl_pattern_generator.vhd,v 1.3 2009-04-29 15:13:07 jschamba Exp $
 --*************************************************************************
 --*  ddl_pattern_generator.vhd : Pattern generator module.
 --*
@@ -56,6 +56,7 @@ ARCHITECTURE SYN OF ddl_pattern_generator IS
     TXEVID,
     TXDATA,
     TXIDLE,
+    TXNOTIDLE,
     TXDTSW,
     WAITGAP
     );
@@ -65,9 +66,10 @@ ARCHITECTURE SYN OF ddl_pattern_generator IS
 
 BEGIN
 
-  s_suspend   <= (suspend OR fifo_empty) WHEN (ps_reg(2 DOWNTO 0) = FIFO_OUT) ELSE suspend;
   -- this following variable allows FIFO_OUT for both (ps_reg = 0) and (ps_reg = 1)
   is_fifo_out <= (ps_reg(2 DOWNTO 0) = FIFO_OUT) OR (ps_reg(2 DOWNTO 0) = "000");
+
+  s_suspend   <= suspend;
 
   main : PROCESS (clock, arstn)
     VARIABLE pg_present : pg_state;
@@ -279,13 +281,20 @@ BEGIN
         WHEN TXDATA =>
           datao <= ('0' & pgdata);
           IF (is_fifo_out) THEN
-            datao_valid <=  NOT (fifo_empty OR block_end);
+            datao_valid <=  NOT (fifo_empty OR block_end OR s_suspend);
           ELSE
             datao_valid <= '1';
           END IF;
         WHEN TXIDLE =>
           datao       <= ('0' & pgdata);
           datao_valid <= '0';
+        WHEN TXNOTIDLE =>
+          datao <= ('0' & pgdata);
+          IF (is_fifo_out) THEN
+            datao_valid <=  NOT (fifo_empty OR block_end);
+          ELSE
+            datao_valid <= '1';
+          END IF;
         WHEN TXDTSW =>
           datao       <= ('1' & dtstw);
           datao_valid <= '1';
@@ -335,13 +344,22 @@ BEGIN
             pg_next := TXDATA;
           END IF;
         WHEN TXIDLE =>
-          IF (s_suspend = '0') THEN
+          IF ((s_suspend = '0') AND (fifo_empty = '0')) THEN
+            pg_next := TXNOTIDLE;
+          ELSIF ((s_suspend = '0') AND (fifo_empty = '1')) THEN
             pg_next := TXDATA;
           ELSIF (enable = '0') THEN     -- 22.03.2002
             pg_next := IDLE;            -- 22.03.2002
           ELSE
             pg_next := TXIDLE;
           END IF;
+          
+        WHEN TXNOTIDLE =>
+          -- JS: extra state added, since rdeq sometimes advances FIFO after a
+          -- LinkFull, before the last word has been transfered.
+          -- So this state transfers the current FIFO output without a RDREQ 
+          pg_next := TXDATA;
+
         WHEN TXDTSW =>
           pg_next := WAITGAP;
         WHEN WAITGAP =>
@@ -356,11 +374,11 @@ BEGIN
       fifo_rdreq <= bool2sl(pg_next = TXDATA);
 
       counter_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
-      counter_enable := (pg_next = TXDATA);
+      counter_enable := (pg_next = TXDATA OR pg_next = TXNOTIDLE);
       shiftrg_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
-      shiftrg_enable := (pg_next = TXDATA);
+      shiftrg_enable := (pg_next = TXDATA OR pg_next = TXNOTIDLE);
       alterrg_init   := (pg_next = INITPG1 OR pg_next = TXDTSW);
-      alterrg_enable := (pg_next = TXDATA);
+      alterrg_enable := (pg_next = TXDATA OR pg_next = TXNOTIDLE);
 
     END IF;
   END PROCESS main;
