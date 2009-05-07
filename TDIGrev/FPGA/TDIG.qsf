@@ -196,7 +196,6 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD LVTTL
 set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION ON
-set_global_assignment -name USE_CONFIGURATION_DEVICE ON
 set_global_assignment -name GENERATE_RBF_FILE ON
 set_global_assignment -name GENERATE_SVF_FILE ON
 set_global_assignment -name GENERATE_JAM_FILE ON
