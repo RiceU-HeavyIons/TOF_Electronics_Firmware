@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.8 2009-04-15 19:52:35 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.9 2009-05-07 14:19:43 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -53,16 +53,16 @@ ENTITY TDIG IS
       usb_if_clk     : OUT std_logic;                      -- C2
       usb_wakeup     : OUT std_logic;                      -- D1
 
-      usb_flagb     : IN    std_logic;  -- D4
-      usb_24m_clk   : OUT   std_logic;  -- D5 ON SCHEMATIC AS USB_CLK_FPGA
-      usb_ready     : IN    std_logic;  -- D6  dedicated clk input
-      usb_intb      : IN    std_logic;  -- E1  dedicated clk input
-      usb_sloe      : OUT   std_logic;  -- E2
-      usb_adr       : OUT   std_logic_vector (2 DOWNTO 0);   -- E3,J3,J2
-      pld_usb       : INOUT std_logic_vector (15 DOWNTO 0);  -- H6 thru E4
-      usb_flagc     : IN    std_logic;  -- J1
-      usb_pktend    : OUT   std_logic;  -- J4
-      usb_slcsb     : OUT   std_logic;  -- J5
+      usb_flagb   : IN    std_logic;    -- D4
+      usb_24m_clk : OUT   std_logic;    -- D5 ON SCHEMATIC AS USB_CLK_FPGA
+      usb_ready   : IN    std_logic;    -- D6  dedicated clk input
+      usb_intb    : IN    std_logic;    -- E1  dedicated clk input
+      usb_sloe    : OUT   std_logic;    -- E2
+      usb_adr     : OUT   std_logic_vector (2 DOWNTO 0);   -- E3,J3,J2
+      pld_usb     : INOUT std_logic_vector (15 DOWNTO 0);  -- H6 thru E4
+      usb_flagc   : IN    std_logic;    -- J1
+      usb_pktend  : OUT   std_logic;    -- J4
+      usb_slcsb   : OUT   std_logic;    -- J5
 
       --
       -- BANK 3, Schematic Sheet 6, H1 and H2 Interface -- 
@@ -197,7 +197,7 @@ END TDIG;  -- end.entity
 
 ARCHITECTURE a OF TDIG IS
 
-  CONSTANT TDIG_VERSION : std_logic_vector := x"78";
+  CONSTANT TDIG_VERSION : std_logic_vector := x"79";
 
   SIGNAL global_40mhz                       : std_logic;  -- global clock signal
   SIGNAL byteblaster_tdi                    : std_logic;
@@ -274,6 +274,11 @@ ARCHITECTURE a OF TDIG IS
   SIGNAL board_position                         : std_logic_vector(2 DOWNTO 0);
   SIGNAL gate_delay, gate_width                 : std_logic_vector(3 DOWNTO 0);
   SIGNAL end_of_gate_value, prog_gate_width     : std_logic_vector(3 DOWNTO 0);
+
+  -- bunch reset timing signals
+  SIGNAL br_inclk, br_outclk : std_logic;
+  SIGNAL s_bunchrst_in       : std_logic;
+  SIGNAL s_bunchrst_out      : std_logic;
 
   CONSTANT zero_byte      : std_logic_vector := x"00";
   CONSTANT five_five_byte : std_logic_vector := x"55";
@@ -578,11 +583,11 @@ BEGIN
   data15x(5)          <= mcu_fifo_parity;
   data15x(4 DOWNTO 0) <= mcu_fifo_level;
 
-  status3_data(0) <= h1_error;
-  status3_data(1) <= h2_error;
-  status3_data(2) <= h3_error;
-  status3_data(7 DOWNTO  3) <= config3_data(7 DOWNTO 3);
-  
+  status3_data(0)          <= h1_error;
+  status3_data(1)          <= h2_error;
+  status3_data(2)          <= h3_error;
+  status3_data(7 DOWNTO 3) <= config3_data(7 DOWNTO 3);
+
   WITH mcu_adr SELECT
     output_data <=
     config0_data  WHEN x"0",
@@ -624,9 +629,35 @@ BEGIN
 
 -- 5. TEST STROBES ********************************************************************
 
-  h2_rst <= TDC_reset OR bunch_rst;
-  h1_rst <= TDC_reset OR bunch_rst;
-  h3_rst <= TDC_reset OR bunch_rst;
+
+  -- make input latch clock for bunch reset board position dependent
+  WITH board_position SELECT
+    br_inclk <=
+    NOT global_40mhz WHEN "000",
+    NOT global_40mhz WHEN "100",
+    global_40mhz     WHEN OTHERS;
+
+  -- the clock with which the bunch reset is strobed out is fixed:
+  br_outclk <= global_40mhz;
+
+  PROCESS (br_inclk) IS
+  BEGIN
+    IF rising_edge(br_inclk) THEN
+      s_bunchrst_in <= bunch_rst;
+    END IF;
+  END PROCESS;
+
+  PROCESS (br_outclk) IS
+  BEGIN
+    IF rising_edge(br_outclk) THEN
+      s_bunchrst_out <= s_bunchrst_in;
+    END IF;
+  END PROCESS;
+
+
+  h2_rst <= TDC_reset OR s_bunchrst_out;
+  h1_rst <= TDC_reset OR s_bunchrst_out;
+  h3_rst <= TDC_reset OR s_bunchrst_out;
 
   -- *****************************************************************************************
   --            6. JTAG readout from TDCs
@@ -789,9 +820,9 @@ BEGIN
   -- END OF BYTEBLASTER / TDC HOOKUP
   --------------------------------------------------------------------------------------------
 
---  test3  <= pld_clkin1;
---  test5  <= trigger;
---  test7  <= bunch_rst;
+--  test3 <= pld_clkin1;
+--  test5 <= bunch_rst;
+--  test7 <= trigger;
 
   test3  <= '0';
   test5  <= '0';
