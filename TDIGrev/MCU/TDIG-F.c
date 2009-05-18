@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.11 2008-12-01 16:01:28 jschamba Exp $
+// $Id: TDIG-F.c,v 1.12 2009-05-18 20:17:08 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -19,6 +19,80 @@
 */
 
 // main program for PIC24HJxxGP506 as used on TDIG-D, E, F boards
+//      17-Feb-2009 thru 19-Feb-2009, W. Burton
+//          Firmware ID is 0x11 0x58 (11 X)
+//          Add CANBus messge to report HPTDC Configuration (C_RS_CONFIGTDCx)
+//          Add CANBus message to report HPTDC Control word. (C_RS_CONTROLTDCx)
+//          Add facility to copy enable_final[][] into hptdc_control[][] when enable_final is used by reset_hptdc.
+//          "Alarm" is now "Alert" for consistency.
+//      30-Jan-2009 W. Burton
+//          Firmware ID is 0x11 0x57 (11 W)
+//          Add CAN1 error checking / interrupts.
+//      14-Jan-2009 thru 14-Jan-2009, W. Burton
+//          Firmware ID is still 0x11 0x56 (11V)
+//          Remove extraneous CAN1 routines send_CAN1_write_reply(), send_CAN1_alert(), send_CAN1_diagnostic;
+//          these functions are now performed using send_CAN1_message().
+//      10-Dec-2008 thru 17-Dec-2008, W. Burton
+//          Firmware ID is 0x11 0x56 (11V)
+//          Add C_WS_TEMPALARMS: Write Temperature alarm limits.
+//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
+//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
+//              over-temperature limit condition appears.
+//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
+//              Note that MCP9801 temperature chip uses only 9-MS bits for alarm setting.
+//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
+//          Add C_WS_TOGGLETINO: Toggle_TINO_TEST_MCU line function to CANBus protocol.
+//              This feature requires FPGA firmware date 2008-12-11 or later (with TINO_TEST_PLD line
+//              held high.
+//              Generated pulses are approx 130 microseconds wide.
+//              Multiple pulses occur at approx 130 microsecond intervals.
+//              Location "tdcpowerbit" is now called ecsrwbits (for TDC power and TINO TEST).
+//          Fix HPTDC Configuration readback compare indexing error.
+//      12-Nov-2008 thru 14-Nov-2008, W. Burton
+//          Firmware ID is 0x11 0x56 (11V)
+//          Add recognition of "Broadcast" messages to CANBus protocol handlers.
+//              This uses additional filtering and message buffer resources.
+//      10-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Changed Jo's timer stuff from using Timers2/3 to using Timers6/7 because Timer2/3 is the
+//              only set which will drive AD#1
+//          A/D conversion experiments with different modes - now working with sample/convert interrupts.
+//      09-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Add A/D conversion support (Analog inputs from TINO)
+//              initialize_ad_converter(), sample_ad_converter()
+//          Add A/D converstion result to Board Status (0xB0) and temperature (0x09) messages.
+//      08-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          replaced HPTDC.INC file with version from Jo Schambach's email 9/5/2008
+//      05-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Use consolidated CANBus HLP header file and define TDIG symbol.
+//      04-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Add read_threshhold message processing (C_RS_THRESHHOLD)
+//      03-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Limit reading MCU memory to available range to avoid spurious reset (C_RS_MCUMEM).
+//      02-Sep-2008, W. Burton
+//          Firmware ID is 0x11 0x55 (11U)
+//          Add MCU memory address limits to C_WS_TARGETMCU
+//          Symbolify the "Magic Address"
+//          Add function MCU Memory Checksum (from TCPU)
+//          Add function EEPROM2 Memory Checksum (From TCPU)
+//      29-Aug-2008
+//          Start implementing Read EEPROM2 checksum function (C_RS_EEP2CKSUM)
+//      29-Aug-2008,
+//          Firmware ID is 0x11 0x54 (11T)
+//          Lengthen startup clock select (per Jo Schambach version - BNL_20080809)
+//      05-Aug-2008,
+//          Firmware ID is 0x11 0x54 (11T)
+//          Fix EEPROM2 write check for non-multiple-of-8 byte writes.
+//          Add C_RS_EEPROM2 to read EEPROM2 contents
+//      01-Aug-2008, version from J. Schambach (email 7/24/2008)
+//          Add a delay before switching to external (tray) clock.
+//          Include CRT.S to source files in downloaded code.
+//          Rename project names to exclude version number in the name (so it fits in source tree)
 //      22-Jul-2008, W. Burton
 //          Firmware ID is 0x11 0x52  (11R)
 //          Add code for clock-fail detect, clock source switching via CANBus, clock status request via CAN.
@@ -30,7 +104,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'T'      // 0x11 0x54
+#define FIRMWARE_ID_0 'X'      // 0x11 0x58
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -40,6 +114,7 @@
 // WB-11H end
 
 // Define implementation on the TDIG board (I/O ports, etc)
+#define TDIG 1              // This is a TDIG board.
 #define CONFIG_CPU 1		// Make TDIG-D_Board.h define the CPU options
 #include "TDIG-F_Board.h"
 
@@ -59,7 +134,7 @@
 #include "TDIG-F_MCU_PLD.h" // Include for our parallel interface to FPGA
 
 /* define the CAN HLP Packet Format and function codes */
-#include "TDIG-F_CAN_HLP3.h"
+#include "CAN_HLP3.h"       // WB-11U: Use consolidated file
 
 /* This conditional determines whether to actually send CAN packets */
 #define SENDCAN 1           // Define to send
@@ -92,9 +167,9 @@ void clearIntrflags(void);	// Clear interrupt flags
 // Send a CAN message - fills in     board id               message type  number of payload bytes    &payload[0]
 void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
 // void send_CAN1_alert   (unsigned int board_id);
-void send_CAN1_diagnostic (unsigned int board_id, unsigned int bytes, unsigned char *buf);
-void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno,
-							unsigned int index, unsigned char expectedbyte, unsigned char gotbyte);
+// void send_CAN1_diagnostic (unsigned int board_id, unsigned int bytes, unsigned char *buf);
+// void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno,
+//                            unsigned int index, unsigned char expectedbyte, unsigned char gotbyte);
 void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 /* MCU Memory and Reprogramming */
@@ -116,6 +191,11 @@ void write_MCU_pm (unsigned char *, unsigned long);
 void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
+
+// WB-11U: - Prototypes for A/D Converter Routines
+void initialize_ad_converter(void);
+unsigned int sample_ad_converter(unsigned int chan);
+// WB-11U: end
 
 // WB-11P: - Weird looking braces make the compiler happier (eliminates "missing braces" warning).
 //JS: put HPTDC setup bits into program memory, three sets of configurations
@@ -180,6 +260,9 @@ unsigned int block_status;
 unsigned long int block_checksum;
 unsigned long int eeprom_address;
 
+// WB-11W CAN1 error flag
+unsigned int can1error = 0;      // mark for no CAN1 error condition
+
 // Current DAC setting
 unsigned int current_dac;
 
@@ -189,6 +272,19 @@ unsigned int clock_status;      // will get identification from Clock switch/sel
 unsigned int clock_failed = 0;      // will get set by clock fail interrupt
 unsigned int clock_requested;   // will get requested clock ID
                                 // 00 = board, 01= PLL, 08= tray
+// WB-11V: - Temperature alert limits (WB-11X)
+unsigned int mcu_hilimit=0;   // gets upper limit setting for MCU temperature
+unsigned int mcu_lolimit=0;   // gets hysteresis setting for MCU temperature
+unsigned int tino1_limit=0;   // gets limit setting for TINO1 value
+unsigned int tino2_limit=0;   // gets limit setting for TINO2 value
+unsigned int temp_alert=0;    // signals necessity for sending alert message
+unsigned int temp_alert_throttle=0; // delays successive temperature alert messges
+// WB-11V: end
+
+// WB-11U: - A/D converter buffers - Global so they can be filled-in by interrupt routine
+unsigned int tino1;      // gets channel digitized value
+unsigned int tino2;      // gets channel digitized value
+// WB-11U: end
 
 //JS: TIMER STUFF *******************************************************
 #ifndef DOWNLOAD_CODE
@@ -198,20 +294,19 @@ unsigned int timerExpired = 0;
 
 int main()
 {
-#if !defined (DOWNLOAD_CODE)
+    unsigned long int lwork;
     unsigned long int lwork2;
-#endif
-    unsigned int save_SR;           // image of status register while we block interrupts
+    unsigned long int lwork3;
    	unsigned long int laddrs;
-    unsigned long lwork;
+    unsigned int save_SR;           // image of status register while we block interrupts
     unsigned int i, j, k, l;        // working indexes
 	unsigned int tglbit = 0x0;
 	unsigned int switches = 0x0;
 	unsigned int jumpers = 0x0;
 //	unsigned int buttoncount = 0x0;
-	unsigned int tdcpowerbit = 0x0;
+    unsigned int ecsrwbits = 0x0;
 	unsigned int ledbits = NO_LEDS;
-    unsigned int fpga_crc = 0;      // will get image of CRC Error bit from ECSR
+    unsigned int fpga_crc = 0;      // will get image of CRC Error bit from ECSR (assume no error to start)
 	unsigned int board_temp = 0;	// will get last-read board temperature word
     unsigned int replylength;       // will get length of reply message
     unsigned char bwork[10];     // scratchpad
@@ -289,7 +384,7 @@ int main()
     DCONFIG_OUT = UCONFIG_IN;   // Bit 2 copied to output
 
 /* Initialize Port B bits for output */
-    AD1PCFGH = ANALOG1716;  // ENABLE analog 17, 16 only
+    AD1PCFGH = ANALOG1716;  // ENABLE analog 17, 16 only (RC1 pin 2, RC2 pin 3)
     AD1PCFGL = ALLDIGITAL;  // Disable Analog function from B-Port Bits 15..0
 
     LATB = 0x0000;          // All zeroes
@@ -347,13 +442,17 @@ int main()
 
 // Initialize and Read Temperature Monitor
 #if defined (TMPR_ADDR)
-    Initialize_Temp (MCP9801_CFGR_RES12);   // configure 12 bit resolution
+//    Initialize_Temp (MCP9801_CFGR_RES12);   // configure 12 bit resolution
+    Initialize_Temp (MCP9801_CFGR_RES12|MCP9801_CFGR_FQUE4);   // configure 12 bit resolution, fault Queue=4
     board_temp = Read_Temp ();
     j = board_temp ^ 0xFFFF;        // flip bits for LED
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (j&0xFF)); // display LSByte
 //  spin(SPINLIMIT);
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ((j>>8)&0xFF));
 //  spin(SPINLIMIT);
+// WB-11V: Activate the overtemperature alert bit
+//    MCU_HEAT_ALERT = 1;     // WB-11V
+
 #endif // defined (TMPR_ADDR)
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -368,7 +467,8 @@ int main()
  --------------------------------------------------*/
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc.
-		spin(45);	// JS: Wait a little for external clock to be valid, should be at least 40
+        spin(45);   // JS: Wait a little for external clock to be valid, should be at least 40
+                    // WB: Lengthened from 40 to 45 per BNL_20080809 version)
         Initialize_OSC (OSCSEL_TRAY);       //  Use TRAY clock
     } else {                        // Jumper OUT (use local osc)
         Initialize_OSC (OSCSEL_BOARD);       //  Use BOARD clock
@@ -386,8 +486,8 @@ int main()
 #endif                                  // DELAYPOWER conditional
 
 // Turn on power to HPTDC
-	tdcpowerbit |= ECSR_TDC_POWER;	    // Write the TDC Power-ON bit
-    Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, tdcpowerbit);
+    ecsrwbits |= ECSR_TDC_POWER;      // Write the TDC Power-ON bit
+    Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, ecsrwbits);
 //		TDC Power is being turned on, delay a while
     ledbits = 0x7F;		// turn on orange LED
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (jumpers^ledbits) );
@@ -408,9 +508,11 @@ int main()
     dma2Init();                     // defined in ECAN1Config.c (copied here)
 
 /* Enable ECAN1 Interrupt */
-    IEC2bits.C1IE = 1;                  // Interrupt Enable ints from ECAN1
-    C1INTEbits.TBIE = 1;                // ECAN1 Transmit Buffer Interrupt Enable
-    C1INTEbits.RBIE = 1;                // ECAN1 Receive  Buffer Interrupt Enable
+    IEC2bits.C1IE = 1;              // Interrupt Enable ints from ECAN1
+    C1INTEbits.TBIE = 1;            // ECAN1 Transmit Buffer Interrupt Enable
+    C1INTEbits.RBIE = 1;            // ECAN1 Receive  Buffer Interrupt Enable
+    C1INTEbits.RBOVIE = 1;          // WB-11W: ECAN1 Receive  Buffer Overflow Interrupt Enable
+    C1INTEbits.ERRIE  = 1;          // WB-11W: ECAN1 Error    Interrupt Enable
 
 /* Initialize large-block download */
     block_status = BLOCK_NOTSTARTED;    // no block transfer started yet
@@ -469,7 +571,7 @@ int main()
             } // end if got a mismatch
         } // end loop over checking readback
         // LED 4 SET if there was an error
-        reset_hptdc (j, &enable_final[j-1][0]);                    // JTAG the hptdc reset sequence
+        reset_hptdc (j, &enable_final[j-1][0], &hptdc_control[j][0]);    // JTAG the hptdc reset sequence (WB-11X save control word)
     } // end loop over all NBR_HPTDCS(3)
 
 // If no error, turn on LED 6
@@ -503,8 +605,10 @@ int main()
     select_hptdc(JTAG_HDR,(jumpers&0x3));        // select HEADER (J15) controlling which HPTDC
     spin(5);           // spin loop
 
+/* WB-11U: Initialize A/D Converter module */
+    initialize_ad_converter();
+
 /* Send an "Alert" message to say we are on-line */
-//    send_CAN1_alert (board_posn);
       retbuf[0] = 0xFF;
       retbuf[1] = 0x0;
       retbuf[2] = 0x0;
@@ -512,7 +616,7 @@ int main()
       if (clock_status != 0x2200) {
         memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
       }
-      send_CAN1_message (board_posn, (C_TDIG | C_ALERT), 4, (unsigned char *)&retbuf);
+      send_CAN1_message (board_posn, (C_BOARD | C_ALERT), 4, (unsigned char *)&retbuf);
 
 /* Send a "Diagnostic" message to show which OSC we think we are running */
 //    send_CAN1_diagnostic (board_posn, 2, (unsigned char *)&clock_status);
@@ -521,45 +625,79 @@ int main()
 // WB-11R do not read, we start from the assumption there is no CRC Error
 //    fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port
 
+// WB-11U: Changed to use Timer 6 and 7 so Timer2/3 is available for A/D converter
 //JS: TIMER STUFF **********************************************************
 #ifndef DOWNLOAD_CODE
-/* setup timer: Combine Timer 2 and 3 for a 32 bit timer;
-	combined timer is controlled by Timer 2 control bits,
-	but fires Timer 3 interrupt  */
+/* setup timer: Combine Timer 6 and 7 for a 32 bit timer;
+    combined timer is controlled by Timer 6 control bits,
+    but fires Timer 7 interrupt  */
 	timerExpired = 0;		// global flag to indicate expired timer 1
-	T2CON = 0; 				// clear Timer 2 control register
-	T3CON = 0; 				// clear Timer 3 control register
-	T2CONbits.TCKPS = 0b11; // Set prescale to 1:256
-	TMR2 = 0;				// clear Timer 2 timer register
-	TMR3 = 0;				// clear Timer 3 timer register
-	PR2 = 0xffff;			// load period register (low 16 bits)
-	PR3 = 0x0004;			// load period register (high 16 bits)
-	IPC2bits.T3IP0 = 1;		// Timer 3 Interrupt priority = 1
-	IPC2bits.T3IP1 = 0;
-	IPC2bits.T3IP2 = 0;
-	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
-	IEC0bits.T3IE = 1;		// enable Timer 3 interrupt
+    T6CON = 0;              // clear Timer 6 control register
+    T7CON = 0;              // clear Timer 7 control register
+    T2CONbits.TCKPS = 0b11; // Set prescale to 1:256
+    TMR6 = 0;               // clear Timer 6 timer register
+    TMR7 = 0;               // clear Timer 7 timer register
+    PR6 = 0xffff;           // load period register (low 16 bits)
+    PR7 = 0x0004;           // load period register (high 16 bits)
+    IPC12bits.T7IP0 = 1;    // Timer 7 Interrupt priority = 1
+    IPC12bits.T7IP1 = 0;
+    IPC12bits.T7IP2 = 0;
 
-	T2CONbits.T32 = 1; 		// Enable 32-bit timer operation
-	T2CONbits.TON = 1; 		// Turn on Timer 2
+    IFS3bits.T7IF = 0;      // clear interrupt status flag Timer 7
+    IEC3bits.T7IE = 1;      // enable Timer 7 interrupt
+
+    T6CONbits.T32 = 1;      // Enable 32-bit timer operation
+    T6CONbits.TON = 1;      // Turn on Timer 2
 #endif
 //JS: END TIMER STUFF *********************************************************
-
+// WB-11U: end timer assignment changes
 
 /* Look for Have-a-Message */
     do {                            // Do Forever
+/* WB-11V: multiple buffers to support broadcast messages
+ * Buffer[1][] is for "our address received message"
+ * Buffer[2][] is for "broadcast address received messge"
+ * Reworked the way buffers are pointed to from here on
+ */
+        unsigned int rcvmsgindex = 0;
         if ( C1RXFUL1bits.RXFUL1 ) {
+            rcvmsgindex = 1;
+        } else if ( C1RXFUL1bits.RXFUL2 ) {
+            rcvmsgindex = 2;
+        }
+        if ( rcvmsgindex != 0 ) {
+            unsigned int rcvmsglen = ecan1msgBuf[rcvmsgindex][2] & 0x000F; //JS WB-11V
+            wps = (unsigned char *)&ecan1msgBuf[rcvmsgindex][3];   // point to message text (source) WB-11V
 // Dispatch to Message Code handlers.
 // Note that Function Code symbolics are defined already shifted.
-			unsigned int rcvmsglen = ecan1msgBuf[1][2] & 0x000F; //JS
-            retbuf[0] = ecan1msgBuf[1][3];  // pre-fill reply with "subcommand" payload[0]
-            retbuf[1] = C_STATUS_OK;            // Assume all is well (status OK)
-            wps = (unsigned char *)&ecan1msgBuf[1][3];   // point to message text (source)
-            switch ((ecan1msgBuf[1][0] & C_CODE_MASK)) {  // Major switch on WRITE or READ COMMAND
+            retbuf[0] = ecan1msgBuf[rcvmsgindex][3];  // pre-fill reply payload[0] with "subcommand"
+            retbuf[1] = C_STATUS_OK;            // Assume all is well payload[1] (status OK)
+            switch ((ecan1msgBuf[rcvmsgindex][0] & C_CODE_MASK)) {  // Major switch on WRITE or READ COMMAND
                 case C_WRITE:  // Process a "Write"
                     replylength = 2;                    // Assume 2 byte reply for Writes
                     // now decode the "Write-To" Subcommand from inside message
                     switch ((*wps++)&0xFF) {       // look at and dispatch SUB-command, point to remainder of message
+
+// WB-11V: Add temperature alert limit setting.
+// NOTE that temperature alert setting in chip ignores the lower 7-bits of the value (always reads back 0).
+                        case C_WS_TEMPALERTS:
+                            if (rcvmsglen == TEMPALERTS_LEN) {   // check length for proper value
+                                memcpy ((unsigned char *)&mcu_hilimit, wps, 2);   // copy 2 bytes from incoming message
+                                wps += 2;
+                                memcpy ((unsigned char *)&tino1_limit, wps, 2);   // copy 2 bytes from incoming message
+                                wps += 2;
+                                memcpy ((unsigned char *)&tino2_limit, wps, 2);   // copy 2 bytes from incoming message
+                                wps += 2;
+                                temp_alert = 0;         // clear any temperature alert status
+                                // Initialize the MCP9801 temperature chip (U37) registers
+                                mcu_lolimit = 0;
+                                if (mcu_hilimit > 0x500) mcu_lolimit = mcu_hilimit - 0x500;       // lower limit is upper limit - 5 degrees C.
+                                Write16_Temp(MCP9801_LIMT, mcu_hilimit); // Set upper limit
+                                Write16_Temp(MCP9801_HYST, mcu_lolimit); // Set upper limit
+                            } else retbuf[1] = C_STATUS_INVALID;    // else mark invalid
+                            break;
+// WB-11V: End Add temperature alert limit setting
+
                         case C_WS_LED:              // Write to LED register
                             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ~(*wps));
                             break;
@@ -567,7 +705,7 @@ int main()
                         case C_WS_OSCSRCSEL:        // Change Oscillators if possible
                             j = *wps++ ;               // which one is it?
                             // Length must be right AND two copies must match AND selection must be valid (...CAN_HLP3.h)
-                            if ((ecan1msgBuf[1][2] == OSCSRCSEL_LEN) && (j == *wps) &&
+                            if ((ecan1msgBuf[rcvmsgindex][2] == OSCSRCSEL_LEN) && (j == *wps) &&
                                 ( (j == OSCSEL_JUMPER) || (j == OSCSEL_BOARD) || (j == OSCSEL_TRAY) || (j == OSCSEL_FRCPLL) ) ) {
                                 if (j == OSCSEL_JUMPER) {   // if "check jumper" requested then
                                     switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
@@ -603,6 +741,18 @@ int main()
                                 write_FPGA (j, (*wps++));
                                 i+=2;
                             } // end while have something in message (1, 2, or 3 reg,val pairs)
+                            break;
+
+                        case C_WS_TOGGLETINO:       // WB-11V: Toggle TINO_TEST_MCU line "n" times.
+                            i = 1;
+                            if (rcvmsglen == TOGGLETINO_LEN) {
+                                memcpy ((unsigned char *)&i, wps, 2);  // copy the count from the message
+                                if (i==0) i=1;
+                            } // end if decoding a count
+                            for (j=0; j<i; j++) {   // issue toggle sequence
+                                Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, (ecsrwbits |ECSR_TINO_TEST_MCU) ); // H
+                                Write_device_I2C1 (ECSR_ADDR, MCP23008_OLAT, (ecsrwbits&~ECSR_TINO_TEST_MCU) ); // L
+                            } // end for issuing toggle sequence
                             break;
 
                         case C_WS_BLOCKSTART:       // Start Block Download
@@ -716,6 +866,8 @@ int main()
                                         maskoff = 0xFF;
                                         for (l=0; l<J_HPTDC_SETUPBYTES;l++){ // checking readback
                                             if (l == (J_HPTDC_SETUPBYTES-1)) maskoff = 0x7F;     // don't need last bit!
+// WB-11V fix indexing
+// WB-11V                                   if ((unsigned char)hptdc_setup[j][i] != (((unsigned char)readback_setup[i])&maskoff)) {
                                             if ((unsigned char)hptdc_setup[j][l] != (((unsigned char)readback_setup[l])&maskoff)) {
                                                 retbuf[1] = C_STATUS_BADCFG;    // bad configuration status
                                                 if ((ledbits & 0x10) != 0) {
@@ -726,7 +878,7 @@ int main()
                                             } // end if got a mismatch
                                         } // end loop over checking readback
                                         // LED 4 SET if there was an error
-                                        reset_hptdc (j, &enable_final[j-1][0]);                    // JTAG the hptdc reset sequence
+                                        reset_hptdc (j, &enable_final[j-1][0], &hptdc_control[j][0]);    // JTAG the hptdc reset sequence (WB-11X save control word)
                                     } // end loop over one or all HPTDCs
                                     // restore Test header access to JTAG
                                     // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
@@ -752,7 +904,7 @@ int main()
                             } // end if one or all 3 HPTDCs.
                             for (j=i; j<=k; j++) {   // put the data into an HPTDC
                                select_hptdc(JTAG_MCU, j);        // select MCU controlling which HPTDC
-                               reset_hptdc (j, &enable_final[j-1][0]);  // JTAG the hptdc reset sequence
+                               reset_hptdc (j, &enable_final[j-1][0], &hptdc_control[j][0]);    // JTAG the hptdc reset sequence (WB-11X save control word)
                             } // end loop over one or all HPTDCs
                             // restore Test header access to JTAG
                             // Lo jumpers select TDC for JTAG using CONFIG_1 register in FPGA
@@ -764,7 +916,7 @@ int main()
                             memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length and have proper code
                             if ((rcvmsglen == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) {
-                                i = ecan1msgBuf[1][3] & 0x3;    // get which EEPROM we are doing
+                                i = ecan1msgBuf[rcvmsgindex][3] & 0x3;    // get which EEPROM we are doing
                                 retbuf[1] = C_STATUS_OK;        // assume FPGA configuration OK
 								// loop here if it failed the first time
                                 do {
@@ -785,7 +937,7 @@ int main()
                                 reset_FPGA();       // reset FPGA
                                 init_regs_FPGA(board_posn);   // initialize FPGA
                                 pld_ident = read_FPGA (IDENT_7_R);
-                                retbuf[2] = pld_ident;  // tell the magic ID code value
+                                retbuf[2] = pld_ident;  // tell the FPGA ID code value
                                 replylength = 3;
                                 fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read CRC state
                             } else {        // else we could not do it
@@ -822,7 +974,12 @@ int main()
                                     for (i=0; i<block_bytecount; i+= 8) {
                                         lwork = eeprom_address + i;
                                         spi_read_adr (EE_AL_RDDA, (unsigned char *)&lwork, LS2MSBIT, 8, (unsigned char *)&sendbuf[0]);
-                                        for (j=0; j<8; j++) if (sendbuf[j] != block_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
+//                                        for (j=0; j<8; j++) if (sendbuf[j] != block_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
+                                        // WB:11T - Fix for non-mult of 8
+                                        k = block_bytecount-i;
+                                        if (k > 8) k = 8;
+                                        for (j=0; j<k; j++)
+                                            if (sendbuf[j] != block_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
                                     } // end loop checking readback of newly written data
 
                                     sel_EE1;        // de-select EEPROM #2
@@ -848,43 +1005,49 @@ int main()
                                     j = 0;          // assume start is begin of buffer
                                     k = block_bytecount;        // assume just going block
                                     memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 address bytes from incoming message
-                                    lwork = laddrs;        // save for later
-                                    wps += 4;
-                                    if ((*wps)==ERASE_PRESERVE) {     // need to preserve before erase
-                                        lwork = laddrs & PAGE_MASK;   // mask to page start
-                                        for (i=0; i<PAGE_BYTES; i+=4) {
-                                            read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
-                                            lwork += 2;
-                                        } // end for loop over all bytes in save block
-                                        lwork = laddrs & PAGE_MASK;
-                                        j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
-                                        j <<= 1;        // *2 for bytes
-                                        k = PAGE_BYTES;                   // reprogram whole block
-                                    } // end if need to save before copy
+                                    // WB-11U check starting address and length for OK
+                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) || ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
 
-                                    // put the new data over the old[j] thru old[j+block_bytecount-1]
-                                    memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
-                                    save_SR = SR;           // save the Status Register
-                                    SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
-                                    if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
-                                        erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
-                                    } // end if need to erase the page
-                                    // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
-                                    lwork2 = lwork;
-                                    for (i=0; i<k; i+=4) {
-                                        write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
-                                        lwork += 2L;    // next write address
-                                    } // end loop over bytes
-                                    SR = save_SR;           // restore the saved status register
-                                    // now check for correct writing
-                                    lwork = lwork2;                             // recall the start address
-                                    for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
-                                        read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
-                                        for (j=0; j<4; j++) {       // check each word
-                                            if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
-                                        } // end loop checking 4 bytes within each word
-                                        lwork += 2L;    // next write address
-                                    } // end loop over bytes
+                                        lwork = laddrs;        // save for later
+                                        wps += 4;
+                                        if ((*wps)==ERASE_PRESERVE) {     // need to preserve before erase
+                                            lwork = laddrs & PAGE_MASK;   // mask to page start
+                                            for (i=0; i<PAGE_BYTES; i+=4) {
+                                                read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
+                                                lwork += 2;
+                                            } // end for loop over all bytes in save block
+                                            lwork = laddrs & PAGE_MASK;
+                                            j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
+                                            j <<= 1;        // *2 for bytes
+                                            k = PAGE_BYTES;                   // reprogram whole block
+                                        } // end if need to save before copy
+
+                                        // put the new data over the old[j] thru old[j+block_bytecount-1]
+                                        memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
+                                        save_SR = SR;           // save the Status Register
+                                        SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
+                                        if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
+                                            erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+                                        } // end if need to erase the page
+                                        // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+                                        lwork2 = lwork;
+                                        for (i=0; i<k; i+=4) {
+                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
+                                            lwork += 2L;    // next write address
+                                        } // end loop over bytes
+                                        SR = save_SR;           // restore the saved status register
+                                        // now check for correct writing
+                                        lwork = lwork2;                             // recall the start address
+                                        for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
+                                            read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
+                                            for (j=0; j<4; j++) {       // check each word
+                                                if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
+                                            } // end loop checking 4 bytes within each word
+                                            lwork += 2L;    // next write address
+                                        } // end loop over bytes
+                                    } else { // else wasn't valid address for write
+                                        retbuf[1] = C_STATUS_BADADDRS; // set error reply
+                                    } // end WB-11U check for valid addresses to write
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -905,7 +1068,8 @@ int main()
                             	} // end loop over any bytes in message
 
 								// magic address at end of PIC24HJ64 device program memory
-								laddrs = 0xABFE;		// magic address
+//                                laddrs = 0xABFE;        // magic address
+                                laddrs = MAGICADDRESS;  // WB-11U: Magic address
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                 erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
@@ -971,8 +1135,8 @@ int main()
                             break; // end of C_WS_CONTROLTDCx
 
                         case C_WS_THRESHHOLD:        // Write-to-THRESHHOLD DAC
-                            current_dac = Write_DAC (((unsigned char *)&ecan1msgBuf[1][3])+1); // point to LSB of DAC setting
-                            for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan1msgBuf[1][i]; // save message for echo reply
+                            current_dac = Write_DAC (((unsigned char *)&ecan1msgBuf[rcvmsgindex][3])+1); // point to LSB of DAC setting
+                            for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan1msgBuf[rcvmsgindex][i]; // save message for echo reply
                             break;
 
                         case C_WS_MCURESTARTA:              // 0x8D MCU Start new image
@@ -983,9 +1147,9 @@ int main()
                             // Confirm length is 5 and have proper code
                             if ((rcvmsglen == MCURESET_LEN) && (lwork == MCURESET_CONST)) {
                                 retbuf[1] = C_STATUS_OK;            // acknowledge we are going to do it
-                                send_CAN1_message (board_posn, (C_TDIG | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
+                                send_CAN1_message (board_posn, (C_BOARD | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
                                 while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
-                                if ((ecan1msgBuf[1][3] & 0xFF) == C_WS_MCURESTARTA) {  // if we are starting new code
+                                if ((ecan1msgBuf[rcvmsgindex][3] & 0xFF) == C_WS_MCURESTARTA) {  // if we are starting new code
 #ifndef DOWNLOAD_CODE
                                     // stop interrupts
                                     CORCONbits.IPL3=1;     // WB-11H Raise CPU priority to lock out user interrupts
@@ -1005,24 +1169,76 @@ int main()
                             break;
                     }                           // end switch on Write Subcommand
                     // Send the reply to the WRITE message
-                    send_CAN1_message (board_posn, (C_TDIG | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
+                    send_CAN1_message (board_posn, (C_BOARD | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
+
                     break;  // end case C_WRITE
 
                 case C_READ:    // Process a "Read"
                     replylength = 1;        // default reply length for a Read
-                    retbuf[0] = ecan1msgBuf[1][3] & 0xFF;   // copy address byte
+                    retbuf[0] = ecan1msgBuf[rcvmsgindex][3] & 0xFF;   // copy address byte
 
                                 // now decode the "Read-from" location inside message
                     switch ((*wps++)&0xFF) {       // look at and dispatch SUB-command, point to remainder of message
+/* start WB-11X Add Readback of last Control word */
+                        case (C_RS_CONTROLTDCS):   // WB-11X Read control word all TDCs
+                        case (C_RS_CONTROLTDC1):   // WB-11X Read Control word from TDC #1
+                        case (C_RS_CONTROLTDC2):   // WB-11X Read Control word from TDC #2
+                        case (C_RS_CONTROLTDC3):   // WB-11X Read Control word from TDC #3
+                            replylength = 6;       // WB-11X reply is 6 bytes
+                            l = retbuf[0] & 0x3;   // WB-11X mask which one we want
+                            if (l == 0) {           // WB-11X multiple Control msgs
+                                i = 1;
+                                k = NBR_HPTDCS;
+                            } else {
+                                i = l;
+                                k = i;
+                            }
+                            for (l=i; l<=k; l++) {
+                                retbuf[0] = (C_RS_CONTROLTDCS & 0xFC) | (l&0x03);
+                                memcpy (&retbuf[1], &hptdc_control[l][0], 5);   // WB-11X copy last one used (saved)
+                                send_CAN1_message (board_posn, (C_BOARD | C_READ_REPLY), replylength, (unsigned char *)&retbuf);
+                                spin(0);
+                            } // end loop over one or all tdc control words
+                            replylength = 0;
+                            break;
+/* end   WB-11X Add Readback of last Control word */
+
+/* start WB-11X Add Readback of last Configuration block */
+                        case (C_RS_CONFIGTDCS):     // WB-11X Read Configuration block from All TDCs
+                        case (C_RS_CONFIGTDC1):     // WB-11X Read Configuration block for TDC #1
+                        case (C_RS_CONFIGTDC2):     // WB-11X Read Configuration block for TDC #2
+                        case (C_RS_CONFIGTDC3):     // WB-11X Read Configuration block for TDC #3
+                            if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
+                               i = 1;          // yes, set first
+                               k = NBR_HPTDCS;          // yes, set last
+                            } else {            // Not all 3,
+                               i = (retbuf[0]&0x3);       // set first and last to be the one
+                               k = i;          // set first and last to be the one
+                            } // end if one or all 3 HPTDCs.
+                            // send the first parts of the reply
+                            for (l=i; l<=k; l++) {   // WB-11X loop over one or 3 HPTDCs
+                                retbuf[0] = (C_RS_CONFIGTDCS & 0xFC) | (l & 0x03);  // WB-11X mask for which HPTDC 1, 2, 3
+                                replylength = 8;        // WB-11X First messages are 8 bytes
+                                for (j=0; j<J_HPTDC_SETUPBYTES; j+= 7) {    // WB-11X Loop over bytes in array
+                                    if ((j+7) > J_HPTDC_SETUPBYTES) replylength = (J_HPTDC_SETUPBYTES - j) + 1; // WB-11X last msg short
+                                    memcpy ((unsigned char *)&retbuf[1],(unsigned char *)&hptdc_setup[l][j], (replylength-1));
+                                    send_CAN1_message (board_posn, (C_BOARD | C_READ_REPLY), replylength, (unsigned char *)&retbuf);
+                                    spin(3);            // WB-11X - delay so as not to overrun CANBus (on TCPU) approx 100 msec
+                                } // WB-11X end loop over messages
+                            } // WB-11X end loop over one or 3 HPTDCs
+                            replylength = 0;        // WB-11X - inhibit extra message
+                            break;
+/* end   WB-11X Add Readback of last Configuration block */
+
                         case (C_RS_STATUS1):              // READ STATUS #1
                         case (C_RS_STATUS2):              // READ STATUS #2
                         case (C_RS_STATUS3):              // READ STATUS #3
                             /* Read the HPTDC Status using the JTAG port, Send result via CAN */
-                            i = ecan1msgBuf[1][3] & 0x3;            // LOW 2 bits are TDC#
+                            i = ecan1msgBuf[rcvmsgindex][3] & 0x3;            // LOW 2 bits are TDC#
                             read_hptdc_status (i, (unsigned char *)&retbuf[1], (sizeof(retbuf)-1));
                             // send the first part of the reply
                             replylength = 8;
-                            send_CAN1_message (board_posn, (C_TDIG | C_READ_REPLY), 8, (unsigned char *)&retbuf);
+                            send_CAN1_message (board_posn, (C_BOARD | C_READ_REPLY), 8, (unsigned char *)&retbuf);
                             // send the second part of the reply
                             retbuf[1] = retbuf[8];      // copy last byte for sending
                             replylength = 2;
@@ -1031,16 +1247,41 @@ int main()
 							spin(0);
                             break; // end case C_RS_STATUSx
 
+                        case (C_RS_THRESHHOLD):         // WB-11U Return threshhold setting
+                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&current_dac, 2);
+                            replylength = 3;
+                            break;  // end case C_RS_THRESHHOLD
+
                         case (C_RS_MCUMEM ):            // Return MCU Memory 4-bytes
                             if (rcvmsglen == 5) { // check for correct length of incoming message
                                 memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
                             } else {        // allow continued reads w/o address
                                 lwork += 2L;
                             } // end else continued reads
-                            read_MCU_pm ((unsigned char *)&retbuf[1], lwork); // Read from requested location
-                            replylength = 5;
+                            if (lwork <= (MCU2UPLIMIT+2) ) {        // WB-11U: if in range
+                                read_MCU_pm ((unsigned char *)&retbuf[1], lwork); // Read from requested location
+                                replylength = 5;
+                            } // WB-11U: end if in range
                             break; // end case C_RS_MCUMEM
-
+// WB-11U start
+                        case (C_RS_MCUCKSUM ):            // Return MCU Memory checksum
+                            if (rcvmsglen == 8) { // check for correct length of incoming message
+                                memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 bytes from incoming message, address
+                                wps+=4;     // step to count
+                                lwork2 = 0L;         // clear checksum
+                                lwork = 0L;         // clear count
+                                memcpy ((unsigned char *)&lwork, wps, 3);   // copy 3 bytes from incoming message, length
+                                while ((lwork != 0L) && (laddrs <= (MCU2UPLIMIT+2))) {
+                                    read_MCU_pm ((unsigned char *)&lwork3, laddrs); // Read from requested location
+                                    lwork2 += lwork3;
+                                    laddrs += 2L;
+                                    lwork--;
+                                }
+                                memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork2, 4);   // copy checksum to reply
+                                replylength = 5;
+                            }
+                            break; // end case C_RS_MCUCKSUM
+// WB-11U end
 
                         case (C_RS_FIRMWID):            // Return MCU Firmware ID
                             retbuf[1] = FIRMWARE_ID_0;
@@ -1060,17 +1301,25 @@ int main()
 #endif // defined (SN_ADDR)
 
                         case (C_RS_STATUSB):              // READ STATUS Board
-                            for (i=1; i<8; i++) retbuf[i] = 0;   // stubbed off for now
-                            board_temp = Read_Temp();
+                            board_temp = Read_Temp();       // TDIG board temperature
                             memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&board_temp, 2);
+                                                            // ECSR byte
                             retbuf[3] = (unsigned char)Read_MCP23008(ECSR_ADDR, MCP23008_GPIO);
+                                                            // A/D from TINO 1 signal
+                            memcpy ((unsigned char *)&retbuf[4], (unsigned char *)&tino1, 2);
+                                                            // A/D from TINO 2 signal
+                            memcpy ((unsigned char *)&retbuf[6], (unsigned char *)&tino2, 2);
                             replylength = 8;
                             break; // end case C_RS_STATUSB
 
-                        case (C_RS_TEMPBRD):           // Return the board Temperature
-                            board_temp = Read_Temp ();
+                        case (C_RS_TEMPBRD):           // Return the board Temperatures
+                            board_temp = Read_Temp ();       // TDIG board temperature
                             memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&board_temp, 2);        // copy temperature to message
-                            replylength = 3;
+                                                            // A/D from TINO 1 signal
+                            memcpy ((unsigned char *)&retbuf[3], (unsigned char *)&tino1, 2);
+                                                            // A/D from TINO 2 signal
+                            memcpy ((unsigned char *)&retbuf[5], (unsigned char *)&tino2, 2);
+                            replylength = 7;
                             break; // end case C_RS_TEMPBRD
 
                         case (C_RS_CLKSTATUS):        // Read MCU Clock Status
@@ -1091,6 +1340,52 @@ int main()
                             } // end while have something in message (1, 2, or 3 reg,val pairs)
                             break;                  // end C_RS_FPGAREG
 
+                        case (C_RS_EEPROM2):
+                            replylength = 8;        // fixed length reply
+                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
+                            MCU_CONFIG_PLD = 0; // disable FPGA configuration
+                            sel_EE2;            // select EEPROM #2
+                            // Read back data (Altera .RBF was written LSbit to MSbit)  7-bytes
+                            spi_read_adr (EE_AL_RDDA, (unsigned char *)&eeprom_address, LS2MSBIT, 7, (unsigned char *)&retbuf[1]);
+                            sel_EE1;        // de-select EEPROM #2
+                            set_EENCS;      //
+                            MCU_CONFIG_PLD = 1; // re-enable FPGA
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+
+                            break;      // end C_RS_EEPROM2
+
+// WB-11U starts
+                        case (C_RS_EEP2CKSUM):
+                            replylength = 5;        // fixed length reply
+                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom start address
+                            wps+=4;
+                            laddrs = 0L;        // clear sector count
+                            memcpy ((unsigned char *)&laddrs, wps, 3);             // copy number of sectors to read
+                            MCU_CONFIG_PLD = 0; // disable FPGA configuration
+                            sel_EE2;            // select EEPROM #2
+                            // Read back data (Altera .RBF was written LSbit to MSbit)
+                            lwork = 0L;         // will build-up checksum
+                            while (laddrs != 0L) {    // while we have sectors to read (sector = 256 bytes)
+                                // read the sector
+                                spi_read_adr (EE_AL_RDDA, (unsigned char *)&eeprom_address, LS2MSBIT, 256, (unsigned char *)&block_buffer[0]);
+                                // Add the bytes to the checksum
+                                for (i=0; i<256; i++) lwork += (unsigned long)(block_buffer[i]&0xFF);
+                                eeprom_address += 256;      // increment the block address'
+                                laddrs--;                   // count down blocks to do
+                            }   // end while have blocks to do
+                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork, 4);   // copy result to reply
+//                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&laddrs, 4);  // copy diagnostic to reply
+                            sel_EE1;        // de-select EEPROM #2
+                            set_EENCS;      //
+                            MCU_CONFIG_PLD = 1; // re-enable FPGA
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+                            break;      // end C_RS_EEPCKSUM
+// WB-11U ends
+
                         case (C_RS_JSW):              // Return the Jumper/Switch settings (U35)
                             retbuf[1] = (unsigned char)Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
                             replylength = 2;
@@ -1101,19 +1396,36 @@ int main()
                             replylength = 2;
                             break; // end case C_RS_ECSR
 
+                        case (C_RS_DIAGNOSTIC):       // Diagnostic read - interpretation subject to change
+                            break; // end case C_RS_DIAGNOSTIC
+
                         default:    // Undecodable Read only echoes subcommand
                             break; // end case default
 
                     } // end switch on READ SUBCOMMAND (Address)
-                    send_CAN1_message (board_posn, (C_TDIG | C_READ_REPLY), replylength, (unsigned char *)&retbuf);
+
+                    if (replylength != 0) {        // WB-11X - inhibit extra message
+                        send_CAN1_message (board_posn, (C_BOARD | C_READ_REPLY), replylength, (unsigned char *)&retbuf);
+                    } // WB-11X end if inhibit extra message
                     break;
 
                 default:                 // All others are undecodable, ignore
                     break;
             }                               // end MAJOR switch on WRITE or READ COMMAND
-// Mark Receive buffer 1 OK to reuse
-            C1RXFUL1bits.RXFUL1 = 0;
+
+// WB-11V Mark Receive buffer we just worked on as OK to reuse
+            if (rcvmsgindex == 1) C1RXFUL1bits.RXFUL1 = 0;
+            if (rcvmsgindex == 2) C1RXFUL1bits.RXFUL2 = 0;
+
         } // end if have a message to process
+
+// WB-11W: Add check for CAN1 error / overflow
+        if (can1error) {          // see if we have CAN1 error flag (overflow/CANerror)
+            lwork = C_ALERT_ERRCAN1_CODE | (can1error<<8);
+            send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_ERRCAN1_LEN, (unsigned char *)&lwork);
+            can1error = 0;        // clear overflow message
+        } // end if we have CAN1 error flag (overflow/CANerror)
+// WB-11W: end Add check for CAN1 error
 
 // Mostly Idle
         tglbit ^= 1;        // toggle the bit in port
@@ -1132,7 +1444,7 @@ int main()
 		if ( j != fpga_crc) {  // see if it has changed
             fpga_crc = j;
             lwork = C_ALERT_CKSUM_CODE | (j<<8);
-            send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+            send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
 		}
 // WB-11J end
 // WB-11R - Clock status monitoring
@@ -1141,18 +1453,33 @@ int main()
         if (clock_failed != 0) {   // if clock failed (interrupt routine)
             clock_status = OSCCON;
             lwork = C_ALERT_CLOCKFAIL_CODE;
-            send_CAN1_message (board_posn, (C_TDIG | C_ALERT), C_ALERT_CLOCKFAIL_LEN, (unsigned char *)&lwork);
+            send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CLOCKFAIL_LEN, (unsigned char *)&lwork);
             clock_failed = 0;       // clear the failed code
         }
 // WB-11R - End Clock status monitoring
 
+// WB-11V - Temperature Alert Monitoring (WB-11X)
+        if (temp_alert_throttle == 0) {     // if time to send another one
+            if (temp_alert != 0) {          // if temperature alert
+                lwork = (temp_alert<<8) | C_ALERT_OVERTEMP_CODE;  // upper byte is event mask
+                send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_OVERTEMP_LEN, (unsigned char *)&lwork);
+                temp_alert_throttle = TEMPALERTS_INTERVAL;
+                temp_alert = 0;             // clear alert status
+            } else {  // else do not have temperature alert
+                temp_alert_throttle = 0;    // arm ourselves for next trip.
+            } // end else do not have temperature alert
+        } else { // else just count down delay
+            temp_alert_throttle--;
+        } // end else just count down delay
+// WB-11V - End Temperature Alert Monitoring
 
 //JS: TIMER STUFF **************************************
 #ifndef DOWNLOAD_CODE
 		if (timerExpired == 1) {
 			timerExpired = 0;
 			// magic address at end of PIC24HJ64 device program memory
-            read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE);
+//            read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE);
+            read_MCU_pm ((unsigned char *)readback_buffer, MAGICADDRESS);
 #ifdef NOTNOW
 			// for now, just send back a CAN message indicating the memory content
 			retbuf[0] = readback_buffer[0];
@@ -1378,12 +1705,14 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 
 // Configure Acceptance Filter Mask 0 register to
 //      Mask board_id in SID<6:4> per HLP 3 protocol
-    C1RXM0SIDbits.SID = 0x03F0; // 0b011 1brd 0000
+// WB-11V    C1RXM0SIDbits.SID = 0x03F0; // 0b011 1brd 0000
+    C1RXM0SIDbits.SID = 0x07F0; // WB-11V: 0b111 1brd 0000
 
-// Configure Acceptance Filter 0 to match Standard Identifier
-    C1RXF0SIDbits.SID = (C_TDIG>>2)|(board_id<<4);  // 0biii ibrd xxxx
+/* WB-11V ------------ start of Filter 0 intitialization -------------------------------------------------------- */
+// Configure Acceptance Filter 0 to match Standard Identifier == TDIG Board ID
+    C1RXF0SIDbits.SID = (C_BOARD>>2)|(board_id<<4);  // 0biii ibrd xxxx
 
-// Configure Acceptance Filter for Standard Identifier
+// Configure Acceptance Filter 0 for Standard Identifier
     C1RXM0SIDbits.MIDE = 0x1;
     C1RXM0SIDbits.EID = 0x0;
 
@@ -1392,6 +1721,22 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 
 // Filter 0 enabled
     C1FEN1bits.FLTEN0 = 0x1;
+/* WB-11V -------------- end of Filter 0 intitialization --------------------------------------------------------- */
+
+/* WB-11V ------------ start of Filter 1 intitialization --------------------------------------------------------- */
+// Configure Acceptance Filter 1 to match Standard Identifier board address 127.
+    C1RXF1SIDbits.SID = 127<<4;  // 0b111 1111 xxxx
+
+// Configure Acceptance Filter 1 for Standard Identifier
+    C1RXM0SIDbits.MIDE = 0x1;
+    C1RXM0SIDbits.EID = 0x0;
+
+// Acceptance Filter 1 uses message buffer 2 to store message
+    C1BUFPNT1bits.F1BP = 2;
+
+// Filter 1 enabled
+    C1FEN1bits.FLTEN1 = 0x1;
+/* WB-11V -------------- end of Filter 1 intitialization --------------------------------------------------------- */
 
 // Clear window bit to access ECAN control registers
     C1CTRL1bits.WIN = 0;
@@ -1462,97 +1807,6 @@ void dma2Init(void){
      DMA2CONbits.CHEN=1;
 }
 
-// void send_CAN1_alert (unsigned int board_id, unsigned int extrabyte)
-// void send_CAN1_alert (unsigned int board_id)
-// {
-// /* Write an ALERT Message to ECAN1 Transmit Buffer
-//    Request Message Transmission         */
-// /* ------------------------------------------------
-// Builds ECAN1 message ID into buffer[0] words [0..2]
-//  -------------------------------------------------- */
-//     unsigned long msg_id;
-// #if defined (SENDCAN)
-//     msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-//     msg_id |= (C_TDIG | C_ALERT);    // reply constant part
-//     ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
-//     ecan1msgBuf[0][1] = 0;
-//     ecan1msgBuf[0][2] = 0;
-// /* ------------------------------------------------
-// ** Builds ECAN1 payload Length and Data into buffer words [2..6]
-// ** transmit length 4 bytes
-// ** Data is constant FF 00 00 00
-//  -------------------------------------------------- */
-//     ecan1msgBuf[0][2] += 4;       // message length 4
-//     ecan1msgBuf[0][3] = 0x00FF;
-//     ecan1msgBuf[0][4] = 0;
-//     ecan1msgBuf[0][5] = 0;
-//     ecan1msgBuf[0][6] = 0;
-// /* Request the message be transmitted */
-//     C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-// #endif
-// }
-
-void send_CAN1_write_reply (unsigned int board_id)
-{
-/* Write a Write_Reply Message to ECAN1 Transmit Buffer
-   Request Message Transmission			*/
-/* ------------------------------------------------
-Builds ECAN1 message ID into buffer[0] words [0..2]
- -------------------------------------------------- */
-	unsigned long msg_id;
-#if defined (SENDCAN)
-    msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-    msg_id |= (C_TDIG | C_WRITE_REPLY);    // reply constant part
-    ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
-    ecan1msgBuf[0][1] = 0;
-    ecan1msgBuf[0][2] = 0;
-/* ------------------------------------------------
-** Builds ECAN1 payload Length and Data into buffer words [2..6]
-** transmit length 4 bytes
-** Data is constant FF 00 00 00
- -------------------------------------------------- */
-    ecan1msgBuf[0][2] += 4;       // message length 4
-    ecan1msgBuf[0][3] = 0;
-    ecan1msgBuf[0][4] = 0;
-    ecan1msgBuf[0][5] = 0;
-    ecan1msgBuf[0][6] = 0;
-/* Request the message be transmitted */
-    C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-#endif
-}
-
-void send_CAN1_diagnostic (unsigned int board_id, unsigned int bytes, unsigned char *bp)
-{
-/* Write a Diagnostic Message to ECAN1 Transmit Buffer
-   Request Message Transmission			*/
-/* ------------------------------------------------
-Builds ECAN1 message ID into buffer[0] words [0..2]
- -------------------------------------------------- */
-	unsigned long msg_id;
-    unsigned char *cp;
-//  unsigned char *wp;
-//  unsigned int i;
-#if defined (SENDCAN)
-    if (bytes <= 8) {
-        while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
-        msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-        msg_id |= (C_TDIG);
-        ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
-        ecan1msgBuf[0][1] = 0;
-        ecan1msgBuf[0][2] = 0;
-/* ------------------------------------------------
-** Builds ECAN1 payload Length and Data into buffer words [2..6]
- -------------------------------------------------- */
-        ecan1msgBuf[0][2] += (bytes&0xF);       // message length
-        cp = (unsigned char *)&ecan1msgBuf[0][3];
-        if (bytes > 0) memcpy (cp, bp, (bytes&0xF));          // copy the message
-
-/* Request the message be transmitted */
-        C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-    } // end if have proper length to send
-#endif
-}
-
 void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *payload)
 {
 /* Write a Message to ECAN1 Transmit Buffer and Request Message Transmission
@@ -1608,7 +1862,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     if (bytes <= 8) {
 	    while (C1TR01CONbits.TXREQ0==1); 	// wait for transmit to complete
         msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-        msg_id |= (C_TDIG | C_DATA);    // reply constant part
+        msg_id |= (C_BOARD | C_DATA);    // reply constant part
         ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
         ecan1msgBuf[0][1] = 0;
         ecan1msgBuf[0][2] = 0;
@@ -1635,6 +1889,7 @@ How do these get hooked to hardware???
  --------------------------------------------------*/
 void __attribute__((__interrupt__))_C1Interrupt(void)
 {
+/* WB-11W: Original Interrupt routine removed
     IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
     if(C1INTFbits.TBIF) {     // If interrupt was from Tx Buffer
         C1INTFbits.TBIF = 0;            // Clear Tx Buffer Interrupt
@@ -1642,6 +1897,24 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
     if(C1INTFbits.RBIF) {     // If interrupt was from Rx Buffer
         C1INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
 	}
+   WB-11W: End original Interrupt routine removed */
+// WB-11W: Revised interrupt routine inserted
+    if (C1INTFbits.RBOVIF) {    // If interrupt was from Overflow
+        can1error = C1VEC;     // Mark which one caused interrupt
+        C1INTFbits.RBOVIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Overflow
+    if (C1INTFbits.ERRIF) {    // If interrupt was from Error
+        can1error = C1VEC;     // Mark which one caused interrupt
+        C1INTFbits.ERRIF = 0;  // and clear the interrupt
+    } // end if interrupt was from Error
+    if (C1INTFbits.TBIF) {     // If interrupt was from Tx Buffer
+        C1INTFbits.TBIF = 0;            // Clear Tx Buffer Interrupt
+    } // end if interupt was from Tx Buffer
+    if (C1INTFbits.RBIF) {     // If interrupt was from Rx Buffer
+        C1INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
+    } // end if interrupt was from Rx Buffer
+    IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
+// WB-11W: End of Revised interrupt routine inserted
 }
 
 void __attribute__((__interrupt__))_OscillatorFail(void)
@@ -1656,20 +1929,22 @@ void __attribute__((__interrupt__))_OscillatorFail(void)
     Initialize_OSC (OSCSEL_FRCPLL);
 }
 
-
+// WB-11U: Changed timer assignment to T6/T7 so T2/T3 is available for A/D converter
 //JS: TIMER STUFF
-// Timer 3 Interrupt Service Routine
-void _ISR _T3Interrupt(void)
+// Timer 7 Interrupt Service Routine
+void _ISR _T7Interrupt(void)
 {
-	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
-	IEC0bits.T3IE = 0;		// disable Timer 3 interrupt
-	T2CON = 0; 				// clear Timer 2 control register (turn timer off)
-	T3CON = 0; 				// clear Timer 3 control register (turn timer off)
+    IFS3bits.T7IF = 0;      // clear interrupt status flag Timer 7
+    IEC3bits.T7IE = 0;      // disable Timer 7 interrupt
+    T6CON = 0;              // clear Timer 6 control register (turn timer off)
+    T7CON = 0;              // clear Timer 7 control register (turn timer off)
 #if !defined (DOWNLOAD_CODE)    // WB-11P: Not defined for download code
 	timerExpired = 1;		// indicate to main program that timer has expired
 #endif // not defined DOWNLOAD_CODE
 }//JS: END TIMER STUFF
+// WB-11U: end timer change
 
+#if defined (SENDMISMATCH)
 void send_CAN1_hptdcmismatch (unsigned int board_id, unsigned int tdcno, unsigned int index, unsigned char expectedbyte, unsigned char gotbyte)
 {
 /* Write a Message to ECAN1 Transmit Buffer
@@ -1683,7 +1958,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 #if defined (SENDCAN)
     while (C1TR01CONbits.TXREQ0==1); 	// wait for transmit to complete
     msg_id = (unsigned long)((board_id&0x7)<<6); // stick in board ID
-    msg_id |= (C_TDIG | C_ALERT );   // identify the message ALERT
+    msg_id |= (C_BOARD | C_ALERT );   // identify the message ALERT
     ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     ecan1msgBuf[0][1] = 0;
     ecan1msgBuf[0][2] = 0;
@@ -1699,7 +1974,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
 #endif
 }
-
+#endif
 
 unsigned long get_MCU_pm (UWord16, UWord16);
 
@@ -1802,6 +2077,134 @@ jumpto(void) {
 
 }
 #endif
+
+
+/* WB-11U: A/D Converter support */
+void __attribute__((__interrupt__))_ADC1Interrupt(void)
+{
+/* This is the interrupt handler for A/D converter module 1.
+** We get the value, prepare for the next sample, process for alert limit, and clear the done.
+** Also: we check for an Alert condition from the MCP9801 using the RF.6 bit
+*/
+    IFS0bits.AD1IF = 0;         // Clear interrupt flag
+// WB-11V: Activate the overtemperature alert bit
+    MCU_HEAT_ALERT = 1;     // WB-11V
+// WB-11V: Check for MCP9801 alert
+//    if (MCU_HEAT_ALERT == 0) temp_alert |= ALERT_MASK_MCU;
+// WB-11V: end
+
+    if ((AD1CHS0 & 0x1F) ==  TINO_TEMP1) {     // AN16(pin2)
+        tino1 = ADC1BUF0;            // Read the conversion result
+        AD1CHS0 = TINO_TEMP2;        // switch to AN17(pin3)
+// WB-11V: Temperature alert
+        if (tino1_limit != 0) {     // if we have set the limit
+            if (tino1 > tino1_limit) { // if we are over limit
+                temp_alert |= ALERT_MASK_TINO1;        // set the alert
+            } else temp_alert &= ~ALERT_MASK_TINO1;    // else clear the alert
+        } // end if processing Temperature Alert
+// WB-11V: End Temperature alert
+    } else {
+        tino2 = ADC1BUF0;            // Read the conversion result
+        AD1CHS0 =  TINO_TEMP1;       // switch back to AN16 (pin2)
+// WB-11V: Temperature alert
+        if (tino2_limit != 0) {     // if we have set the limit
+            if (tino2 > tino2_limit) { // if we are over limit
+                temp_alert |= ALERT_MASK_TINO2;        // set the alert
+            } else temp_alert &= ~ALERT_MASK_TINO2;    // else clear the alert
+        } // end if processing Temperature Alert
+    } // endl else channel 2 check
+// WB-11V: End Temperature alert
+// WB-11V: Check for MCP9801 Alert
+    if (MCU_HEAT_ALERT == 0) {      // stays low if alert condition
+        temp_alert |= ALERT_MASK_MCU;
+    } else {                        // else no alert condition
+        temp_alert &= ~ALERT_MASK_MCU;
+    }
+    MCU_HEAT_ALERT = 0;     // WB-11V turn it off until next time
+
+    AD1CON1bits.DONE = 0;        // Clear done
+}
+
+void initialize_ad_converter(void) {
+/* This routine initializes the A/D Converter SFRs for the appropriate mode */
+    AD1CON1bits.ADON = 0;       // Turn OFF the A/D module
+    IEC0bits.AD1IE = 0;         // Disable AD1 interrupt
+    IFS0bits.AD1IF = 0;         // Clear interrupt flag
+    /* ADCON1  15    = ADON = 0 == AD not operating (while setting registers)
+     *         14    = <not used>
+     *         13    = ADSIDL = 0 = continue while in idle mode
+     *         12    = ADDMABM = 0 = DMA = scatter/gather
+     *         11    = <not used>
+     *         10    = AD12B == 1 = 12-bit operation
+     *          9:8  = FORM == 00 = (unsigned) integer resule
+     *          7:5  = SSRC == 111 = Auto-convert
+     *          4    = <not used>
+     *          3    = SISAM == Simultaneous sampling (0 = no)
+     *          2    = ASAM  == ADC Sample Auto Start (1 = start after conversion)
+     *          1    = SAMP  == Sampling
+     *          0    = DONE
+     */
+    //AD1CON1 = 0x0004;       // 10 bit: ASAM=1 sampling starts immediately after prev. convert ends
+    AD1CON1 = 0x04E4;       // 12bit + SSRC Auto + ASAM=1 auto sample/convert
+
+    /* ADCON2  15:13 = 0 == Vrefh = AVdd, Vrefl = AVss
+     *         12:11 = 0 == <not used>
+     *         10    = 0 == CSCNA = No input channel scan
+     *          9:8  = 0 == CHPS = Channel 0
+     *          7    =      BUFS = buffer status
+     *          6    = 0 == <not used>
+     *          5:2  = SMPI == Increment rate for DMA (0000=every conversion)
+     *          1    = BUFM == buffer fill mode
+     *          0    = ALTS == Alternate Input Sample Mode
+     */
+    AD1CON2 = 0x0;  // Alternate sample a only
+
+    /* ADCON3  15    = 0 == ADC clock from system clock
+     *         14:13 = <not used>
+     *         12:8  = SAMC = AutoSample Time Bits
+     *          7:0  = ADCS = ADC Conversion Clock Select
+     */
+    AD1CON3 = 0x1FFF;      // Autosample 31, Tad = internal 256 Tcy
+
+    /* ADCON4  15:3 <not used>
+     *          2:0  = DMABL = Number of DMA Buffer Loc'ns per Analog Input
+     */
+    // AD1CON4 = 0x0;
+
+    /* ADCHS0  15   = 0 = CH0NB = B-sample Channel 0 Negative Input Select is VrefL
+     *        14:13 = <not used>
+     *        12:8  = 0 = CH0SB = B-sample Channel 0 positive input select
+     *         7    = 0 = CH0NA = A-sample Channel 0 Negative Input Select is VrefL
+     *         6:5  = <not used>
+     *         4:0  = 10000 = CH0SA = A-sample Channel 0 Positive input select AN16 (pin 2)
+     */
+    AD1CHS0 =  TINO_TEMP1;      // AN16(pin2)
+    IEC0bits.AD1IE = 1;             // Enable AD1 interrupt
+    AD1CON1bits.ADON = 1;       // Turn on the A/D module
+}
+
+// This routine removed.  Now done with interrupts and global variables
+// unsigned int sample_ad_converter(unsigned int chan) {
+/* This routine Returns an AD Converter Sample for requested channel
+ * Module must already be operating (AD1CON1bits.ADON)
+ * chan is masked to 0..31.  For the TDIG, only analog channels 16 and 17 are defined.
+ */
+//    unsigned int work;
+//    AD1CHS0 = chan & 0x1F;      // Connect channel Ch0 input (masked to range [0..31])
+//    AD1CON1bits.DONE = 0;        // Clear done
+//    AD1CON1bits.SAMP = 1;       // Start sampling
+//    spin(0);                    // 20 mSec
+    //AD1CON1bits.SAMP = 0;       // End sampling/start converting
+//    while (!AD1CON1bits.DONE);  // wait for sample-complete
+//    work = ADC1BUF0;            // Read the conversion result
+//    AD1CON1bits.DONE = 0;        // Clear done
+//    while (!AD1CON1bits.DONE);  // wait for sample-complete
+//    work = ADC1BUF0;            // Read the conversion result
+//    return (ADC1BUF0);              // return the value
+// }
+
+/* WB-11U: end A/D Converter support */
+
 /* REVISION HISTORY MOVED FROM BEGINNING OF FILE */
 //      26-Jun-2008, W. Burton
 //          Firmware ID is 0x11 0x50  (11P)

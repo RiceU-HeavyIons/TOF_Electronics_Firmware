@@ -1,4 +1,4 @@
-// $Id: TDIG-F_JTAG.h,v 1.1 2008-02-13 17:16:12 jschamba Exp $
+// $Id: TDIG-F_JTAG.h,v 1.2 2009-05-18 20:17:53 jschamba Exp $
 
 /* TDIG-D_JTAG.h
 ** This header file defines the TDIG-D macros and interfaces for JTAG interface to the TDIG chips.
@@ -20,6 +20,8 @@
 **
 **
 ** Modified:
+**      18-Feb-2009, W. Burton
+**          reset_hptdc copies final control word (WB-11X)
 **      13-Oct-2007, W. Burton
 **          Made "slower" JTAG the only option.
 **      06-Sep-2007, W. Burton
@@ -62,7 +64,7 @@
     void read_hptdc_id (unsigned int tdcnbr, unsigned char *rp, unsigned int bufsize);
     void read_hptdc_status (unsigned int tdcnbr, unsigned char *rp, unsigned int bufsize);
     void write_hptdc_setup (unsigned int tdcnbr, unsigned char *configptr, unsigned char *retcfgptr);
-    void reset_hptdc (unsigned int tdcnbr, unsigned char *finalctrl);
+    void reset_hptdc (unsigned int tdcnbr, unsigned char *finalctrl, unsigned char *savedctrl);
     void select_hptdc(unsigned int ifmcu, unsigned int whichhptdc); // select which HPTDC to address
     void insert_parity (unsigned char *bitsbuf, unsigned int nbits);
     void JTAG_SCAN (unsigned int IRlen, unsigned int IRword, unsigned int DRlen, unsigned char *DRbyte,

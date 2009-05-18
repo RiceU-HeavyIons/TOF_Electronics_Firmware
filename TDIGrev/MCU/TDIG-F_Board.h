@@ -1,8 +1,9 @@
-// $Id: TDIG-F_Board.h,v 1.10 2008-12-01 16:01:44 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.11 2009-05-18 20:17:27 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
-**  dated September 29, 2006.  Also applies to TDIG-E rev 0 board layout
+**  dated September 29, 2006.  Also applies to TDIG-E rev 0, TDIG-F Rev 0
+**  TDIG-F Rev 1.
 **
 **  It defines:
 **  a) overall characteristics of the MCU interface to board hardware;
@@ -26,6 +27,24 @@
 **
 **
 **  Modified:
+**      19-Feb-2009, W. Burton (WB-11X)
+**          "Alarm" is now "Alert" for consistency.
+**      15-Dec-2008, W. Burton
+**          Define MCP9801_CFGR_FQUEx bits for temperature alert "Fault Queue" (WB-11X)
+**      12-Dec-2008, W. Burton
+**          Define MCU_HEAT_ALERT in register F
+**     10-Dec-2008, W. Burton
+**         Firmware ID is now 0x11 0x56 (11V)
+**      10-Sep-2008, W. Burton
+**         Firmware ID is still 0x11 0x55 (11U)
+**         Start adding A/D conversion support (Analog inputs from TINO)
+**     03-Sep-08, W. Burton
+**         Memory limits DEFINEd
+**     05-Aug-08, W. Burton
+**         Boot code protection UNdefined
+**     01-Aug-08, W. Burton
+**         User ID "T"
+**         Boot code protection defined.
 **     15-Oct-07, W. Burton
 **         Default build with REVTDCNBR defined.
 **     08-Sep-07, W. Burton
@@ -36,7 +55,7 @@
 **         Add definitions for Oscillator Selections
 **         Add definition for CANBus Termination On/Off Select
 **     02-Jul-07, W. Burton
-**         Fix FUID0, FUID1 to reflect configuration.
+**         Fix FUID0, FUID1f to reflect configuration.
 **     29-Jun-07, W. Burton
 **         Conditionalize MCU definition/includes
 **         Conditionalize A/D channel assignments and setups.
@@ -99,6 +118,16 @@
 // Define some characteristics
 // Base address of second code image (for download)
     #define MCU2ADDRESS 0x4000
+    #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
+    #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
+    #define MCU2CODEL   0x4000          // Second-image Code space start
+    #if defined (__24HJ128GP506_H)      // IF using 128K processor
+        #define MCU2UPLIMIT 0x157FDL     // Second-image Code space upper end of available memory not including magic
+        #define MAGICADDRESS 0x157FEL    // Jo's Magic Number Location
+    #else                               // else assume 64K processor
+        #define MCU2UPLIMIT 0xABFDL      // Second-image Code space upper end of available memory not including magic
+        #define MAGICADDRESS 0xABFEL     // Jo's Magic Number Location
+    #endif
 
 // External oscillator frequency
 	#define SYSCLK          40000000
@@ -141,7 +170,10 @@
 // Set up Configuration Registers for what I want for the test
 // Symbolic names are found in p24HJ128GP506.h file
 //   Flash boot and write-protect
-//	_FBS( RBS_NO_RAM & BSS_NO_FLASH & BWRP_WRPROTECT_OFF)
+	_FBS( RBS_NO_RAM & BSS_NO_FLASH & BWRP_WRPROTECT_OFF)
+//  01-Aug-08 WB: No Boot RAM; High security large boot flash; Write Protected.
+//     This should protect the area between 0x200 and 0x3FFE.
+//	_FBS( RBS_LARGE_RAM & BSS_LARGE_FLASH_STD & BWRP_WRPROTECT_OFF)
 //  Secure Segment options (all turned off)
 //	_FSS( RSS_NO_RAM & SSS_NO_FLASH & SWRP_WRPROTECT_OFF)
 //	Code Protect Off / Write Protect Off
@@ -179,7 +211,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'T' )       // "T" = 0x54
+    _FUID0( 'X' )       // WB-11X: "X" = 0x58
     _FUID1( 0x11)       // 0x11
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
@@ -225,6 +257,10 @@
      #define MCP9801_CFGR_RES10 0x20    // Config bit 6,5 = Resolution 10-bits
      #define MCP9801_CFGR_RES11 0x40    // Config bit 6,5 = Resolution 11-bits
      #define MCP9801_CFGR_RES12 0x60    // Config bit 6,5 = Resolution 12-bits
+     #define MCP9801_CFGR_FQUE1 0x00    // Fault Queue = 1 (default)
+     #define MCP9801_CFGR_FQUE2 0x08    // Fault Queue = 2
+     #define MCP9801_CFGR_FQUE4 0x10    // Fault Queue = 4
+     #define MCP9801_CFGR_FQUE6 0x18     // Fault Queue = 6
      #define MCP9801_CFGR_ALTH  0x4     // Config bit 2 = Alert Polarity active high
      #define MCP9801_CFGR_INTM  0x2     // Config bit 1 = Alert is Interrupt Mode
      #define MCP9801_CFGR_SHDN  0x1     // Config bit 0 = Shutdown
@@ -371,9 +407,12 @@
         #define FIFO_WORDS_MASK 0x1F
 
 /* Port F bits used for config in and out (not fully implemented) */
-    #define PORTF_dirmask 0x31F7        //
+//    #define PORTF_dirmask 0x31F7        //
+        #define PORTF_dirmask 0x31B7        // WB-11V RF6 is output
         #define UCONFIG_IN (PORTFbits.RF2)
         #define DCONFIG_OUT (LATFbits.LATF3)
+/* Port F bit used for overtemperature alert (U37 MCP9801)        */
+        #define MCU_HEAT_ALERT (PORTFbits.RF6)
 
 /* Port G bits used for various control functions */
     #define MCU_TEST (LATGbits.LATG15)
@@ -405,6 +444,8 @@
 /* A/D Converter Setups */
     #define ALLDIGITAL 0xFFFF       // All Digital I/O (15..0)
     #define ANALOG1716 0xFFFC       // Analog I/O for (17..16)
+    #define TINO_TEMP1 16           // TINO temperature 1 (pin 2) analog
+    #define TINO_TEMP2 17           // TINO temperature 2 (pin 3) analog
 
 // 15-Oct-07
 // Default to the Revised TDC numbering scheme:

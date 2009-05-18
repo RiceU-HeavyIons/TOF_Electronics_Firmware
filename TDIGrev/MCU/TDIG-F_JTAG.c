@@ -1,4 +1,4 @@
-// $Id: TDIG-F_JTAG.c,v 1.4 2008-07-23 16:38:53 jschamba Exp $
+// $Id: TDIG-F_JTAG.c,v 1.5 2009-05-18 20:17:53 jschamba Exp $
 
 /* TDIG-F_JTAG.c
 ** This file defines the TDIG-F routines and interfaces for JTAG interface to the TDIG chips.
@@ -19,6 +19,8 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**  18-Feb-2009, W. Burton
+**      WB-11X: Add copying of finalcontrol[] to savedcontrol[] in reset_hptdc() routine
 **  26-Jun-2008, W. Burton
 **      Add include for FPGA interface (TDIG-F_MCU_PLD.h)
 **      Remove definition of unused variables (warned by compiler)
@@ -147,11 +149,12 @@ void select_hptdc(unsigned int ifmcu, unsigned int whichhptdc) {
 // ----- end select_hptdc()
 }
 
-void reset_hptdc(unsigned int tdcnbr, unsigned char *finalctrl) {
+void reset_hptdc(unsigned int tdcnbr, unsigned char *finalctrl, unsigned char *savedctrl) {
 /* do the hptdc reset sequence using the JTAG interface
 ** call with:
 **   tdcnbr = number of the hptdc to do (1 to NBR_HPTDCS)
 **   finalctrl = pointer to final control string (40-bit control word, page 37 of HPTDC manual)
+**   savedctrl = pointer to array to receive copy of finalctrl word (40-bit control word, page 37 of HPTDC manual) WB-11X
 */
 #if defined (REVISEDRESET)
     if ((tdcnbr > 0) && (tdcnbr<= NBR_HPTDCS) ) {
@@ -170,7 +173,7 @@ void reset_hptdc(unsigned int tdcnbr, unsigned char *finalctrl) {
         // Send final control word
         control_hptdc ( tdcnbr, finalctrl);
         spin(0);
-
+        memcpy (savedctrl, finalctrl, 5);      // WB-11X save image of the last control word
         select_hptdc(JTAG_HDR, tdcnbr);        // select FPGA and which HPTDC
      } // end if valid HPTDC number
 // -----  end of routine reset_hptdc()

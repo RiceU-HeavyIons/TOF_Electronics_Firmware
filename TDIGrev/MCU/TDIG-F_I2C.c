@@ -1,4 +1,4 @@
-// $Id: TDIG-F_I2C.c,v 1.2 2008-03-13 18:19:18 jschamba Exp $
+// $Id: TDIG-F_I2C.c,v 1.3 2009-05-18 20:17:53 jschamba Exp $
 
 /* TDIG-F_I2C.c ---------------------------------------------------------------------
 **
@@ -20,11 +20,15 @@
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
 ** Modified:
+**      19-Feb-2009, W. Burton (WB-11X)
+**      "Alarm" is now "Alert" for consistency.
+**      12-Dec-2008, W. Burton
+**      Added routines Read16_Temp() and Write16_Temp() to support temperature alert (WB-11X).
 **      08-Sep-2007, W. Burton
 **      Updated filenames for RevF boards
 **      29-Jun-2007, W. Burton
 **      Updated include file processing.
-** 
+**
 ** Routines defined here:
 **		I2C_Setup() -- Set up configuration of I2C
 **
@@ -37,6 +41,12 @@
 // Define implementation on the TDIG board (I/O ports, etc)
 
 	#include "TDIG-F_I2C.h"
+
+// AND the following to address to make the command a "write"
+    #define I2C_WRITE 0xFE
+// OR  the following to address to make the command a "read"
+    #define I2C_READ 0x1
+
 
 /* I2C_Setup() ----------------------------------------------------------------------
 ** This routine disables I2C Interrupts and sets up the configuration of the I2C #1
@@ -358,3 +368,117 @@ int Read_Temp () {
 	return (retval);
 }
 
+/* -------------------------------------------------
+Read 16-bit register from I2C Temperature device at I2C address MCP9801
+ returns resulting 16-bit value
+ I2C must have been "Opened" prior to this call
+ --------------------------------------------------*/
+int Read16_Temp (int reg) {
+	int retval = 0;
+/* 1) Write the Register Address we want */
+// Wait for Bus IDLE
+	IdleI2C1();
+// Start the bus
+    StartI2C1();
+    while (I2C1CONbits.SEN);         // wait for Start Sequence to complete
+// Write Slave address and set Master to transmit
+    MasterWriteI2C1((unsigned char)TMPR_ADDR);
+// Wait for address to transmit
+	while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// Transmit the Register Number
+    MasterWriteI2C1((unsigned char)reg);
+// Wait for register to transmit
+    while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+
+/* 2) Re-Address the Chip and Read the value */
+// ReStart the bus
+    RestartI2C1();
+    while (I2C1CONbits.RSEN);         // wait for ReStart Sequence to complete
+// Write Slave address and set Master to transmit
+    MasterWriteI2C1((unsigned char)(TMPR_ADDR|I2C_READ));
+// Wait for address to transmit
+	while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// Get the returned value (MSByte)
+    retval = MasterReadI2C1();
+	retval <<= 8;		// shift up.
+	AckI2C1();			// Master issues ACK
+//    RestartI2C();
+//    while (I2C1CONbits.RSEN);         // wait for ReStart Sequence to complete
+// Write Slave address and set Master to transmit
+//    MasterWriteI2C((unsigned char)(i2caddr|1));
+// Wait for address to transmit
+//	while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+//    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// Get the returned value (LSByte)
+    retval |= (unsigned char)MasterReadI2C1();
+// Signal the end of data
+	NotAckI2C1();		// issue a NAK
+// Wait for Bus IDLE
+	IdleI2C1();
+// done
+    StopI2C1();
+	return (retval);
+}
+
+/* -------------------------------------------------
+Write 16-bit register to I2C Temperature device at I2C address MCP9801
+  into register "reg" with value "val"
+  I2C must have been "Opened" prior to this call
+ --------------------------------------------------*/
+void Write16_Temp (int reg, int val) {
+// Wait for Bus IDLE
+	IdleI2C1();
+// 1. Start the bus
+    StartI2C1();
+    while (I2C1CONbits.SEN);         // wait for Start Sequence to complete
+// 2. Write Slave address (chip address) and set Master to transmit
+    MasterWriteI2C1((unsigned char)TMPR_ADDR);
+// Wait for address to transmit
+	while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// 3. Transmit the Register Number (internal Register pointer)
+    MasterWriteI2C1((unsigned char)(reg&0x3));
+// Wait for register to transmit
+    while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// 4. Send the Data MSByte
+    MasterWriteI2C1((unsigned char)((val>>8)&0xFF));
+// Wait for MSByte to transmit
+    while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// 5. Send the Data LSByte
+    MasterWriteI2C1((unsigned char)(val&0xFF));
+// Wait for register to transmit
+    while ( I2C1STATbits.TBF);
+// Wait for acknowledgement
+    while ( I2C1STATbits.ACKSTAT);
+// Wait for Bus IDLE
+	IdleI2C1();
+// 6. done
+    StopI2C1();
+	return;
+}
