@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.12 2009-05-18 20:17:08 jschamba Exp $
+// $Id: TDIG-F.c,v 1.13 2009-05-20 13:54:46 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -19,99 +19,20 @@
 */
 
 // main program for PIC24HJxxGP506 as used on TDIG-D, E, F boards
-//      17-Feb-2009 thru 19-Feb-2009, W. Burton
-//          Firmware ID is 0x11 0x58 (11 X)
-//          Add CANBus messge to report HPTDC Configuration (C_RS_CONFIGTDCx)
-//          Add CANBus message to report HPTDC Control word. (C_RS_CONTROLTDCx)
-//          Add facility to copy enable_final[][] into hptdc_control[][] when enable_final is used by reset_hptdc.
-//          "Alarm" is now "Alert" for consistency.
-//      30-Jan-2009 W. Burton
-//          Firmware ID is 0x11 0x57 (11 W)
-//          Add CAN1 error checking / interrupts.
-//      14-Jan-2009 thru 14-Jan-2009, W. Burton
-//          Firmware ID is still 0x11 0x56 (11V)
-//          Remove extraneous CAN1 routines send_CAN1_write_reply(), send_CAN1_alert(), send_CAN1_diagnostic;
-//          these functions are now performed using send_CAN1_message().
-//      10-Dec-2008 thru 17-Dec-2008, W. Burton
-//          Firmware ID is 0x11 0x56 (11V)
-//          Add C_WS_TEMPALARMS: Write Temperature alarm limits.
-//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
-//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
-//              over-temperature limit condition appears.
-//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
-//              Note that MCP9801 temperature chip uses only 9-MS bits for alarm setting.
-//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
-//          Add C_WS_TOGGLETINO: Toggle_TINO_TEST_MCU line function to CANBus protocol.
-//              This feature requires FPGA firmware date 2008-12-11 or later (with TINO_TEST_PLD line
-//              held high.
-//              Generated pulses are approx 130 microseconds wide.
-//              Multiple pulses occur at approx 130 microsecond intervals.
-//              Location "tdcpowerbit" is now called ecsrwbits (for TDC power and TINO TEST).
-//          Fix HPTDC Configuration readback compare indexing error.
-//      12-Nov-2008 thru 14-Nov-2008, W. Burton
-//          Firmware ID is 0x11 0x56 (11V)
-//          Add recognition of "Broadcast" messages to CANBus protocol handlers.
-//              This uses additional filtering and message buffer resources.
-//      10-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          Changed Jo's timer stuff from using Timers2/3 to using Timers6/7 because Timer2/3 is the
-//              only set which will drive AD#1
-//          A/D conversion experiments with different modes - now working with sample/convert interrupts.
-//      09-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          Add A/D conversion support (Analog inputs from TINO)
-//              initialize_ad_converter(), sample_ad_converter()
-//          Add A/D converstion result to Board Status (0xB0) and temperature (0x09) messages.
-//      08-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          replaced HPTDC.INC file with version from Jo Schambach's email 9/5/2008
-//      05-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          Use consolidated CANBus HLP header file and define TDIG symbol.
-//      04-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          Add read_threshhold message processing (C_RS_THRESHHOLD)
-//      03-Sep-2008, W. Burton
-//          Firmware ID is still 0x11 0x55 (11U)
-//          Limit reading MCU memory to available range to avoid spurious reset (C_RS_MCUMEM).
-//      02-Sep-2008, W. Burton
-//          Firmware ID is 0x11 0x55 (11U)
-//          Add MCU memory address limits to C_WS_TARGETMCU
-//          Symbolify the "Magic Address"
-//          Add function MCU Memory Checksum (from TCPU)
-//          Add function EEPROM2 Memory Checksum (From TCPU)
-//      29-Aug-2008
-//          Start implementing Read EEPROM2 checksum function (C_RS_EEP2CKSUM)
-//      29-Aug-2008,
-//          Firmware ID is 0x11 0x54 (11T)
-//          Lengthen startup clock select (per Jo Schambach version - BNL_20080809)
-//      05-Aug-2008,
-//          Firmware ID is 0x11 0x54 (11T)
-//          Fix EEPROM2 write check for non-multiple-of-8 byte writes.
-//          Add C_RS_EEPROM2 to read EEPROM2 contents
-//      01-Aug-2008, version from J. Schambach (email 7/24/2008)
-//          Add a delay before switching to external (tray) clock.
-//          Include CRT.S to source files in downloaded code.
-//          Rename project names to exclude version number in the name (so it fits in source tree)
-//      22-Jul-2008, W. Burton
-//          Firmware ID is 0x11 0x52  (11R)
-//          Add code for clock-fail detect, clock source switching via CANBus, clock status request via CAN.
-//          send_CAN1_ALERT() function removed; using send_can1_message
-//          Clean-up code for FPGA SEU (Checksum) Detect.  Reinitialize at FPGA reload.
-//          Move bulk of change history to bottom of file
 
+// This is now done with a compiler definition, so no longer 
+// necessary to define here:
 //JS: Uncomment this, if this is to be donwloaded via CANbus
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'X'      // 0x11 0x58
+#define FIRMWARE_ID_0 'Y'      // 0x11 0x59
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
 #else
     #define FIRMWARE_ID_1 0x11
 #endif
-// WB-11H end
 
 // Define implementation on the TDIG board (I/O ports, etc)
 #define TDIG 1              // This is a TDIG board.
@@ -201,7 +122,6 @@ unsigned int sample_ad_converter(unsigned int chan);
 //JS: put HPTDC setup bits into program memory, three sets of configurations
 //#define PM_ROW	__attribute__((space(prog), aligned(1024)))
 //unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
-// WB-11P: Do not initialize download-code image of these items.
 #if !defined (DOWNLOAD_CODE)
     unsigned char __attribute__((space(prog), aligned(1024), address(0x003000)))
 #else
@@ -286,11 +206,9 @@ unsigned int tino1;      // gets channel digitized value
 unsigned int tino2;      // gets channel digitized value
 // WB-11U: end
 
-//JS: TIMER STUFF *******************************************************
 #ifndef DOWNLOAD_CODE
 unsigned int timerExpired = 0;
 #endif
-//JS: END TIMER STUFF ***************************************************
 
 int main()
 {
@@ -314,6 +232,10 @@ int main()
     unsigned char maskoff;      // working reg used for masking bits
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
+
+	//JS
+	int isConfiguring = 0;
+	int configuredEeprom = 1;
 
 // This applies to first-image code, does not apply to second "download" image.
 #if !defined (DOWNLOAD_CODE)
@@ -447,12 +369,7 @@ int main()
     board_temp = Read_Temp ();
     j = board_temp ^ 0xFFFF;        // flip bits for LED
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (j&0xFF)); // display LSByte
-//  spin(SPINLIMIT);
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ((j>>8)&0xFF));
-//  spin(SPINLIMIT);
-// WB-11V: Activate the overtemperature alert bit
-//    MCU_HEAT_ALERT = 1;     // WB-11V
-
 #endif // defined (TMPR_ADDR)
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -493,8 +410,34 @@ int main()
     Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (jumpers^ledbits) );
 
     spin(5);
+
+#define INIT_FROM_EEPROM2 1 // define it
+#ifdef INIT_FROM_EEPROM2
+	//JS:  try to initialize FPGA from EEPROM 2
+    i = 2;
+	// loop here if it failed the first time
+    do {
+    	MCU_CONFIG_PLD = 0; // disable FPGA configuration
+    	if (i==2) {
+    		sel_EE2;        // select EEPROM #2
+    	} else {
+			sel_EE1;        // else it was #1
+        } // end if select EEPROM #
+        set_EENCS;      //
+        MCU_CONFIG_PLD = 1; // re-enable FPGA
+        j = waitfor_FPGA();     // wait for FPGA to reconfigure
+        if (j != 0) {
+			i--;        // try again from #1
+        } // end if had timeout
+	} while ((i != 0) && (j != 0));       // try til either both were used or no error
+	configuredEeprom = i;
+
+#else
 // Make sure FPGA has configured and reset it
     waitfor_FPGA();
+#endif
+
+// reset FPGA  and initialize FPGA registers
     reset_FPGA();
     init_regs_FPGA(board_posn);
 
@@ -612,7 +555,10 @@ int main()
       retbuf[0] = 0xFF;
       retbuf[1] = 0x0;
       retbuf[2] = 0x0;
-      retbuf[3] = 0x0;
+      if (configuredEeprom == 2) 
+	      retbuf[3] = 0x0;
+	  else
+		  retbuf[3] = 0xff;	
       if (clock_status != 0x2200) {
         memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
       }
@@ -621,12 +567,7 @@ int main()
 /* Send a "Diagnostic" message to show which OSC we think we are running */
 //    send_CAN1_diagnostic (board_posn, 2, (unsigned char *)&clock_status);
 
-// Get state of FPGA CRC_ERROR bit.
-// WB-11R do not read, we start from the assumption there is no CRC Error
-//    fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port
-
 // WB-11U: Changed to use Timer 6 and 7 so Timer2/3 is available for A/D converter
-//JS: TIMER STUFF **********************************************************
 #ifndef DOWNLOAD_CODE
 /* setup timer: Combine Timer 6 and 7 for a 32 bit timer;
     combined timer is controlled by Timer 6 control bits,
@@ -649,7 +590,6 @@ int main()
     T6CONbits.T32 = 1;      // Enable 32-bit timer operation
     T6CONbits.TON = 1;      // Turn on Timer 2
 #endif
-//JS: END TIMER STUFF *********************************************************
 // WB-11U: end timer assignment changes
 
 /* Look for Have-a-Message */
@@ -710,9 +650,9 @@ int main()
                                 if (j == OSCSEL_JUMPER) {   // if "check jumper" requested then
                                     switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
                                     jumpers = (switches & JUMPER_MASK)>>JUMPER_SHIFT;
-/*                                  Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC and MCU_EN_LOCAL_OSC
-**                                      Installing the jumper forces low on MCU_...OSC
-*/
+									/*  Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC and MCU_EN_LOCAL_OSC
+									 **  Installing the jumper forces low on MCU_...OSC
+									 */
                                     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc. use TRAY
                                         j = OSCSEL_TRAY;
@@ -939,12 +879,31 @@ int main()
                                 pld_ident = read_FPGA (IDENT_7_R);
                                 retbuf[2] = pld_ident;  // tell the FPGA ID code value
                                 replylength = 3;
-                                fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read CRC state
+//                                fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read CRC state
+								//JS: when first reconfigured, assume CRC error is 0 (will be checked later anyways)
+                                fpga_crc = 0;
                             } else {        // else we could not do it
                                 retbuf[1] = C_STATUS_INVALID;   // Assume ERROR REPLY
                                 replylength = 2;
                             } // end if we could not do it
                             break;
+
+						//JS:
+                        case C_WS_FPGA_CONF0:
+							MCU_CONFIG_PLD = 0; // disable FPGA configuration
+							isConfiguring = 1;
+							break;							
+
+                        case C_WS_FPGA_CONF1:
+							MCU_CONFIG_PLD = 1; // disable FPGA configuration
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+							// assume CRC_ERROR = 0 after reset
+			                fpga_crc = 0;
+							isConfiguring = 0;
+							break;
+						//JS End							
 
                         case C_WS_TARGETEEPROM2:
                             if (block_status == BLOCK_ENDED) {
@@ -953,7 +912,7 @@ int main()
                                     memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
                                     eeprom_address &= 0xFFFF00L; // mask off lowest bits (byte in page)
                                     wps += 4;
-                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
+//JS                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
                                     sel_EE2;            // select EEPROM #2
                                     if ((*wps)==1) {// see if need to erase
                                         // Write-enable the CSR, data doesn't matter
@@ -984,10 +943,10 @@ int main()
 
                                     sel_EE1;        // de-select EEPROM #2
                                     set_EENCS;      //
-                                    MCU_CONFIG_PLD = 1; // re-enable FPGA
-                                    waitfor_FPGA(); // wait for FPGA to reconfigure
-                                    reset_FPGA();   // reset FPGA
-                                    init_regs_FPGA(board_posn); // initialize FPGA
+//JS                                    MCU_CONFIG_PLD = 1; // re-enable FPGA
+//JS                                    waitfor_FPGA(); // wait for FPGA to reconfigure
+//JS                                    reset_FPGA();   // reset FPGA
+//JS                                    init_regs_FPGA(board_posn); // initialize FPGA
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -1057,7 +1016,6 @@ int main()
                             break;  // end case C_WS_TARGETMCU
 #endif // #if !defined (DOWNLOAD_CODE)
 
-//JS: TIMER STUFF **************************************
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
                             	// Copy any data from message.
@@ -1068,8 +1026,7 @@ int main()
                             	} // end loop over any bytes in message
 
 								// magic address at end of PIC24HJ64 device program memory
-//                                laddrs = 0xABFE;        // magic address
-                                laddrs = MAGICADDRESS;  // WB-11U: Magic address
+                                laddrs = MAGICADDRESS;  // WB-11U: Magic address (0x157FE)
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                 erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
@@ -1082,7 +1039,6 @@ int main()
                             } // end else block was not in progress
 
                             break;  // end case C_WS_MAGICNUMWR
-//JS: END TIMER STUFF **********************************
 
                         case C_WS_BLOCKCKSUM:       // Block Data Checksum
                             retbuf[1] = C_STATUS_INVALID;
@@ -1158,6 +1114,9 @@ int main()
 									// be sure we are running from alternate interrupt vector
                                     INTCON2 |= 0x8000;     // This is the ALTIVT bit
                                     jumpto();    // jump to new code
+#else
+									__asm__ volatile ("goto 0x4000");
+
 #endif
                                 } // end if we are starting second image.
                                 __asm__ volatile ("reset");  // else we do "reset" (_resetPRI)
@@ -1179,7 +1138,6 @@ int main()
 
                                 // now decode the "Read-from" location inside message
                     switch ((*wps++)&0xFF) {       // look at and dispatch SUB-command, point to remainder of message
-/* start WB-11X Add Readback of last Control word */
                         case (C_RS_CONTROLTDCS):   // WB-11X Read control word all TDCs
                         case (C_RS_CONTROLTDC1):   // WB-11X Read Control word from TDC #1
                         case (C_RS_CONTROLTDC2):   // WB-11X Read Control word from TDC #2
@@ -1201,9 +1159,7 @@ int main()
                             } // end loop over one or all tdc control words
                             replylength = 0;
                             break;
-/* end   WB-11X Add Readback of last Control word */
 
-/* start WB-11X Add Readback of last Configuration block */
                         case (C_RS_CONFIGTDCS):     // WB-11X Read Configuration block from All TDCs
                         case (C_RS_CONFIGTDC1):     // WB-11X Read Configuration block for TDC #1
                         case (C_RS_CONFIGTDC2):     // WB-11X Read Configuration block for TDC #2
@@ -1228,7 +1184,6 @@ int main()
                             } // WB-11X end loop over one or 3 HPTDCs
                             replylength = 0;        // WB-11X - inhibit extra message
                             break;
-/* end   WB-11X Add Readback of last Configuration block */
 
                         case (C_RS_STATUS1):              // READ STATUS #1
                         case (C_RS_STATUS2):              // READ STATUS #2
@@ -1263,7 +1218,7 @@ int main()
                                 replylength = 5;
                             } // WB-11U: end if in range
                             break; // end case C_RS_MCUMEM
-// WB-11U start
+
                         case (C_RS_MCUCKSUM ):            // Return MCU Memory checksum
                             if (rcvmsglen == 8) { // check for correct length of incoming message
                                 memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 bytes from incoming message, address
@@ -1281,7 +1236,6 @@ int main()
                                 replylength = 5;
                             }
                             break; // end case C_RS_MCUCKSUM
-// WB-11U end
 
                         case (C_RS_FIRMWID):            // Return MCU Firmware ID
                             retbuf[1] = FIRMWARE_ID_0;
@@ -1356,7 +1310,6 @@ int main()
 
                             break;      // end C_RS_EEPROM2
 
-// WB-11U starts
                         case (C_RS_EEP2CKSUM):
                             replylength = 5;        // fixed length reply
                             memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom start address
@@ -1376,7 +1329,6 @@ int main()
                                 laddrs--;                   // count down blocks to do
                             }   // end while have blocks to do
                             memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork, 4);   // copy result to reply
-//                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&laddrs, 4);  // copy diagnostic to reply
                             sel_EE1;        // de-select EEPROM #2
                             set_EENCS;      //
                             MCU_CONFIG_PLD = 1; // re-enable FPGA
@@ -1384,7 +1336,6 @@ int main()
                             reset_FPGA();   // reset FPGA
                             init_regs_FPGA(board_posn); // initialize FPGA
                             break;      // end C_RS_EEPCKSUM
-// WB-11U ends
 
                         case (C_RS_JSW):              // Return the Jumper/Switch settings (U35)
                             retbuf[1] = (unsigned char)Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
@@ -1440,11 +1391,13 @@ int main()
 #endif
 
 // WB-11J,R Check ECSR for change-of-state on PLD_CRC_ERROR bit
-		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
-		if ( j != fpga_crc) {  // see if it has changed
-            fpga_crc = j;
-            lwork = C_ALERT_CKSUM_CODE | (j<<8);
-            send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+		if (isConfiguring = 0) { //JS: only check when we are not configuring
+			j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
+			if ( j != fpga_crc) {  // see if it has changed
+            	fpga_crc = j;
+            	lwork = C_ALERT_CKSUM_CODE | (j<<8);
+            	send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+			}
 		}
 // WB-11J end
 // WB-11R - Clock status monitoring
@@ -1473,25 +1426,12 @@ int main()
         } // end else just count down delay
 // WB-11V - End Temperature Alert Monitoring
 
-//JS: TIMER STUFF **************************************
 #ifndef DOWNLOAD_CODE
 		if (timerExpired == 1) {
 			timerExpired = 0;
 			// magic address at end of PIC24HJ64 device program memory
-//            read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE);
             read_MCU_pm ((unsigned char *)readback_buffer, MAGICADDRESS);
-#ifdef NOTNOW
-			// for now, just send back a CAN message indicating the memory content
-			retbuf[0] = readback_buffer[0];
-			retbuf[1] = readback_buffer[1];
-			retbuf[2] = readback_buffer[2];
-			retbuf[3] = readback_buffer[3];
-#endif
 			if (*((unsigned int *)readback_buffer) == 0x3412) {
-				// in the future, the reset code would go here
-#ifdef NOTNOW
-				retbuf[4] = 1;
-#endif
                 // stop interrupts
                 CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
                 save_SR = SR;          // save the Status Register
@@ -1500,15 +1440,8 @@ int main()
                 INTCON2 |= 0x8000;     // This is the ALTIVT bit
                 jumpto();    // jump to new code
 			}
-#ifdef NOTNOW
-			else {
-				retbuf[4] = 0;
-			}
-            send_CAN1_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
-#endif
 		}
 #endif
-//JS: END TIMER STUFF ***********************************
 
         // Mostly Idle, Check for change of switches/jumpers/button
 		if ( (Read_MCP23008(SWCH_ADDR, MCP23008_GPIO)) != switches ) {        // if changed
@@ -1517,7 +1450,6 @@ int main()
 				spin(0);
 				switches = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
 				if ((switches & BUTTON)==BUTTON) {        // still button?
-//                      write_FPGA (STROBE_12_W, 0);
 				} // end if have second switch
 			} // end if have first switch
 			jumpers = (switches & JUMPER_MASK)>>JUMPER_SHIFT;
@@ -1889,15 +1821,6 @@ How do these get hooked to hardware???
  --------------------------------------------------*/
 void __attribute__((__interrupt__))_C1Interrupt(void)
 {
-/* WB-11W: Original Interrupt routine removed
-    IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
-    if(C1INTFbits.TBIF) {     // If interrupt was from Tx Buffer
-        C1INTFbits.TBIF = 0;            // Clear Tx Buffer Interrupt
-    }
-    if(C1INTFbits.RBIF) {     // If interrupt was from Rx Buffer
-        C1INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
-	}
-   WB-11W: End original Interrupt routine removed */
 // WB-11W: Revised interrupt routine inserted
     if (C1INTFbits.RBOVIF) {    // If interrupt was from Overflow
         can1error = C1VEC;     // Mark which one caused interrupt
@@ -1914,7 +1837,6 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
         C1INTFbits.RBIF = 0;            // Clear Rx Buffer Interrupt
     } // end if interrupt was from Rx Buffer
     IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
-// WB-11W: End of Revised interrupt routine inserted
 }
 
 void __attribute__((__interrupt__))_OscillatorFail(void)
@@ -1930,7 +1852,6 @@ void __attribute__((__interrupt__))_OscillatorFail(void)
 }
 
 // WB-11U: Changed timer assignment to T6/T7 so T2/T3 is available for A/D converter
-//JS: TIMER STUFF
 // Timer 7 Interrupt Service Routine
 void _ISR _T7Interrupt(void)
 {
@@ -1941,7 +1862,7 @@ void _ISR _T7Interrupt(void)
 #if !defined (DOWNLOAD_CODE)    // WB-11P: Not defined for download code
 	timerExpired = 1;		// indicate to main program that timer has expired
 #endif // not defined DOWNLOAD_CODE
-}//JS: END TIMER STUFF
+}
 // WB-11U: end timer change
 
 #if defined (SENDMISMATCH)
@@ -2064,20 +1985,6 @@ void erase_MCU_pm (unsigned long addrs) {
     SR = save_SR;           // restore the saved status register
 }
 
-#ifndef DOWNLOAD_CODE
-void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
-jumpto(void) {
-/* this routine is really just a placeholder for the start address in the
- * MCU2 code image.  If there is no image downloaded yet, eventually the MCU
- * will just restart into the first image.
- * During compile-and-link, a warning message will be issued.  That is OK    */
-
-    for ( ; ; )
-     __asm__ volatile ("nop");
-
-}
-#endif
-
 
 /* WB-11U: A/D Converter support */
 void __attribute__((__interrupt__))_ADC1Interrupt(void)
@@ -2183,29 +2090,106 @@ void initialize_ad_converter(void) {
     AD1CON1bits.ADON = 1;       // Turn on the A/D module
 }
 
-// This routine removed.  Now done with interrupts and global variables
-// unsigned int sample_ad_converter(unsigned int chan) {
-/* This routine Returns an AD Converter Sample for requested channel
- * Module must already be operating (AD1CON1bits.ADON)
- * chan is masked to 0..31.  For the TDIG, only analog channels 16 and 17 are defined.
- */
-//    unsigned int work;
-//    AD1CHS0 = chan & 0x1F;      // Connect channel Ch0 input (masked to range [0..31])
-//    AD1CON1bits.DONE = 0;        // Clear done
-//    AD1CON1bits.SAMP = 1;       // Start sampling
-//    spin(0);                    // 20 mSec
-    //AD1CON1bits.SAMP = 0;       // End sampling/start converting
-//    while (!AD1CON1bits.DONE);  // wait for sample-complete
-//    work = ADC1BUF0;            // Read the conversion result
-//    AD1CON1bits.DONE = 0;        // Clear done
-//    while (!AD1CON1bits.DONE);  // wait for sample-complete
-//    work = ADC1BUF0;            // Read the conversion result
-//    return (ADC1BUF0);              // return the value
-// }
-
 /* WB-11U: end A/D Converter support */
 
+
+#ifndef DOWNLOAD_CODE
+void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
+jumpto(void) {
+/* this routine is really just a placeholder for the start address in the
+ * MCU2 code image.  If there is no image downloaded yet, eventually the MCU
+ * will just restart into the first image.
+ * During compile-and-link, a warning message will be issued.  That is OK    */
+
+    for ( ; ; )
+     __asm__ volatile ("nop");
+
+}
+#endif
+
+
+//*****************************************************************************************************************//
 /* REVISION HISTORY MOVED FROM BEGINNING OF FILE */
+//      17-Feb-2009 thru 19-Feb-2009, W. Burton
+//          Firmware ID is 0x11 0x58 (11 X)
+//          Add CANBus messge to report HPTDC Configuration (C_RS_CONFIGTDCx)
+//          Add CANBus message to report HPTDC Control word. (C_RS_CONTROLTDCx)
+//          Add facility to copy enable_final[][] into hptdc_control[][] when enable_final is used by reset_hptdc.
+//          "Alarm" is now "Alert" for consistency.
+//      30-Jan-2009 W. Burton
+//          Firmware ID is 0x11 0x57 (11 W)
+//          Add CAN1 error checking / interrupts.
+//      14-Jan-2009 thru 14-Jan-2009, W. Burton
+//          Firmware ID is still 0x11 0x56 (11V)
+//          Remove extraneous CAN1 routines send_CAN1_write_reply(), send_CAN1_alert(), send_CAN1_diagnostic;
+//          these functions are now performed using send_CAN1_message().
+//      10-Dec-2008 thru 17-Dec-2008, W. Burton
+//          Firmware ID is 0x11 0x56 (11V)
+//          Add C_WS_TEMPALARMS: Write Temperature alarm limits.
+//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
+//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
+//              over-temperature limit condition appears.
+//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
+//              Note that MCP9801 temperature chip uses only 9-MS bits for alarm setting.
+//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
+//          Add C_WS_TOGGLETINO: Toggle_TINO_TEST_MCU line function to CANBus protocol.
+//              This feature requires FPGA firmware date 2008-12-11 or later (with TINO_TEST_PLD line
+//              held high.
+//              Generated pulses are approx 130 microseconds wide.
+//              Multiple pulses occur at approx 130 microsecond intervals.
+//              Location "tdcpowerbit" is now called ecsrwbits (for TDC power and TINO TEST).
+//          Fix HPTDC Configuration readback compare indexing error.
+//      12-Nov-2008 thru 14-Nov-2008, W. Burton
+//          Firmware ID is 0x11 0x56 (11V)
+//          Add recognition of "Broadcast" messages to CANBus protocol handlers.
+//              This uses additional filtering and message buffer resources.
+//      10-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Changed Jo's timer stuff from using Timers2/3 to using Timers6/7 because Timer2/3 is the
+//              only set which will drive AD#1
+//          A/D conversion experiments with different modes - now working with sample/convert interrupts.
+//      09-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Add A/D conversion support (Analog inputs from TINO)
+//              initialize_ad_converter(), sample_ad_converter()
+//          Add A/D converstion result to Board Status (0xB0) and temperature (0x09) messages.
+//      08-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          replaced HPTDC.INC file with version from Jo Schambach's email 9/5/2008
+//      05-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Use consolidated CANBus HLP header file and define TDIG symbol.
+//      04-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Add read_threshhold message processing (C_RS_THRESHHOLD)
+//      03-Sep-2008, W. Burton
+//          Firmware ID is still 0x11 0x55 (11U)
+//          Limit reading MCU memory to available range to avoid spurious reset (C_RS_MCUMEM).
+//      02-Sep-2008, W. Burton
+//          Firmware ID is 0x11 0x55 (11U)
+//          Add MCU memory address limits to C_WS_TARGETMCU
+//          Symbolify the "Magic Address"
+//          Add function MCU Memory Checksum (from TCPU)
+//          Add function EEPROM2 Memory Checksum (From TCPU)
+//      29-Aug-2008
+//          Start implementing Read EEPROM2 checksum function (C_RS_EEP2CKSUM)
+//      29-Aug-2008,
+//          Firmware ID is 0x11 0x54 (11T)
+//          Lengthen startup clock select (per Jo Schambach version - BNL_20080809)
+//      05-Aug-2008,
+//          Firmware ID is 0x11 0x54 (11T)
+//          Fix EEPROM2 write check for non-multiple-of-8 byte writes.
+//          Add C_RS_EEPROM2 to read EEPROM2 contents
+//      01-Aug-2008, version from J. Schambach (email 7/24/2008)
+//          Add a delay before switching to external (tray) clock.
+//          Include CRT.S to source files in downloaded code.
+//          Rename project names to exclude version number in the name (so it fits in source tree)
+//      22-Jul-2008, W. Burton
+//          Firmware ID is 0x11 0x52  (11R)
+//          Add code for clock-fail detect, clock source switching via CANBus, clock status request via CAN.
+//          send_CAN1_ALERT() function removed; using send_can1_message
+//          Clean-up code for FPGA SEU (Checksum) Detect.  Reinitialize at FPGA reload.
+//          Move bulk of change history to bottom of file
 //      26-Jun-2008, W. Burton
 //          Firmware ID is 0x11 0x50  (11P)
 //          Clean up compiler warnings and dead code.
