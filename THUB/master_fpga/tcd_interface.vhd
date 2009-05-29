@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.10 2009-03-03 20:49:50 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.11 2009-05-29 13:37:31 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2009-02-25
+-- Last update: 2009-05-26
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -124,21 +124,23 @@ BEGIN  -- ARCHITECTURE a
 
           -- now the state machine should be aligned to the RHICstrobe
         WHEN R1 =>
-          -- latch current nibbles into 20bit register
-          s_reg20_1 (19 DOWNTO 16) <= s_reg1;
-          s_reg20_1 (15 DOWNTO 12) <= s_reg2;
-          s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
-          s_reg20_1 (7 DOWNTO 4)   <= s_reg4;
-          s_reg20_1 (3 DOWNTO 0)   <= s_reg5;
-
-          s_reg1 <= data;
 
           -- make sure we see RHICstrobe being high during this nibble
           IF rhic_strobe = '1' THEN
+            -- latch current nibbles into 20bit register
+            s_reg20_1 (19 DOWNTO 16) <= s_reg1;
+            s_reg20_1 (15 DOWNTO 12) <= s_reg2;
+            s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
+            s_reg20_1 (7 DOWNTO 4)   <= s_reg4;
+            s_reg20_1 (3 DOWNTO 0)   <= s_reg5;
+
+            s_reg1 <= data;
+
             rsState <= R2;
           ELSE
+            s_reg20_1 <= (OTHERS => '0');
             -- try new sync, if not
-            rsState <= R0l;
+            rsState   <= R0l;
           END IF;
         WHEN R2 =>
           trgWord <= s_reg20_1;
@@ -161,55 +163,62 @@ BEGIN  -- ARCHITECTURE a
 
 
   -- now check if there is a valid trigger command:
-  trg : PROCESS (s_reg20_1(19 DOWNTO 16)) IS
+  trg : PROCESS (data_strobe, s_reset_n) IS
   BEGIN
-    CASE s_reg20_1(19 DOWNTO 16) IS
-      WHEN "0100" =>                    -- "4" (trigger0)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "0101" =>                    -- "5" (trigger1)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "0110" =>                    -- "6" (trigger2)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "0111" =>                    -- "7" (trigger3)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1000" =>                    -- "8" (pulser0)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1001" =>                    -- "9" (pulser1)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1010" =>                    -- "10" (pulser2)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1011" =>                    -- "11" (pulser3)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1100" =>                    -- "12" (config)
-        s_trg_unsync <= '1';
-        s_l0like     <= '1';
-      WHEN "1101" =>                    -- "13" (abort)
-        s_trg_unsync <= '1';
-        s_l0like     <= '0';
-      WHEN "1110" =>                    -- "14" (L1accept)
-        s_trg_unsync <= '1';
-        s_l0like     <= '0';
-      WHEN "1111" =>                    -- "15" (L2accept)
-        s_trg_unsync <= '1';
-        s_l0like     <= '0';
-      WHEN OTHERS =>
-        s_trg_unsync <= '0';
-        s_l0like     <= '0';
-    END CASE;
+    IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
+      s_trg_unsync <= '0';
+      s_l0like     <= '0';
+      s_mstr_rst   <= '0';
 
-    -- master reset command
-    IF s_reg20_1(19 DOWNTO 16) = "0010" THEN
-      s_mstr_rst <= '1';
-    ELSE
-      s_mstr_rst <= '0';
+    ELSIF rising_edge(data_strobe) THEN  -- only on rising edge of data strobe
+      CASE s_reg20_1(19 DOWNTO 16) IS
+        WHEN "0100" =>                   -- "4" (trigger0)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "0101" =>                   -- "5" (trigger1)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "0110" =>                   -- "6" (trigger2)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "0111" =>                   -- "7" (trigger3)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1000" =>                   -- "8" (pulser0)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1001" =>                   -- "9" (pulser1)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1010" =>                   -- "10" (pulser2)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1011" =>                   -- "11" (pulser3)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1100" =>                   -- "12" (config)
+          s_trg_unsync <= '1';
+          s_l0like     <= '1';
+        WHEN "1101" =>                   -- "13" (abort)
+          s_trg_unsync <= '1';
+          s_l0like     <= '0';
+        WHEN "1110" =>                   -- "14" (L1accept)
+          s_trg_unsync <= '1';
+          s_l0like     <= '0';
+        WHEN "1111" =>                   -- "15" (L2accept)
+          s_trg_unsync <= '1';
+          s_l0like     <= '0';
+        WHEN OTHERS =>
+          s_trg_unsync <= '0';
+          s_l0like     <= '0';
+      END CASE;
+
+      -- master reset command
+      IF s_reg20_1(19 DOWNTO 16) = "0010" THEN
+        s_mstr_rst <= '1';
+      ELSE
+        s_mstr_rst <= '0';
+      END IF;
     END IF;
   END PROCESS trg;
 
