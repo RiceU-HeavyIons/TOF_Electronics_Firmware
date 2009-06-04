@@ -1,4 +1,4 @@
--- $Id: synchronizer.vhd,v 1.1 2008-01-16 23:10:59 jschamba Exp $
+-- $Id: synchronizer.vhd,v 1.2 2009-06-04 20:57:06 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Syncrhonizer
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-01-16
--- Last update: 2008-01-16
+-- Last update: 2009-06-04
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -58,6 +58,7 @@ ARCHITECTURE a OF synchronizer IS
 
   SIGNAL s_ddio_outh : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_ddio_outl : std_logic_vector (7 DOWNTO 0);
+  SIGNAL s_ddio_out  : std_logic_vector (15 DOWNTO 0);
 
   
 BEGIN  -- ARCHITECTURE a
@@ -70,8 +71,18 @@ BEGIN  -- ARCHITECTURE a
     dataout_h => s_ddio_outh,
     dataout_l => s_ddio_outl);
 
-  -- now synchronize the 2 decoded 8bit streams and the latch signal with a
-  -- dual-clock FIFO
+  -- next, latch the 2  8bit output streams from the DDIO into a 16bit register
+  PROCESS (serdes_clk) IS
+  BEGIN
+    IF falling_edge(serdes_clk) THEN
+      s_ddio_out(15 DOWNTO 8) <= s_ddio_outl;
+      s_ddio_out(7 DOWNTO 0)  <= s_ddio_outh;
+    END IF;
+  END PROCESS;
+
+  -- now synchronize the decoded 16bit stream and the latch signal using a
+  -- dual-clock FIFO, write clock is incoming serdes clock, read clock
+  -- is local 80MHz clock
   syncfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -87,13 +98,12 @@ BEGIN  -- ARCHITECTURE a
       wrsync_delaypipe       => 4
       )
     PORT MAP (
-      wrclk             => NOT serdes_clk,
+      wrclk             => serdes_clk,
       wrreq             => '1',
       rdclk             => clk80mhz,
       rdreq             => '1',
       data(16)          => serdes_strb,
-      data(15 DOWNTO 8) => s_ddio_outl,
-      data(7 DOWNTO 0)  => s_ddio_outh,
+      data(15 DOWNTO 0) => s_ddio_out,
       q                 => sync_q
       );
 
