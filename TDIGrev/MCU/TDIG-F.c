@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.13 2009-05-20 13:54:46 jschamba Exp $
+// $Id: TDIG-F.c,v 1.14 2009-06-09 22:08:35 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -1391,7 +1391,7 @@ int main()
 #endif
 
 // WB-11J,R Check ECSR for change-of-state on PLD_CRC_ERROR bit
-		if (isConfiguring = 0) { //JS: only check when we are not configuring
+		if (isConfiguring == 0) { //JS: only check when we are not configuring
 			j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
 			if ( j != fpga_crc) {  // see if it has changed
             	fpga_crc = j;
