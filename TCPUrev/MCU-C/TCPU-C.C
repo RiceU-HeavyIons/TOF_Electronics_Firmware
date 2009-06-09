@@ -1,87 +1,8 @@
-// $Id: TCPU-C.C,v 1.7 2009-03-06 16:20:05 jschamba Exp $
+// $Id: TCPU-C.C,v 1.8 2009-06-09 22:02:09 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
 //
-// Version 2J - BETA Version
-//      26-thru 27-Feb-2009, W. Burton (WB-2J)
-//          Add timeout to SEND_CAN1_message() so an isolated TCPU on CAN2 only will work.
-//          Routine send_CAN1_data() is no longer used, removed.
-//          Routine send_CAN2_data() is replaced by call to send_CAN2_message() with DATA message type.
-//          Remove code-space 2 different sign-on message and update HLP document per Jo Schambach email 2/25/09.
-//          Remove TDCRESET toggle from FPGA Initialization routine init_regs() in file TCPU-B_MCU_PLD.c
-//          Do not check PLL_LOS status if we are in PLL Bypass condition.
-//          "Alarm" is now "Alert" for consistency.
-//      25-Feb-2009, W. Burton (WB-2J)
-//          Version ID is 02 48
-//          Fix port initialization for download (code-space 2) image for proper operation when started from an "old"
-//          code-space 1 image.
-//          Fix code-space 2 sign-on message to indicate we are really code-space 2 (per CANBus HLP 3 document).
-// Version 2H
-//      16-thru 02-Feb-2009, W. Burton (WB-2H)
-//          Improve CAN1 to CAN2 message passing and define CANBus #1 and #2 errors.
-// Version 2G
-//          Fix EEPROM2 download to allow non-256 byte download
-//          Re-enable WAITFOR_FPGA when EEPROM2 reprogrammed.
-//      16-thru-17-Dec-2008, W. Burton (WB-2G)
-//          Fix recognition of TCPU-targeted Broadcast messages.
-//          Make initialization of FPGA register 12 conditional on definition of TRAY_GEOGRAPHIC (TCPU-C_Board.h)
-//      15-Dec-2008, W. Burton (WB-2G)
-//          Add C_WS_TEMPALERTS: Write Temperature alert limits.
-//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
-//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
-//              over-temperature limit condition appears.
-//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
-//              Note that MCP9801 temperature chip uses only 9-MS bits for alert setting.
-//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
-//      12-Dec-2008, W. Burton (WB-2G)
-//          Deleted FPGA Register 12 initialization in module init_regs_FPGA() (file TCPU-B_MCU_PLD.C)
-//              Argument list did not change but board_position argument no longer used.
-//      04-Dec-2008, W. Burton (WB-2G)
-//          Continued work on CAN1 buffering/FIFO
-//      17-thru-20-Nov-2008, W. Burton (WB-2G)
-//          Version ID is 02 47 (2G)
-//          Fix spurious TCPU reply to 0x6xx messages on CAN#1.
-//          Fix spurious TCPU reply to 0x6xx messages on CAN#2.
-//          Begin implementation of Broadcast message on CAN#1.
-//          Begin implementation of Broadcast message on CAN#2.
-//          Fixed CAN Message Filtering to avoid extra tests and spurious reply to 6xx messages.
-// Version 2F
-//      05-Sep-2008, W. Burton (WB-2F)
-//          Version ID is still 02 46 (2F)
-//          Migrate to single CANBus HLP Header file for both TCPU and TDIG; DEFINE the TCPU symbol.
-//          Implement C_RS_EEPROM2 reading function.
-//      04-Sep-2008, W. Burton (WB-2F)
-//          Clean up Alert message sending.
-//          Implement C_RS_CLKSTATUS for reading MCU clock status word
-//      03-Sep-2008, W. Burton (WB-2F)
-//          Add FPGA CRC-error detect and message transmit.
-//          ** THIS CHANGES THE WAY THE DODATATEST CODE WORKS! **
-//             The value defined in DODATATEST determines the maximum number of cycles thru the
-//             data transmit loop before rechecking for incoming message, switches, CRC error, etc.
-//             Increasing the value increases the "data rate" but decreases responsiveness to
-//             other conditions.
-//          Clean up PLD Ident reading.
-//          Limit MCU memory reads to available range to avoid spurious reset (C_RS_MCUMEM)
-//      02-Sep-2008, W. Burton (WB-2F)
-//          Add MCU program memory checksum (C_RS_MCUCKSUM)
-//      29-Aug-2008, W. Burton (WB-2F)
-//          Add eeprom2 checksum command (C_RS_EEP2CKSUM)
-//      27-Aug-2008, W. Burton (WB-2F)
-//          Version ID is 02 46 (2F)
-//          Add memory address limits to C_WS_TARGETMCU
-//              Memory addresses outside the ranges 0x100..0x200 or 0x4000..0x8FFF will not be programmed.
-//
-// Version 2E - originated as TCPU-C_BNL_20080623
-//  Changes from Version 2D
-//    Firmware ID updated to 2E
-//    JS startup timer and "Magic Number" message added.
-//    Downloaded code Firmware ID changed to 0x92
-//    Comments added 8/27/2008 by WB
-//
-// Program # 2D - Extra Version for download debugging
-//      21-Jun-2008, W. Burton. (Changes identified WB-02D)
-//          Rework initializations (especially clock and ports) for download second image.
 /* WB-02D
  * Comments moved to end of file
  */
@@ -113,7 +34,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'J'   // WB version 2J (WB-2J) 'J' = 0x4A
+#define FIRMWARE_ID_0 'K'   // version 2K 'K' = 0x4B
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -144,7 +65,6 @@
 /* DEFINE the HLP_version_3 Packet IDs */
 // WB-2F: Use common include file for both TPCU and TDIG (must #DEFINE TCPU prior to use
 #include "CAN_HLP3.h"
-// #include "TCPU-C_CAN_HLP3.h"     // WB-2F: removed
 
 // Spin Counter
 #define SPINLIMIT 20
@@ -182,24 +102,10 @@ void ecan2Init(unsigned int board_id);
 void dma1Init(void);
 void dma3Init(void);
 
-
-//	void ecan1WriteRxAcptFilter(int n, long identifier, unsigned int exide,
-//    	unsigned int bufPnt,unsigned int maskSel);
-//	void ecan1WriteRxAcptMask (int m, long identifier, unsigned int mide);
-//    void ecan1WriteMessage (unsigned int word);
-//	void ecan1WriteTxMsgBufId (unsigned int buf, long txIdentifier,
-//    	unsigned int ide, unsigned int remoteTransmit);
-//	void ecan1WriteTxMsgBufData (unsigned int buf, unsigned int dataLength,
-//    	unsigned int data1, unsigned int data2, unsigned int data3,
-//    	unsigned int data4);
-
 // Routines Defined in this module:
 // MCU configuration / control
-// WB-1L
-// void Initialize_OSC();                  // initialize the CPU oscillator
 int Initialize_OSC(unsigned int oscsel);              // initialize the CPU oscillator
 void Switch_OSC(unsigned int mcuoscsel);               // Switch CPU oscillator (low level)
-// WB-1L end
 void spin(int cycle);		// delay
 void clearIntrflags(void);	// Clear interrupt flags
 
@@ -210,12 +116,10 @@ void send_CAN_alerts (unsigned int board_id, unsigned int length, unsigned char 
 // CANBus #1 ("tray")
 // Send a CAN message - fills in     board id               message type  number of payload bytes    &payload[0]
 void send_CAN1_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
-// WB-2J: void send_CAN1_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 // CANBus #2 ("System")
 void send_CAN2_message (unsigned int board_id, unsigned int message_type, unsigned int bytes, unsigned char *bp);
 void send_CAN2_message_extended (unsigned int ext_id, unsigned int std_id, unsigned int bytes, unsigned char *bp);
-// WB-2J: void send_CAN2_data (unsigned int board_id, unsigned int bytes, unsigned char *bp);
 
 /* MCU Memory and Reprogramming */
 typedef unsigned short UWord16;
@@ -265,50 +169,33 @@ unsigned int can1error = 0;      // mark for no CAN1 error condition
 unsigned int can2error = 0;      // mark for no CAN2 error condition
 
 
-// Image of PLD control / configuration registers read-back
-// unsigned int pld_ident;
-// unsigned int pld_config_0;
-// unsigned int pld_config_1;
-// unsigned int pld_config_2;
-// unsigned int pld_config_3;
-
 unsigned int board_posn = 0;    // Gets board-position from switch
 unsigned int clock_status;      // will get identification from Clock switch/select (OSCCON)
 unsigned int clock_failed = 0;      // will get set by clock fail interrupt
 unsigned int clock_requested;   // will get requested clock ID
                                 // 00 = board, 01= PLL, 08= tray
-
-//JS: TIMER STUFF *******************************************************
 #ifndef DOWNLOAD_CODE
 unsigned int timerExpired = 0;
 #endif
-//JS: END TIMER STUFF ***************************************************
 
 int main()
 {
-/* WB-02D start */
 #if !defined (DOWNLOAD_CODE)
     unsigned int k;
 	unsigned char bwork[10];
 #endif
-/* WB-02D end */
     unsigned long int lwork2;
     unsigned long int lwork3;
     unsigned long int laddrs;
 	unsigned int save_SR;
 
-//    unsigned long int fifovalue;      // WB-02D not used
-//    unsigned long int expectedvalue;  // WB-02D not used
     unsigned long int lwork;
 	unsigned int i, j;
 
 	unsigned int tglbit = 0x0;
-//	unsigned int switches = 0x0;        // WB-02D not used
 	unsigned int jumpers = 0x0;
     unsigned int oldjumpers = 0x0;  // saves previous jumper state
     unsigned int oldswitch = 0x0;   // saves previous value of position switch
-//	unsigned int buttoncount = 0x0;    // WB-02D not used
-//	unsigned int tdcpowerbit = 0x0;    // WB-02D not used
 	unsigned int ledbits = NO_LEDS;
     unsigned int fpga_crc = 0;      // will get image of CRC Error bit from ECSR (Assume no error to start)
 	unsigned int board_temp = 0;	// will get last-read board temperature word
@@ -322,8 +209,10 @@ int main()
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
 
+	//JS
+	int isConfiguring = 0;
 
-//JS
+
 /* WB-02D - Begin significant rework in this area
  * This section applies to second-image (Downloaded) code only
  * NOTE Second Image does not re-initialize I/O Ports/Pins/or Expander I/Os!
@@ -361,11 +250,9 @@ int main()
 // Make D9 an output (pin 69 = MCU_CONFIG_PLD, initialize H)
     LATD  = (0xFFFF & MCU_EE_initial & MCU_PLL_initial); // Initial bits
     TRISD = (0xFFFF & MCU_EE_dirmask & MCU_PLL_dirmask); // I/O configuration
-// WB-1L
 /* Make sure port F is in a safe condition */
     LATF = PORTF_initial;
     TRISF = PORTF_dirmask;
-// WB-1L end
 
 /* Port G bits used for various control functions
 ** Pin Port.Bit Dir'n Initial Signal Name
@@ -400,7 +287,6 @@ int main()
 // We will want to run at priority 0 mostly
     SR &= 0x011F;          // Lower CPU priority to allow interrupts
     CORCONbits.IPL3=0;     // Lower CPU priority to allow user interrupts
-// WB-1L end
 
 // Initialize CAN2 timeout flag
     CAN2timeout = 0;        // no timeout yet (global flag)
@@ -432,22 +318,8 @@ int main()
 // Initialize and Turn Off LEDs
     Initialize_LEDS();
 
-// Initialize and Read Serial Number
-//	#if defined (SN_ADDR) // if address defined, it exists
-//    	Write_device_I2C1 (SN_ADDR, CM00_CTRL, CM00_CTRL_I2C);     // set I2C mode
-//		for (j=0; j<8; j++) {
-//			sn[j] = (unsigned char)Read_MCP23008(SN_ADDR,j);		// go get sn byte
-//    #else
-//        for (j=0; j<8; j++) sn[j] = j;
-//    #endif
-//          Briefly display each byte of Serial Number on LEDs
-//            Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (unsigned int)(sn[j]^0xFF)); //
-//			spin (SPINLIMIT);
-//		}
-
 // Initialize and Read Temperature Monitor
 	#if defined (TMPR_ADDR)
-//        Initialize_Temp (MCP9801_CFGR_RES12);   // configure 12 bit resolution
         Initialize_Temp (MCP9801_CFGR_RES12|MCP9801_CFGR_FQUE4);   // WB-2G: configure 12 bit res. fault queue=4
 		board_temp = Read_Temp ();
 		j = board_temp ^ 0xFFFF;		// flip bits for LED
@@ -476,12 +348,8 @@ int main()
         i = PLL_SELECT;
     } // end if jumper 3-4 is in
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) {  // See if jumper IN
-//        MCU_SEL_LOCAL_OSC = 0;      // turns off sel-local-osc
-//        MCU_EN_LOCAL_OSC  = 0;      // turns off en-local-osc
         Initialize_OSC ((OSCSEL_TRAY|i));  //  Use TRAY clock W or W/O PLL
     } else {                        // Jumper OUT (use local osc)
-//        MCU_SEL_LOCAL_OSC = 1;      // turns on sel-local-osc
-//        MCU_EN_LOCAL_OSC  = 1;      // turns on en-local-osc
         Initialize_OSC ((OSCSEL_BOARD|i));       //  Use BOARD clock W or W/O PLL
     }                               // end else turn ON local osc
     clock_status = OSCCON;     // read the OSCCON reg - returns clock status
@@ -490,11 +358,6 @@ int main()
 // Clear all interrupts
 	clearIntrflags();
 
-// Make sure FPGA has configured and reset it
-//    waitfor_FPGA();
-//    reset_FPGA();
-// Put board-position switch into CONFIG_12_W of FPGA and initialize 0..3 to zero
-    init_regs_FPGA(board_posn);
 
 /* -------------------------------------------------------------------------------------------------------------- */
 /* ECAN1 Initialization
@@ -576,34 +439,37 @@ int main()
 /* -------------------------------------------------------------------------------------------------------------- */
     jumpers = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & JUMPER_MASK;
 
-// WB-1L
-// CLOCK SWITCHING IS NOT DYNAMIC - Clock Jumper is read once at start-up and not examined thereafter.
-/* -----------------12/9/2006 11:39AM----------------
-** Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC
-** and MCU_EN_LOCAL_OSC
-** Installing the jumper forces low on MCU_...OSC
-** disabling it.
- --------------------------------------------------*/
-//    if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
-//                                // Jumper INSTALLED inhibits local osc.
-//        MCU_SEL_LOCAL_OSC = 0;          // turns off sel-local-osc
-//        MCU_EN_LOCAL_OSC = 0;          // turns off en-local-osc
-//        // Make sure PLL is initialized if not using local osc.
-//        PLL_RESET = 0;          // Make sure it is Low
-//        PLL_RESET = 1;          // Make it High
-//        spin(0);                // Spin a while (1 uSec minimum, this is 20 mSec)
-//        PLL_RESET = 0;          // Make it Low (enables self cal)
-//        spin(0);                // Spin a while (2 mSec minimum, this is 20 mSec)
-//    } else {                        // Jumper OUT (use local osc)
-//        MCU_SEL_LOCAL_OSC = 1;          // turns on sel-local-osc
-//        MCU_EN_LOCAL_OSC = 1;          // turns on en-local-osc
-//    }
-// WB-1L end
+	//JS:  try to initialize FPGA from EEPROM 2
+    i = 2;
+	// loop here if it failed the first time
+    do {
+    	MCU_CONFIG_PLD = 0; // disable FPGA configuration
+    	if (i==2) {
+    		sel_EE2;        // select EEPROM #2
+    	} else {
+			sel_EE1;        // else it was #1
+        } // end if select EEPROM #
+        set_EENCS;      //
+        MCU_CONFIG_PLD = 1; // re-enable FPGA
+        j = waitfor_FPGA();     // wait for FPGA to reconfigure
+        if (j != 0) {
+			i--;        // try again from #1
+        } // end if had timeout
+	} while ((i != 0) && (j != 0));       // try til either both were used or no error
+
+    reset_FPGA();       // reset FPGA
+
+// Put board-position switch into CONFIG_12_W of FPGA and initialize 0..3 to zero
+    init_regs_FPGA(board_posn);
 
 /* Send an "Alert" message to both CANBus to say we are on-line */
 // WB-2J: previous WB-2J changes in this area are removed.  Only 1 type of sign-on is
 // issued regardless of code-space-1 or -2 running.
-    lwork = C_ALERT_ONLINE;     // on-line message
+	//JS: if configuration from EEPROM 2 failed, send different ALERT message
+	if (i == 2)
+	    lwork = C_ALERT_ONLINE;     // on-line message
+	else
+		lwork = 0xFF0000FF;			//JS: different alert message when config failed
     send_CAN_alerts (board_posn, C_ALERT_ONLINE_LEN, (unsigned char *)&lwork);
 
 /* WB-2J start: We might have had errors marked while starting up and changing clocks. */
@@ -613,7 +479,6 @@ int main()
 /* WB-2J end: We might have had errors marked while starting up and changing clocks.   */
 
 
-//JS: TIMER STUFF **********************************************************
 #ifndef DOWNLOAD_CODE
 /* setup timer: Combine Timer 2 and 3 for a 32 bit timer;
 	combined timer is controlled by Timer 2 control bits,
@@ -635,7 +500,6 @@ int main()
 	T2CONbits.T32 = 1; 		// Enable 32-bit timer operation
 	T2CONbits.TON = 1; 		// Turn on Timer 2
 #endif
-//JS: END TIMER STUFF *********************************************************
 
 /* Look for Have-a-Message
 */
@@ -669,93 +533,24 @@ int main()
 	*/
     do {                            // Do Forever
         rcvmsgfrom = 0;
-// WB-2G        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive message from TDIG on Tray CAN#1 buffer[2] */
         if ( C1RXFUL2 != 0) {           // if any "full" bit is set in the buffer[16..31] group
                                             // yes,
             j = C_LOOP_LIMIT;               // Limit time spent in loop
             while ((C1RXFUL2 != 0) && (j != 0) ) {         // high priority activity
                 j--;
-// WB-2H: - indexing problem during overflow
-//                rcvmsg1indx = C1FIFO & 0x3F;         // pick up index of buffer to be read
-//                rcvmsg1indx = C1FIFObits.FNRB;           // pick up index of buffer to be read
-//                if ( (C1RXFUL2 & (1<<(rcvmsg1indx & 0x0F) ) ) == 0) rcvmsg1indx++;   // workaround possible problem.
                 while ( (C1RXFUL2 & (1<<rcvmsg1indx) ) == 0) { // for workaround where bits get out of sequence
                     rcvmsg1indx++;   // workaround possible problem.
                     rcvmsg1indx &= 0xF;
                 } // end while workaround
                                                     // Add Extended Address and transmit resulting msg on CAN#2
                 i = 0xFFFF;                     // WB-2G increase timeout; WB-1L add timeout
-//          while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
                 while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
                                                 // WB-2G: copy the message from CAN#1 Receive buffer # rcvmsg1indx to
                                                 // CAN#2 transmit buffer#0
-            //JS for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[3][i];
-// WB-2G                for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
                 for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[(rcvmsg1indx|0x10)][i]; // WB-2G
 
-        // DIAGNOSTIC - copy some register values into message (overwriting what was there)
-        //        ecan2msgBuf[0][3] = rcvmsg1indx;    // DIAG - message index value
-        //        ecan2msgBuf[0][4] = C1FIFO;         // DIAG - C1 FIFO Status Register
-        //        ecan2msgBuf[0][5] = C1RXFUL2;       // DIAG - C1 Buffer Full Register 2
-        //        ecan2msgBuf[0][2] = 6;              // DIAG - 6 bytes in message
-        // DIAGNOSTIC - end
-
-// WB-2G                C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
-// WB-2H restored
                 i = ~(1 << rcvmsg1indx);        // Fix the bit to be cleared
                 C1RXFUL2 &= i;        // CAN#1 Receive Buffer indexed OK to re-use (This construction is dangerous)
-/* WB-2H trial removed
-                switch (rcvmsg1indx) {
-                    case (0):
-                        C1RXFUL2bits.RXFUL16 = 0;
-                        break;
-                    case (1):
-                        C1RXFUL2bits.RXFUL17 = 0;
-                        break;
-                    case (2):
-                        C1RXFUL2bits.RXFUL18 = 0;
-                        break;
-                    case (3):
-                        C1RXFUL2bits.RXFUL19 = 0;
-                        break;
-                    case (4):
-                        C1RXFUL2bits.RXFUL20 = 0;
-                        break;
-                    case (5):
-                        C1RXFUL2bits.RXFUL21 = 0;
-                        break;
-                    case (6):
-                        C1RXFUL2bits.RXFUL22 = 0;
-                        break;
-                    case (7):
-                        C1RXFUL2bits.RXFUL23 = 0;
-                        break;
-                    case (8):
-                        C1RXFUL2bits.RXFUL24 = 0;
-                        break;
-                    case (9):
-                        C1RXFUL2bits.RXFUL25 = 0;
-                        break;
-                    case (10):
-                        C1RXFUL2bits.RXFUL26 = 0;
-                        break;
-                    case (11):
-                        C1RXFUL2bits.RXFUL27 = 0;
-                        break;
-                    case (12):
-                        C1RXFUL2bits.RXFUL28 = 0;
-                        break;
-                    case (13):
-                        C1RXFUL2bits.RXFUL29 = 0;
-                        break;
-                    case (14):
-                        C1RXFUL2bits.RXFUL30 = 0;
-                        break;
-                    case (15):
-                        C1RXFUL2bits.RXFUL31 = 0;
-                        break;
-                } // end switch on bit to clear
-WB-2H End */
                                         // Mark CAN#2 Buffer #0 for extended ID
                 ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
                 ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
@@ -764,22 +559,17 @@ WB-2H End */
                 rcvmsgindx = 0;                     // Mark nothing doing now
             } // end while have something in CAN1 FIFO
         } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] */
-// WB-2G don't need this test because extended-address message filtering is now working properly
-//            if ( (ecan2msgBuf[2][0] & C_EXT_ID_BIT) != 0) {  // It must be an "extended" message in order to be retransmitted
                 i = 0xFFF;                      // WB-1M add timeout
                 while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
-//                while (C1TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#1 to complete
                                                         // copy the message from CAN#2 Receive buffer #2 to
                                                         // CAN#1 transmit buffer#0
-            //JS for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[3][i];
-                for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i]; //JS
+                for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];
                                                 // Mark CAN#1 Buffer #0 for standard ID
                                                 // Strip off extended ID bits etc.
                 ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit
                 ecan1msgBuf[0][1] = 0;          // clear extended ID
                 ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
                 C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-// WB-2G           } // end if it was an extended message
             C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
 
         } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2 buffer[1]
@@ -824,8 +614,8 @@ WB-2H End */
                     replylength = 2;                    // Assume 2 byte reply
                     switch ((*wps++)&0xFF) {       // look at and dispatch SUB-command, point to remainder of message
 
-// WB-2G: Add temperature alert limit setting.
-// NOTE that temperature alert setting in chip ignores the lower 7-bits of the value (always reads back 0).
+						// WB-2G: Add temperature alert limit setting.
+						// NOTE that temperature alert setting in chip ignores the lower 7-bits of the value (always reads back 0).
                         case C_WS_TEMPALERTS:
                             if (rcvmsglen == TEMPALERTS_LEN) {   // check length for proper value
                                 memcpy ((unsigned char *)&mcu_hilimit, wps, 2);   // copy 2 bytes from incoming message
@@ -838,7 +628,7 @@ WB-2H End */
                                 Write16_Temp(MCP9801_HYST, mcu_lolimit); // Set upper limit
                             } else retbuf[1] = C_STATUS_INVALID;    // else mark invalid
                             break;
-// WB-2G: End Add temperature alert limit setting
+						// WB-2G: End Add temperature alert limit setting
                         case C_WS_LED:              // Write to LED register
                             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ~(*wps));
                             break;  // end case C_WS_LED
@@ -912,7 +702,7 @@ WB-2H End */
                             if ((rcvmsglen == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) {
                                 i = retbuf[0] & 0x3;    // get which EEPROM we are doing (had been copied here)
                                 retbuf[1] = C_STATUS_OK;        // assume FPGA configuration OK
-// loop here if it failed the first time
+								// loop here if it failed the first time
                                 do {
                                     MCU_CONFIG_PLD = 0; // disable FPGA configuration
                                     if (i==2) {
@@ -930,23 +720,39 @@ WB-2H End */
                                 } while ((i != 0) && (j != 0));       // try til either both were used or no error
                                 reset_FPGA();       // reset FPGA
                                 init_regs_FPGA(board_posn);   // initialize FPGA
-// WB-2F:                         pld_ident = read_FPGA (IDENT_7_R);
-// WB-2F:                         retbuf[2] = pld_ident;  // tell the FPGA ID code value
                                 retbuf[2] = (unsigned char)read_FPGA (IDENT_7_R); // tell the FPGA ID code value
                                 replylength = 3;
-                                fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // WB-2F: Read CRC state
+                                //fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // WB-2F: Read CRC state
+								//JS: when first reconfigured, assume CRC error is 0 (will be checked later anyways)
+                                fpga_crc = 0;
                             } // end if we could really do it
                             break;      // end case C_WS_RECONFIGEE?
+
+						//JS:
+                        case C_WS_FPGA_CONF0:
+							MCU_CONFIG_PLD = 0; // disable FPGA configuration
+							isConfiguring = 1;
+							break;							
+
+                        case C_WS_FPGA_CONF1:
+							MCU_CONFIG_PLD = 1; // disable FPGA configuration
+                            waitfor_FPGA(); // wait for FPGA to reconfigure
+                            reset_FPGA();   // reset FPGA
+                            init_regs_FPGA(board_posn); // initialize FPGA
+							// assume CRC_ERROR = 0 after reset
+			                fpga_crc = 0;
+							isConfiguring = 0;
+							break;
+						//JS End							
 
                         case C_WS_TARGETEEPROM2:
                             if (block_status == BLOCK_ENDED) {
                                 if ((block_bytecount != 0) && (block_bytecount <= 256) ){    // WB-2G if bytecount OK
-// WB-2G                                if (block_bytecount == 256) {    // if bytecount OK
                                     // copy eeprom address
                                     memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
                                     eeprom_address &= 0xFFFF00L; // mask off lowest bits (byte in page)
                                     wps += 4;
-                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
+//JS                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
                                     sel_EE2;            // select EEPROM #2
                                     if ((*wps)==1) {// see if need to erase
                                         // Write-enable the CSR, data doesn't matter
@@ -971,12 +777,10 @@ WB-2H End */
                                     } // end loop checking readback of newly written data
                                     sel_EE1;        // de-select EEPROM #2
                                     set_EENCS;      //
-                                    MCU_CONFIG_PLD = 1; // re-enable FPGA
-// This is commented out for speed test
-// WB-2G restored
-                                    waitfor_FPGA(); // wait for FPGA to reconfigure
-                                    reset_FPGA();   // reset FPGA
-                                    init_regs_FPGA(board_posn); // initialize FPGA
+//JS                                    MCU_CONFIG_PLD = 1; // re-enable FPGA
+//JS                                    waitfor_FPGA(); // wait for FPGA to reconfigure
+//JS                                    reset_FPGA();   // reset FPGA
+//JS                                    init_regs_FPGA(board_posn); // initialize FPGA
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -1047,7 +851,6 @@ WB-2H End */
                             break;  // end case C_WS_TARGETMCU
 #endif // #if !defined (DOWNLOAD_CODE)
 
-//JS: TIMER STUFF **************************************
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
                             	// Copy any data from message.
@@ -1058,8 +861,7 @@ WB-2H End */
                             	} // end loop over any bytes in message
 
 								// magic address at end of PIC24HJ64 device program memory
-//						laddrs = 0xABFE;		// magic address
-								laddrs = MAGICADDRESS;  // Magic address
+								laddrs = MAGICADDRESS;  // Magic address = 0x2ABFE
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                 erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
@@ -1072,7 +874,6 @@ WB-2H End */
                             } // end else block was not in progress
 
                             break;  // end case C_WS_MAGICNUMWR
-//JS: END TIMER STUFF **********************************
 
                         case C_WS_MCURESTARTA:       // Restart MCU
                         case C_WS_MCURESET:        // Reset MCU
@@ -1095,9 +896,12 @@ WB-2H End */
                                     CORCONbits.IPL3=1;     // WB-1L Raise CPU priority to lock out user interrupts
                                     save_SR = SR;          // save the Status Register
                                     SR |= 0xE0;            // Raise CPU priority to lock out interrupts
-// be sure we are running from alternate interrupt vector
+									// be sure we are running from alternate interrupt vector
                                     INTCON2 |= 0x8000;     // This is the ALTIVT bit
                                     jumpto();    // jump to new code
+#else
+									__asm__ volatile ("goto 0x4000");
+
 #endif
                                 } // end if we are starting new code,
                                 __asm__ volatile ("reset");
@@ -1145,7 +949,6 @@ WB-2H End */
                             } // WB-2F: end if in range
                             break; // end case C_RS_MCUMEM
 
-// WB-2F start
                         case (C_RS_MCUCKSUM ):            // Return MCU Memory checksum
                             if (rcvmsglen == 8) { // check for correct length of incoming message
                                 memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 bytes from incoming message, address
@@ -1170,8 +973,6 @@ WB-2H End */
                             memcpy ((unsigned char *)&retbuf[4], (unsigned char *)&clock_requested, 1);
                             replylength = 5;
                             break;  // end case C_RS_CLKSTATUS
-
-// WB-2F end
 
                         case (C_RS_TEMPBRD):                // READ Temperature
                             board_temp = Read_Temp();
@@ -1239,7 +1040,6 @@ WB-2H End */
                             replylength = 5;
                             break; // end case C_RS_MCUSTATUS
 
-// WB-2F starts
                         case (C_RS_EEP2CKSUM):
                             replylength = 5;        // fixed length reply
                             memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom start address
@@ -1259,7 +1059,6 @@ WB-2H End */
                                 laddrs--;                   // count down blocks to do
                             }   // end while have blocks to do
                             memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork, 4);   // copy result to reply
-//                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&laddrs, 4);  // copy diagnostic to reply
                             sel_EE1;        // de-select EEPROM #2
                             set_EENCS;      //
                             MCU_CONFIG_PLD = 1; // re-enable FPGA
@@ -1267,7 +1066,6 @@ WB-2H End */
                             reset_FPGA();   // reset FPGA
                             init_regs_FPGA(board_posn); // initialize FPGA
                             break;      // end C_RS_EEPCKSUM
-// WB-2F ends
 
                         default:    // Undecodable
                             replylength = 1;        // just return the code
@@ -1311,14 +1109,14 @@ WB-2H End */
             } // end if we have CAN1 error flag (overflow)
 
 // WB-2F: CRC Error check - Start
-    		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
-	    	if ( j != fpga_crc) {  // see if it has changed
-                fpga_crc = j;
-                lwork = C_ALERT_CKSUM_CODE | (j<<8);
-//                send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
-//                send_CAN2_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
-                send_CAN_alerts (board_posn, C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
-            } // end if CRC bit changed
+			if (isConfiguring = 0) {
+	    		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
+		    	if ( j != fpga_crc) {  // see if it has changed
+        	        fpga_crc = j;
+            	    lwork = C_ALERT_CKSUM_CODE | (j<<8);
+                	send_CAN_alerts (board_posn, C_ALERT_CKSUM_LEN, (unsigned char *)&lwork);
+            	} // end if CRC bit changed
+			}
 // WB-2F: end
 
 	        if (oldswitch != Read_MCP23008(SWCH_ADDR, MCP23008_GPIO) ) { // see if switches changed
@@ -1341,7 +1139,6 @@ WB-2H End */
             } // end if have first switch
             if (jumpers != oldjumpers) { // look for jumpers to change
 
-// WB-1L
 // CLOCK SELECTION IS NOT DYNAMIC - JUMPER IS EXAMINED ONLY AT POWER-ON
 /* -----------------12/9/2006 11:39AM----------------
 ** Jumper JU2.1-2 now controls MCU_SEL_LOCAL_OSC
@@ -1349,22 +1146,6 @@ WB-2H End */
 ** Installing the jumper forces low on MCU_...OSC
 ** disabling it.
  --------------------------------------------------*/
-//                if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) {  // See if jumper IN
-//                    MCU_SEL_LOCAL_OSC = 0;      // Jumper INSTALLED turns off sel-local-osc
-//                    MCU_EN_LOCAL_OSC  = 0;      // and turns off en-local-osc
-//                    // Make sure PLL is initialized if not using local osc.
-//                    PLL_RESET = 0;          // Make sure it is Low
-//                    PLL_RESET = 1;          // Make it High
-//                    spin(0);                // Spin a while (1 uSec minimum, this is 20 mSec)
-//                    PLL_RESET = 0;          // Make it Low (enables self cal)
-//                    spin(0);                // Spin a while (2 mSec minimum, this is 20 mSec)
-//                } else {                        // Jumper OUT (use local osc)
-//                    MCU_SEL_LOCAL_OSC = 1;      // turns on sel-local-osc
-//                    MCU_EN_LOCAL_OSC  = 1;      // turns on en-local-osc
-//                }                               // end else turn ON local osc
-
-// WB-1L end
-
                 oldjumpers = jumpers;
                 ledbits = (ledbits|0x0F) ^ (jumpers & 0x0F);    //
             } // end if jumpers changed
@@ -1375,7 +1156,6 @@ WB-2H End */
 
             jumpers = Read_MCP23008(SWCH_ADDR, MCP23008_GPIO);
             if (jumpers != oldswitch) {         // see if switch changed
-                // posn #  =  (SW5 * 10) + SW4  == switches are BCD decimal
                 oldswitch = jumpers;        // remember for next time
                 jumpers = (((oldswitch&0xF0)>>4)*10) + (oldswitch & 0xF);
 // Put board-position switch into CONFIG_12_W of FPGA
@@ -1483,25 +1263,12 @@ WB-2H End */
                     j = 0;
                 } // end if had data
 
-//JS: TIMER STUFF **************************************
 #ifndef DOWNLOAD_CODE
 				if (timerExpired == 1) {
 					timerExpired = 0;
 					// magic address at end of PIC24HJ64 device program memory
-//                    read_MCU_pm ((unsigned char *)readback_buffer, 0xABFE);
                     read_MCU_pm ((unsigned char *)readback_buffer, MAGICADDRESS);
-		#ifdef NOTNOW
-					// for now, just send back a CAN message indicating the memory content
-					retbuf[0] = readback_buffer[0];
-					retbuf[1] = readback_buffer[1];
-					retbuf[2] = readback_buffer[2];
-					retbuf[3] = readback_buffer[3];
-        #endif      // ifdef NOTNOW
 					if (*((unsigned int *)readback_buffer) == 0x3412) {
-						// in the future, the reset code would go here
-		#ifdef NOTNOW
-						retbuf[4] = 1;
-        #endif      // ifdef NOTNOW
                         // stop interrupts
                         CORCONbits.IPL3=1;     // Raise CPU priority to lock out user interrupts
                         save_SR = SR;          // save the Status Register
@@ -1510,29 +1277,16 @@ WB-2H End */
                         INTCON2 |= 0x8000;     // This is the ALTIVT bit
                         jumpto();    // jump to new code
 					}
-		#ifdef NOTNOW
-					else {
-						retbuf[4] = 0;
-					}
-                    send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), 5, (unsigned char *)&retbuf);
-        #endif      // ifdef NOTNOW
 				}
 #endif      // ifndef DOWNLOAD_CODE
-//JS: END TIMER STUFF ***********************************
 
-//            } while ( ! C1RXFUL1bits.RXFUL1 );      // send-data loop until a message comes CAN1
-//            } while ( ! C2RXFUL1bits.RXFUL1 );      // send-data loop until a message comes in CAN2
             --i;
             // while ends do { checking for data, i counts limit
-//            } while ( (! (C1RXFUL1bits.RXFUL1|C2RXFUL1bits.RXFUL1|C1RXFUL1bits.RXFUL2 | C2RXFUL1bits.RXFUL2)) & (i != 0));      // send-data loop until a message comes in either port
             } while ( ((C1RXFUL1|C2RXFUL1|C1RXFUL2|C2RXFUL2)==0) & (i != 0));      // WB-2G: send-data loop until a message comes in either port
         } // end else did not have message
 #endif      // if defined DODATATEST
     } while (1); // end do forever
 }
-
-// WB-1L
-// Replaced old initialize_OSC routine
 
 int Initialize_OSC (unsigned int selectosc){
 /* initialize the CPU oscillator (works with settings in TDIG-D_CAN_HLP3.h)
@@ -1626,19 +1380,6 @@ void Switch_OSC(unsigned int mcuoscsel) {         /* Switch Clock Oscillator on 
     __asm__ volatile ("mov.b W0,[W1]");
     while (OSCCONbits.OSWEN != 0) {}    // wait for switch to happen
 }
-// Old routine
-//void Initialize_OSC (void)
-//{                   // initialize the CPU oscillator (works with settings in TCPU-C_Board.h)
-//    PLLFBD=20;                  /* M= 20*/
-//    CLKDIVbits.PLLPOST=0;       /* N1=2 */
-//    CLKDIVbits.PLLPRE=0;        /* N2=2 */
-////  OSCTUN=0x35;                /* Tune FRC oscillator */
-////  OSCTUN=0;                   /* Tune FRC oscillator, if FRC is used */
-////    OSCTUN=0x11;                /* Tune FRC oscillator upwards to 40 MHz */
-///* Wait for PLL to lock */
-//    while(OSCCONbits.LOCK!=1) {};
-//}
-// WB-1L end
 
 void spin(count) {
 	int i, j;
@@ -1987,7 +1728,6 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
     C2RXF2EIDbits.EID = 0x007F;         // EID<15..0> WB-2G: Any TCPU
 
 // Configure Acceptance Filter 2 for Extended Identifier
-//    C2RXF2SIDbits.MIDE = 0x1;           // Match only Extended ID
     C2RXF2SIDbits.EXIDE= 0x1;           // Match only Extended ID
 
 // Acceptance Filter 2 also uses message buffer 2 to store message
@@ -2123,10 +1863,8 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     i = bytes;
     if (i > 8) i=8;         // at most 8 bytes of payload
 
-// WB-2J:    while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
     do {            // WB-2J: loop until transmit complete or timeout
         --j;
-// WB-2J    while (C1TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
     } while ((C1TR01CONbits.TXREQ0==1) && (j != 0));    // WB-2J: wait for transmit to complete
 
     msg_id = (unsigned long)((board_id&0x1F)<<6); // stick in board ID
@@ -2202,8 +1940,6 @@ void send_CAN2_message (unsigned int board_id, unsigned int message_type, unsign
 
     i = bytes;
     if (i > 8) i=8;         // at most 8 bytes of payload
-// WB-1L
-//    while (C2TR01CONbits.TXREQ0==1) {}    // wait for transmit to complete
 
     do {
         --j;
@@ -2246,15 +1982,12 @@ void send_CAN2_message_extended (unsigned int ext_id, unsigned int message_id, u
 **          payload[1] is usually "status" (HLP 3.0)
 */
 // WB-1L Added timeout
-//    unsigned long std_id;
     unsigned char *cp;
 	unsigned int i;
     unsigned int j=0xFFF;
 
     i = bytes;
     if (i > 8) i=8;         // at most 8 bytes of payload
-// WB-1L
-//    while (C2TR01CONbits.TXREQ0==1) {}    // wait for transmit to complete
 
     do {
         --j;
@@ -2299,7 +2032,6 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
         while (C2TR01CONbits.TXREQ0==1) {};    // wait for transmit to complete
         msg_id = (unsigned long)((board_id&0x1F)<<6); // stick in board ID
         msg_id |= (C_BOARD | C_DATA);    // reply constant part
-//      msg_id |= (C_BOARD);
         ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
         ecan2msgBuf[0][1] = 0;
         ecan2msgBuf[0][2] = 0;
@@ -2364,7 +2096,6 @@ void __attribute__((__interrupt__))_C2Interrupt(void)
 }
 
 
-//JS: TIMER STUFF
 #ifndef DOWNLOAD_CODE
 // Timer 3 Interrupt Service Routine
 void _ISR _T3Interrupt(void)
@@ -2376,7 +2107,6 @@ void _ISR _T3Interrupt(void)
 	timerExpired = 1;		// indicate to main program that timer has expired
 }
 #endif
-//JS: END TIMER STUFF
 
 unsigned long get_MCU_pm (UWord16, UWord16);
 
@@ -2387,7 +2117,6 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 */
     unsigned long retval;
     retval = get_MCU_pm ((unsigned)(addrs>>16), (unsigned)(addrs&0xFFFF));
-//    retval = 0x030201L;
     *buf = retval & 0xFF;   // LSByte
     retval>>= 8;
     *(buf+1) = retval & 0xFF; // 2nd Byte
@@ -2398,7 +2127,6 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 }
 
 unsigned long get_MCU_pm (UWord16 addrh,UWord16 addrl){
-//    unsigned long temp;
     TBLPAG = addrh;
     __asm__ volatile ("tblrdl [W1],W0");
     __asm__ volatile ("tblrdh [W1],W1");
@@ -2477,10 +2205,92 @@ jumpto(void) {
 
     for ( ; ; )
      __asm__ volatile ("nop");
-//    __asm__ volatile ("goto 0x4000");
 
 }
 #endif
+
+// ******************************************************************************************************
+// ************ Blue Sky Comments ***********************************************************************
+//*******************************************************************************************************
+// Version 2J - BETA Version
+//      26-thru 27-Feb-2009, W. Burton (WB-2J)
+//          Add timeout to SEND_CAN1_message() so an isolated TCPU on CAN2 only will work.
+//          Routine send_CAN1_data() is no longer used, removed.
+//          Routine send_CAN2_data() is replaced by call to send_CAN2_message() with DATA message type.
+//          Remove code-space 2 different sign-on message and update HLP document per Jo Schambach email 2/25/09.
+//          Remove TDCRESET toggle from FPGA Initialization routine init_regs() in file TCPU-B_MCU_PLD.c
+//          Do not check PLL_LOS status if we are in PLL Bypass condition.
+//          "Alarm" is now "Alert" for consistency.
+//      25-Feb-2009, W. Burton (WB-2J)
+//          Version ID is 02 48
+//          Fix port initialization for download (code-space 2) image for proper operation when started from an "old"
+//          code-space 1 image.
+//          Fix code-space 2 sign-on message to indicate we are really code-space 2 (per CANBus HLP 3 document).
+// Version 2H
+//      16-thru 02-Feb-2009, W. Burton (WB-2H)
+//          Improve CAN1 to CAN2 message passing and define CANBus #1 and #2 errors.
+// Version 2G
+//          Fix EEPROM2 download to allow non-256 byte download
+//          Re-enable WAITFOR_FPGA when EEPROM2 reprogrammed.
+//      16-thru-17-Dec-2008, W. Burton (WB-2G)
+//          Fix recognition of TCPU-targeted Broadcast messages.
+//          Make initialization of FPGA register 12 conditional on definition of TRAY_GEOGRAPHIC (TCPU-C_Board.h)
+//      15-Dec-2008, W. Burton (WB-2G)
+//          Add C_WS_TEMPALERTS: Write Temperature alert limits.
+//              Increase U37 (MCU Temperature) "Fault Queue" to 4 to avoid chattering.
+//              Message 1x7 length 2 09 mm issued approx. once per 5 seconds when an
+//              over-temperature limit condition appears.
+//              mm is bit field indicating which limit(s) exceeded (bit 0 = MCU, 1= TINO1, 2 = TINO2).
+//              Note that MCP9801 temperature chip uses only 9-MS bits for alert setting.
+//              MCP9801 Hysteresis(low limit) register as automatically set to 5 deg C below upper limit.
+//      12-Dec-2008, W. Burton (WB-2G)
+//          Deleted FPGA Register 12 initialization in module init_regs_FPGA() (file TCPU-B_MCU_PLD.C)
+//              Argument list did not change but board_position argument no longer used.
+//      04-Dec-2008, W. Burton (WB-2G)
+//          Continued work on CAN1 buffering/FIFO
+//      17-thru-20-Nov-2008, W. Burton (WB-2G)
+//          Version ID is 02 47 (2G)
+//          Fix spurious TCPU reply to 0x6xx messages on CAN#1.
+//          Fix spurious TCPU reply to 0x6xx messages on CAN#2.
+//          Begin implementation of Broadcast message on CAN#1.
+//          Begin implementation of Broadcast message on CAN#2.
+//          Fixed CAN Message Filtering to avoid extra tests and spurious reply to 6xx messages.
+// Version 2F
+//      05-Sep-2008, W. Burton (WB-2F)
+//          Version ID is still 02 46 (2F)
+//          Migrate to single CANBus HLP Header file for both TCPU and TDIG; DEFINE the TCPU symbol.
+//          Implement C_RS_EEPROM2 reading function.
+//      04-Sep-2008, W. Burton (WB-2F)
+//          Clean up Alert message sending.
+//          Implement C_RS_CLKSTATUS for reading MCU clock status word
+//      03-Sep-2008, W. Burton (WB-2F)
+//          Add FPGA CRC-error detect and message transmit.
+//          ** THIS CHANGES THE WAY THE DODATATEST CODE WORKS! **
+//             The value defined in DODATATEST determines the maximum number of cycles thru the
+//             data transmit loop before rechecking for incoming message, switches, CRC error, etc.
+//             Increasing the value increases the "data rate" but decreases responsiveness to
+//             other conditions.
+//          Clean up PLD Ident reading.
+//          Limit MCU memory reads to available range to avoid spurious reset (C_RS_MCUMEM)
+//      02-Sep-2008, W. Burton (WB-2F)
+//          Add MCU program memory checksum (C_RS_MCUCKSUM)
+//      29-Aug-2008, W. Burton (WB-2F)
+//          Add eeprom2 checksum command (C_RS_EEP2CKSUM)
+//      27-Aug-2008, W. Burton (WB-2F)
+//          Version ID is 02 46 (2F)
+//          Add memory address limits to C_WS_TARGETMCU
+//              Memory addresses outside the ranges 0x100..0x200 or 0x4000..0x8FFF will not be programmed.
+//
+// Version 2E - originated as TCPU-C_BNL_20080623
+//  Changes from Version 2D
+//    Firmware ID updated to 2E
+//    JS startup timer and "Magic Number" message added.
+//    Downloaded code Firmware ID changed to 0x92
+//    Comments added 8/27/2008 by WB
+//
+// Program # 2D - Extra Version for download debugging
+//      21-Jun-2008, W. Burton. (Changes identified WB-02D)
+//          Rework initializations (especially clock and ports) for download second image.
 /* WB-02D
  * Comments moved from beginning of file
  */
