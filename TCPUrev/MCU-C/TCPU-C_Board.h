@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.5 2009-03-06 16:20:05 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.6 2009-06-09 22:00:26 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** This header file defines the TCPU-C rev 0 board layout per schematic
@@ -132,7 +132,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'J')        // WB-2J: 'J' = 0x4A
+    _FUID0( 'K')        // 'K' = 0x4B
 	_FUID1( 0x02)       // WB-2A 0x02
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
