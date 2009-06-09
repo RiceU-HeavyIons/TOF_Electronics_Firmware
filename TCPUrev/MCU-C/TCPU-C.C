@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.8 2009-06-09 22:02:09 jschamba Exp $
+// $Id: TCPU-C.C,v 1.9 2009-06-09 22:05:49 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -1109,7 +1109,7 @@ int main()
             } // end if we have CAN1 error flag (overflow)
 
 // WB-2F: CRC Error check - Start
-			if (isConfiguring = 0) {
+			if (isConfiguring == 0) {
 	    		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
 		    	if ( j != fpga_crc) {  // see if it has changed
         	        fpga_crc = j;
