@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.1 2009-03-06 16:17:35 jschamba Exp $ */
+/* $Id: CAN_HLP3.h,v 1.2 2009-06-09 21:52:46 jschamba Exp $ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
@@ -121,6 +121,10 @@
     #define C_WS_RSTSEQHPTDC2 0x92      // Reset Seq for HPTDC 2
     #define C_WS_RSTSEQHPTDC3 0x93      // Reset Seq for HPTDC 3
     #define C_WS_DIAGNOSTIC   0xFF      // Diagnostic use
+	//JS: try this:
+    #define C_WS_FPGA_CONF0   0x11      // 
+    #define C_WS_FPGA_CONF1   0x12      // 
+	
 
 // Oscillator clock selection constants for C_WS_OSCSRCSEL
     #define OSCSRCSEL_LEN 3             // 3 payload bytes exactly
