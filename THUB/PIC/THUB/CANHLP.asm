@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.29 2009-04-28 22:59:28 jschamba Exp $
+; $Id: CANHLP.asm,v 1.30 2009-06-19 14:29:25 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -600,6 +600,31 @@ is_it_reprogram64:
     movf    RxData,W        ; WREG = RxData
     sublw   0x25
     bnz     is_it_writeEEPROM
+
+#ifndef THUB_is_upper           ;; only if we are in lower code space
+    ; check that the address is >= 0x40000
+    movf    asAddress+2,1,0     ; move upper address into itself in access bank, affects Z status
+    bnz     reprogram64CopyRx   ; if not zero, we are ok, continue with copying Rx data
+    movlw   0x40
+    cpfslt  asAddress+1,0       ; if address < 0x4000, skip next instruction
+    bra     reprogram64CopyRx   ; address at least 0x40000, continue with copying Rx data
+
+    ; address < 0x40000, send alert message
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ		; Wait for the buffer to empty
+	bra		$ - 2
+
+    movlw   0x01                
+    movwf   TXB0D0              ; error code = 0x01
+    movff   asAddress, TXB0D1   ; address Low
+    movff   asAddress+1, TXB0D2 ; address high
+    movff   asAddress+2, TXB0D3 ; address upper
+    ; Send ALERT message (command = 7, msgID = 0x407)
+    mCANSendAlert  4
+    return
+
+    ; now copy the received data
+reprogram64CopyRx:
     lfsr    FSR0, RxData+1
     movf    RxDtLngth,W
     decfsz  WREG,W
@@ -616,6 +641,23 @@ programMCU:
     call    HLPCopyRxData
     mCANSendWrResponse_IDL   RxDtLngth
     return
+
+#else ; upper code space, this command is not allowed here
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ	; Wait for the buffer to empty
+	bra		$ - 2
+
+    lfsr    FSR0, TXB0D0
+    movlw   0x02            ; error code = 0x02
+    movwf   POSTINC0
+    movlw   0x00
+    movwf   POSTINC0
+    movwf   POSTINC0
+    movwf   POSTINC0
+    ; Send ALERT message (command = 7, msgID = 0x407, data[0] = 0x02)
+    mCANSendAlert  4
+    return
+#endif
 
 is_it_writeEEPROM:
     ;**************************************************************
