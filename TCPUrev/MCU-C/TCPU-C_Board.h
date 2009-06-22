@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.6 2009-06-09 22:00:26 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.7 2009-06-22 14:32:59 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** This header file defines the TCPU-C rev 0 board layout per schematic
@@ -76,13 +76,13 @@
     #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
     #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
     #define MCU2CODEL   0x4000          // Second-image Code space start
-    #if defined (__24HJ256GP610_H)      // IF using 256K processor
-        #define MCU2UPLIMIT 0x2ABFD     // Second-image Code space upper end of physical memory not including magic
-        #define MAGICADDRESS 0x2ABFE    // Jo's Magic Number Location
-    #else
-        #define MCU2UPLIMIT 0xABFD      // Second-image Code space upper end
-        #define MAGICADDRESS 0xABFE     // Jo's Magic Number Location
-    #endif
+//    #if defined (__24HJ256GP610_H)      // IF using 256K processor
+//        #define MCU2UPLIMIT 0x2ABFD     // Second-image Code space upper end of physical memory not including magic
+//        #define MAGICADDRESS 0x2ABFE    // Jo's Magic Number Location
+//    #else
+	#define MCU2UPLIMIT 0xABFD      // Second-image Code space upper end
+    #define MAGICADDRESS 0xABFE     // Jo's Magic Number Location
+//    #endif
 
 // External oscillator frequency
 	#define SYSCLK          40000000

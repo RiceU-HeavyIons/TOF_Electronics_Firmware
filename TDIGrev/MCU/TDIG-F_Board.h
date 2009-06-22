@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.12 2009-05-20 13:45:50 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.13 2009-06-22 14:33:39 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -121,13 +121,13 @@
     #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
     #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
     #define MCU2CODEL   0x4000          // Second-image Code space start
-    #if defined (__24HJ128GP506_H)      // IF using 128K processor
-        #define MCU2UPLIMIT 0x157FDL     // Second-image Code space upper end of available memory not including magic
-        #define MAGICADDRESS 0x157FEL    // Jo's Magic Number Location
-    #else                               // else assume 64K processor
-        #define MCU2UPLIMIT 0xABFDL      // Second-image Code space upper end of available memory not including magic
-        #define MAGICADDRESS 0xABFEL     // Jo's Magic Number Location
-    #endif
+//    #if defined (__24HJ128GP506_H)      // IF using 128K processor
+//        #define MCU2UPLIMIT 0x157FDL     // Second-image Code space upper end of available memory not including magic
+//        #define MAGICADDRESS 0x157FEL    // Jo's Magic Number Location
+//    #else                               // else assume 64K processor
+	#define MCU2UPLIMIT 0xABFDL      // Second-image Code space upper end of available memory not including magic
+    #define MAGICADDRESS 0xABFEL     // Jo's Magic Number Location
+//    #endif
 
 // External oscillator frequency
 	#define SYSCLK          40000000
