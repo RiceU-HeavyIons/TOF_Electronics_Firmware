@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.9 2009-06-09 22:05:49 jschamba Exp $
+// $Id: TCPU-C.C,v 1.10 2009-06-25 15:05:20 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -34,7 +34,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'K'   // version 2K 'K' = 0x4B
+#define FIRMWARE_ID_0 'L'   // version 2L 'L' = 0x4C
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -1625,7 +1625,8 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
  BRP = (20MHz / 2*10*1MBaud))-1 = 0
 */
 	/* Baud Rate Prescaler */
-    C2CFG1bits.BRP = 0;
+//    C2CFG1bits.BRP = 0; /* for 1Mbit/s */
+    C2CFG1bits.BRP = 1; /* for 500kbit/s */
 
 	/* Synchronization Jump Width set to 2 TQ */
     C2CFG1bits.SJW = 0x1;
@@ -1642,7 +1643,9 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
     C2CFG2bits.SEG2PH = 0x1;
 
 	/* Bus line is sampled one time at the sample point */
-    C2CFG2bits.SAM = 0x0;
+//    C2CFG2bits.SAM = 0x0;
+	/* Bus line is sampled 3 times at the sample point */
+    C2CFG2bits.SAM = 0x1;
 /* -------------------------------*/
 
 /* 4 CAN Message (FIFO) Buffers in DMA RAM (minimum number) */
