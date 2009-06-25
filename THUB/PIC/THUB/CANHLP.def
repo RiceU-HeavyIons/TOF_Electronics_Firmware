@@ -1,4 +1,4 @@
-; $Id: CANHLP.def,v 1.1 2009-06-19 14:26:05 jschamba Exp $
+; $Id: CANHLP.def,v 1.2 2009-06-25 15:12:50 jschamba Exp $
 ;*********************************************************
 ; Definitions for the CANHLP code
 ;*********************************************************
@@ -6,8 +6,12 @@
 ; Set the sync jump width. 
 #define HLP_CAN_SJW 1
 ;
-; Set the prescalar 
-#define HLP_CAN_PRESCALE 1
+
+;;;;;;;;;; uncomment the correct line for the desired baud rate ;;;;;;;
+; Set the prescalar - 1Mbit/s 
+; #define HLP_CAN_PRESCALE 1
+; Set the prescalar - 0.5Mbit/s 
+#define HLP_CAN_PRESCALE 2
 ;
 ; Set phase segment 2 time select to be freely programmable:
 ;;;;; 18F8680 errata: this bit is inverted relative to the manual:
@@ -25,7 +29,9 @@
 ; Set propagation segment 
 #define HLP_CAN_PRSEG 1
 ;
-; Set sampling
+; Set sampling: 1 time
+; #define HLP_CAN_SAM 0
+; Set sampling: 3 times
 #define HLP_CAN_SAM 0
 ;
 ; Set CAN Drive high bit
