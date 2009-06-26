@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.10 2009-06-25 15:05:20 jschamba Exp $
+// $Id: TCPU-C.C,v 1.11 2009-06-26 21:21:17 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -559,6 +559,37 @@ int main()
                 rcvmsgindx = 0;                     // Mark nothing doing now
             } // end while have something in CAN1 FIFO
         } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] */
+			//**********************************************************************
+			//JS: handle the case of a "bad" MCU address before passing on to CAN1
+			//**********************************************************************
+            wps = (unsigned char *)&ecan2msgBuf[2][3];  // pointer to source buffer (message data)
+			if (*wps == C_WS_TARGETMCU) {
+				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
+				unsigned int tmpAddr;
+				memcpy ((unsigned char *)&tmpAddr, wps, 4);   // copy 4 address bytes from incoming message
+				if (tmpAddr < MCU2ADDRESS) {
+            		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
+					// this message has a "bad" address, send write reply error rather than passing to CAN1
+					replylength = 2;
+					retbuf[1] = C_STATUS_BADADDRS;     // SET ERROR REPLY
+					send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
+				} else {
+					// this  message is a TARGETMCU message, but ok to pass to CAN1
+                	i = 0xFFF;                      // WB-1M add timeout
+                	while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
+                                                        				// copy the message from CAN#2 Receive buffer #2 to
+                                                        				// CAN#1 transmit buffer#0
+                	for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];
+                                                	// Mark CAN#1 Buffer #0 for standard ID
+                                                	// Strip off extended ID bits etc.
+                	ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit
+                	ecan1msgBuf[0][1] = 0;          // clear extended ID
+                	ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
+                	C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
+            		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
+				}				
+			} else {
+				// not a "C_WS_TARGETMCU" message; this message is ok to pass to CAN1
                 i = 0xFFF;                      // WB-1M add timeout
                 while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
                                                         // copy the message from CAN#2 Receive buffer #2 to
@@ -570,7 +601,8 @@ int main()
                 ecan1msgBuf[0][1] = 0;          // clear extended ID
                 ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
                 C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-            C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
+            	C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
+			}
 
         } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2 buffer[1]
             rcvmsgfrom = 2;                     // source of message is CAN#2
