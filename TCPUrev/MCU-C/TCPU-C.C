@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.11 2009-06-26 21:21:17 jschamba Exp $
+// $Id: TCPU-C.C,v 1.12 2009-07-22 14:04:58 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -34,7 +34,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'L'   // version 2L 'L' = 0x4C
+#define FIRMWARE_ID_0 'M'   // version 2M 'M' = 0x4D
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -567,7 +567,7 @@ int main()
 				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
 				unsigned int tmpAddr;
 				memcpy ((unsigned char *)&tmpAddr, wps, 4);   // copy 4 address bytes from incoming message
-				if (tmpAddr < MCU2ADDRESS) {
+				if ((tmpAddr < MCU2ADDRESS) && (tmpAddr >= MCU2IVTH)) {
             		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
 					// this message has a "bad" address, send write reply error rather than passing to CAN1
 					replylength = 2;
