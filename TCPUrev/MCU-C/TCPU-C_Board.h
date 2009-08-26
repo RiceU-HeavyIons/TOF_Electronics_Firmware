@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.9 2009-07-22 14:05:17 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.10 2009-08-26 20:39:56 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** This header file defines the TCPU-C rev 0 board layout per schematic
@@ -25,6 +25,8 @@
 **
 **
 **  Modified:
+**     12-Aug-2009, W. Burton (WB-2P)
+**          Fix TEMP_OFF, update FUID version ID to 2P
 **     27-Feb-2009, W. Burton (WB-2J)
 **          FUID bits updated to indicate version 2J
 **     17-Dec-2008, W. Burton
@@ -101,8 +103,8 @@
 //	_FOSCSEL( FNOSC_FRC & IESO_OFF & TEMP_OFF )
 //	          Primary withOUT PLL & 2-Speed OFF & Temp Protect OFF
 //	_FOSCSEL( FNOSC_PRI & IESO_OFF & TEMP_OFF );
-//          Fast RC w/ PLL & 2-Speed OFF & Temp Protect OFF
-	_FOSCSEL( FNOSC_FRCPLL & IESO_OFF & TEMP_OFF );	// details set later initialize_OSC()
+//          Fast RC w/ PLL & 2-Speed OFF
+	_FOSCSEL( FNOSC_FRCPLL & IESO_OFF);	    // details set later initialize_OSC()
 
 // WB-1L
 #if defined (RC15_IO)
@@ -132,7 +134,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'M')        // 'M' = 0x4D
+    _FUID0( 'P')        // 'P' = 0x50
 	_FUID1( 0x02)       // WB-2A 0x02
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
