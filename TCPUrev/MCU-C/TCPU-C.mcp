@@ -35,6 +35,7 @@ file_007=.
 file_008=.
 file_009=.
 file_010=.
+file_011=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -47,6 +48,7 @@ file_007=no
 file_008=no
 file_009=no
 file_010=no
+file_011=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -59,18 +61,20 @@ file_007=no
 file_008=no
 file_009=no
 file_010=no
+file_011=no
 [FILE_INFO]
 file_000=TCPU-C_SPI.C
 file_001=TCPU-C_I2C.c
 file_002=TCPU-C_MCU_PLD.c
 file_003=TCPU-C.C
-file_004=TCPU-C_SPI.H
-file_005=TCPU-C_Board.h
-file_006=TCPU-C_I2C.h
-file_007=TCPU-C_MCU_PLD.h
-file_008=CAN_HLP3.h
-file_009=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ256GP610-coff.a
-file_010=p24HJ256GP610.gld
+file_004=rtspApi.s
+file_005=TCPU-C_SPI.H
+file_006=TCPU-C_Board.h
+file_007=TCPU-C_I2C.h
+file_008=TCPU-C_MCU_PLD.h
+file_009=CAN_HLP3.h
+file_010=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ256GP610-coff.a
+file_011=p24HJ256GP610.gld
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=
