@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.2 2009-06-09 21:52:46 jschamba Exp $ */
+/* $Id: CAN_HLP3.h,v 1.3 2009-08-26 21:53:19 jschamba Exp $ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
@@ -171,6 +171,11 @@
     #define PAGE_MASK 0xFFFFFC00L       // Page address mask0xFFFFFC00L
     #define OFFSET_MASK 0x3FF           // Offset mask
     #define PAGE_BYTES 2048             // Page size, bytes
+
+	//JS: new defines for row wise programming
+	#define ROW_MASK 0xFFFFFF80L
+	#define ROW_OFFSET_MASK 0x7F
+	#define ROW_BYTES 256				// Row size, bytes
 
 /* Allowable ranges for MCU Target addresses are defined in TCPU-C_Board.h  or TDIG-F_Board.h */
 
