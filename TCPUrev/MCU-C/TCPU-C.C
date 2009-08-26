@@ -1,9 +1,19 @@
-// $Id: TCPU-C.C,v 1.12 2009-07-22 14:04:58 jschamba Exp $
+// $Id: TCPU-C.C,v 1.13 2009-08-26 20:43:05 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
 //
-/* WB-02D
+/* WB-2P
+**	12-Aug-thru-13-Aug-2009, W. Burton
+**		Update version to 'P'
+**		Uses non-FIFO'd CANBus#1 (Tray) message receive
+**		Some rework of C_WS_TARGETMCU2 filtering: combine with rebroadcast
+**		Expands "Broadcast" Extended-ID message from CANBus #2 into eight (8) individual TDIG
+**			messages and paces sending them until timeout.
+**		Receipt of a reply to a rebroadcast restarts the timeout (to allow the multiple-reply
+**          messages to work).
+*/
+/* WB-2D
  * Comments moved to end of file
  */
 /*
@@ -26,15 +36,15 @@
                                 // This overrides DODATATEST
 
 
-/* WB-02D
+/* WB-2D
  * The new source-code and MPLAB project structure takes care of this definition
  * by means of -DDOWNLOAD_CODE macro definition in the workspace "Build Options".
- * WB-02D end  */
+ * WB-2D end  */
 //JS: Uncomment this for version to be downloaded via CANbus
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'M'   // version 2M 'M' = 0x4D
+#define FIRMWARE_ID_0 'P'   // WB-2P: version 2P 'P' = 0x50
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -73,13 +83,13 @@
 #define DODATATEST 1        // ONE cycle thru data transmit before checking messages, switches, etc.
 
 /* ECAN1 stuff (TCPU <--> TDIG "Tray level" CANbus) */
-#define NBR_ECAN1_BUFFERS 32
+#define NBR_ECAN1_BUFFERS 4
 // Note: Alignment must be #buffers * words/buffer * bytes/word = 32*8*2 = 512.
 typedef unsigned int ECAN1MSGBUF [NBR_ECAN1_BUFFERS][8];
-ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(512)));
+ECAN1MSGBUF  ecan1msgBuf __attribute__((space(dma),aligned(NBR_ECAN1_BUFFERS*16)));
 // Buffer[0] = transmit
 // Buffer[1] = receive dedicated (std address filtered)
-// Buffer[2] = <not used>
+// Buffer[2] = receive msgs to be retransmitted onto CAN2 (tray-->host)
 // Buffer[3] = receive broadcast (std address filtered)
 // Buffers[4..15] = <not used>
 // Buffers[16..31] = receive using FIFO, msgs to be retransmitted on CAN2
@@ -95,7 +105,7 @@ typedef unsigned int ECAN2MSGBUF [NBR_ECAN2_BUFFERS][8];
 ECAN2MSGBUF  ecan2msgBuf __attribute__((space(dma),aligned(64)));  // Buffer to TRANSMIT
 // Buffer[0] = transmit
 // Buffer[1] = receive dedicated (standard-address filtered)
-// Buffer[2] = receive extended-address message to be retransmitted on CAN1 as standard-address message.
+// Buffer[2] = receive extended-address message to be retransmitted on CAN1 as standard-address message. (host-->tray)
 // Buffer[3] = receive broadcast (standard-address filtered)
 
 void ecan2Init(unsigned int board_id);
@@ -168,7 +178,12 @@ unsigned int CAN2timeout;
 unsigned int can1error = 0;      // mark for no CAN1 error condition
 unsigned int can2error = 0;      // mark for no CAN2 error condition
 
+// WB-2P: Rebroadcast Addresses
+unsigned int rebroadcast = 0;	// Ready to rebroadcast
+unsigned int pacecount = 0;		// pacecount = 0 means ready to rebroadcast
+#define PACEDELAY 100			// PACEDELAY sets number of times thru main loop between rebroadcasts
 
+// General status
 unsigned int board_posn = 0;    // Gets board-position from switch
 unsigned int clock_status;      // will get identification from Clock switch/select (OSCCON)
 unsigned int clock_failed = 0;      // will get set by clock fail interrupt
@@ -213,7 +228,7 @@ int main()
 	int isConfiguring = 0;
 
 
-/* WB-02D - Begin significant rework in this area
+/* WB-2D - Begin significant rework in this area
  * This section applies to second-image (Downloaded) code only
  * NOTE Second Image does not re-initialize I/O Ports/Pins/or Expander I/Os!
  *      EXCEPT for MCU_HEAT_ALERT made output (WB-2J) for download image
@@ -282,7 +297,7 @@ int main()
     TRISB = 0xDFE0;         // Set directions
 
 #endif
-/* WB-02D end of major change */
+/* WB-2D end of major change */
 
 // We will want to run at priority 0 mostly
     SR &= 0x011F;          // Lower CPU priority to allow interrupts
@@ -533,35 +548,65 @@ int main()
 	*/
     do {                            // Do Forever
         rcvmsgfrom = 0;
-        if ( C1RXFUL2 != 0) {           // if any "full" bit is set in the buffer[16..31] group
-                                            // yes,
-            j = C_LOOP_LIMIT;               // Limit time spent in loop
-            while ((C1RXFUL2 != 0) && (j != 0) ) {         // high priority activity
-                j--;
-                while ( (C1RXFUL2 & (1<<rcvmsg1indx) ) == 0) { // for workaround where bits get out of sequence
-                    rcvmsg1indx++;   // workaround possible problem.
-                    rcvmsg1indx &= 0xF;
-                } // end while workaround
-                                                    // Add Extended Address and transmit resulting msg on CAN#2
-                i = 0xFFFF;                     // WB-2G increase timeout; WB-1L add timeout
-                while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
-                                                // WB-2G: copy the message from CAN#1 Receive buffer # rcvmsg1indx to
-                                                // CAN#2 transmit buffer#0
-                for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[(rcvmsg1indx|0x10)][i]; // WB-2G
 
-                i = ~(1 << rcvmsg1indx);        // Fix the bit to be cleared
-                C1RXFUL2 &= i;        // CAN#1 Receive Buffer indexed OK to re-use (This construction is dangerous)
-                                        // Mark CAN#2 Buffer #0 for extended ID
-                ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
-                ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
-                ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
-                C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
-                rcvmsgindx = 0;                     // Mark nothing doing now
-            } // end while have something in CAN1 FIFO
-        } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] */
+//JS: this is the new "FIFO" code
+//        if ( C1RXFUL2 != 0) {           // if any "full" bit is set in the buffer[16..31] group
+//                                            // yes,
+//            j = C_LOOP_LIMIT;               // Limit time spent in loop
+//            while ((C1RXFUL2 != 0) && (j != 0) ) {         // high priority activity
+//                j--;
+//                while ( (C1RXFUL2 & (1<<rcvmsg1indx) ) == 0) { // for workaround where bits get out of sequence
+//                    rcvmsg1indx++;   // workaround possible problem.
+//                    rcvmsg1indx &= 0xF;
+//                } // end while workaround
+//                                                    // Add Extended Address and transmit resulting msg on CAN#2
+//                i = 0xFFFF;                     // WB-2G increase timeout; WB-1L add timeout
+//                while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
+//                                                // WB-2G: copy the message from CAN#1 Receive buffer # rcvmsg1indx to
+//                                                // CAN#2 transmit buffer#0
+//                for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[(rcvmsg1indx|0x10)][i]; // WB-2G
+//
+//                i = ~(1 << rcvmsg1indx);        // Fix the bit to be cleared
+//                C1RXFUL2 &= i;        // CAN#1 Receive Buffer indexed OK to re-use (This construction is dangerous)
+//                                        // Mark CAN#2 Buffer #0 for extended ID
+//                ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+//                ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+//                ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
+//                C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+//                rcvmsgindx = 0;                     // Mark nothing doing now
+//            } // end while have something in CAN1 FIFO
+//JS: end
+
+//JS: old CAN1 receive code
+		// CAN1 Buffer[2] Tray-->HOST
+        if ( C1RXFUL1bits.RXFUL2 ) {                // Receive TDIG message on Tray CAN#1 */
+                                                    // Add Extended Address and transmit on CAN#2
+            i = 0xFFF;                              // WB-1L add timeout
+//            while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
+            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
+                                                    // copy the message from CAN#1 Receive buffer #2 to
+                                                    // CAN#2 transmit buffer#0
+            //JS for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[3][i];
+            for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
+            C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
+                                            // Mark CAN#2 Buffer #0 for extended ID
+            ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+            ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+            ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
+            C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+// JS: end old code
+// WB-2P: Begin: Adjust pacing if message is a reply to a rebroadcast message
+			if ( (rebroadcast != 0) &&
+			    ( (ecan2msgBuf[0][0]&0x1FC0) == (rebroadcast-0x040) ) ) {	// see if the message was a reply to rebroadcast
+				pacecount = PACEDELAY;		// keep waiting for last reply message
+				} // end if adjusting rebroadcast pace because we got a reply
+// WB-2P: End:   Adjust pacing if message is a reply to a rebroadcast message
+
+        } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] (host-->tray) */
 			//**********************************************************************
 			//JS: handle the case of a "bad" MCU address before passing on to CAN1
 			//**********************************************************************
+			//WB-2P: combine this with rebroadcast.
             wps = (unsigned char *)&ecan2msgBuf[2][3];  // pointer to source buffer (message data)
 			if (*wps == C_WS_TARGETMCU) {
 				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
@@ -573,36 +618,45 @@ int main()
 					replylength = 2;
 					retbuf[1] = C_STATUS_BADADDRS;     // SET ERROR REPLY
 					send_CAN2_message (board_posn, (C_BOARD | C_WRITE_REPLY), replylength, (unsigned char *)&retbuf);
-				} else {
-					// this  message is a TARGETMCU message, but ok to pass to CAN1
-                	i = 0xFFF;                      // WB-1M add timeout
-                	while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
-                                                        				// copy the message from CAN#2 Receive buffer #2 to
-                                                        				// CAN#1 transmit buffer#0
-                	for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];
-                                                	// Mark CAN#1 Buffer #0 for standard ID
-                                                	// Strip off extended ID bits etc.
-                	ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit
-                	ecan1msgBuf[0][1] = 0;          // clear extended ID
-                	ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
-                	C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-            		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
-				}				
-			} else {
-				// not a "C_WS_TARGETMCU" message; this message is ok to pass to CAN1
-                i = 0xFFF;                      // WB-1M add timeout
-                while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
-                                                        // copy the message from CAN#2 Receive buffer #2 to
-                                                        // CAN#1 transmit buffer#0
-                for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];
+				} // WB-2P: end if sent reply for bad address
+			} // WB-2P: end if it was TARGETMCU,
+
+// WB-2P - Begin rebroadcast (break received broadcast message into 8 TDIG messages)
+			if (rebroadcast == 0) {			// if haven't yet started rebroadcasting, save incoming msg
+	            i = 0xFFF;                      // WB-1M add timeout
+    	        while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
+                for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];  // copy incoming msg to outgoing buffer
+                C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
                                                 // Mark CAN#1 Buffer #0 for standard ID
                                                 // Strip off extended ID bits etc.
-                ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit
-                ecan1msgBuf[0][1] = 0;          // clear extended ID
-                ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
+                ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit, Keep address & fcn code (10 bits)
+                if ((ecan1msgBuf[0][0] & 0x1FC0) == 0x1FC0) { // is this a "Broadcast" address (0x7Fx, shifted)
+                    ecan1msgBuf[0][0] &= 0x043C;    // extended ID =0, no remote xmit, strip off all but function code
+                    rebroadcast = 0x440;        // Yes, this will mark next TDIG ID to send
+					pacecount = PACEDELAY;		// Mark delay to next rebroadcast
+				} // end setup for broadcast
+				// Now send the message
+           	    ecan1msgBuf[0][1] = 0;          // clear extended ID
+              	ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
                 C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-            	C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
-			}
+			} // end if setting up rebroadcast and sending discrete message
+
+		} else if ( (rebroadcast != 0) & (pacecount == 0)) {			// we are continuing to rebroadcast (after pace delay)
+            i = 0xFFF;                      // WB-1M add timeout
+            while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
+            ecan1msgBuf[0][0] &= 0x003C;    // extended ID =0, no remote xmit, strip off all but function code
+            ecan1msgBuf[0][0] |= rebroadcast;   // put ID of TDIG into message header
+            rebroadcast += 0x40;           // count to next TDIG (shifted board ID)
+			pacecount = PACEDELAY;		   // And set up for pace delay
+            if ( rebroadcast > 0x5C0 ) {   // Are we done yet? (doing board 7?)
+                rebroadcast = 0;           // mark we are done
+				pacecount = 0;				// and clear pacer
+            } // end if we have finished rebroadcast
+			// Now send a message
+           	ecan1msgBuf[0][1] = 0;          // clear extended ID
+            ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
+            C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
+// WB-2P - End rebroadcast
 
         } else if ( C2RXFUL1bits.RXFUL1 ) {     //  Receive message on CAN#2 buffer[1]
             rcvmsgfrom = 2;                     // source of message is CAN#2
@@ -764,7 +818,7 @@ int main()
                         case C_WS_FPGA_CONF0:
 							MCU_CONFIG_PLD = 0; // disable FPGA configuration
 							isConfiguring = 1;
-							break;							
+							break;
 
                         case C_WS_FPGA_CONF1:
 							MCU_CONFIG_PLD = 1; // disable FPGA configuration
@@ -775,7 +829,7 @@ int main()
 			                fpga_crc = 0;
 							isConfiguring = 0;
 							break;
-						//JS End							
+						//JS End
 
                         case C_WS_TARGETEEPROM2:
                             if (block_status == BLOCK_ENDED) {
@@ -1240,6 +1294,9 @@ int main()
         MCU_HEAT_ALERT = 0;     // WB-11V turn it off until next time
 // WB-2G - End Temperature alert Monitoring
 
+// WB-2P: count down for rebroadcast pacing
+		if (pacecount != 0) pacecount--;
+
 #if defined (DOREGTEST)
     #undef DODATATEST
 /* Register Write/Read/Read test
@@ -1479,8 +1536,12 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
 
 /* WB-2G: 32 CAN Message Buffers in DMA RAM */
 // WB-2G    C1FCTRLbits.DMABS=0b000;            // Page 189
-    C1FCTRLbits.DMABS=0b110;            // Page 181
-    C1FCTRLbits.FSA = 16;                // WB-2G Start FIFO buffering at Buffer[16]
+//    C1FCTRLbits.DMABS=0b110;            // Page 181
+//    C1FCTRLbits.FSA = 16;                // WB-2G Start FIFO buffering at Buffer[16]
+//
+
+/* 4 CAN Message (FIFO) Buffers in DMA RAM (minimum number) */
+    C1FCTRLbits.DMABS=0b000;            // Page 189
 
 /*	Filter Configuration
     ecan1WriteRxAcptFilter(int n, long identifier, unsigned int exide,
@@ -1541,10 +1602,10 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
     C1RXM0SIDbits.EID = 0x0;
 
 // Acceptance Filter 1 uses message buffer 2 to store message
-// WB-2G    C1BUFPNT1bits.F1BP = 2;
+C1BUFPNT1bits.F1BP = 2;
 // WB-2G: Acceptance Filter 1 uses message buffer 0b1111 to store message (This is the FIFO area per page 21-49)
-    C1BUFPNT1bits.F1BP = 0b1111;        // WB-2G
-
+//    C1BUFPNT1bits.F1BP = 0b1111;        // WB-2G
+//
 // Filter 1 enabled
     C1FEN1bits.FLTEN1 = 0x1;
 /* end -CAN1 Filter[1]/Buffer[2] for messages TCPU will pass along  ---------- */
