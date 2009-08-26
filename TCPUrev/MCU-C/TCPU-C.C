@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.13 2009-08-26 20:43:05 jschamba Exp $
+// $Id: TCPU-C.C,v 1.14 2009-08-26 21:55:05 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'P'   // WB-2P: version 2P 'P' = 0x50
+#define FIRMWARE_ID_0 'Q'   // version 2Q 'Q' = 0x51
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -147,7 +147,7 @@ UReg32 temp;
 
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
-void erase_MCU_pm (unsigned long);
+//JS void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
 
@@ -226,6 +226,8 @@ int main()
 
 	//JS
 	int isConfiguring = 0;
+	unsigned int nvmAdru, nvmAdr;
+	int temp;
 
 
 /* WB-2D - Begin significant rework in this area
@@ -741,6 +743,8 @@ int main()
                             block_status = BLOCK_INPROGRESS;
                             block_bytecount = 0;    // clear block buffer counter
                             block_checksum = 0L;    // clear block buffer checksum
+							//JS: set all bytes in block_buffer to 0xff
+							memset((void *)block_buffer, 0xff, BLOCK_BUFFERSIZE);
                             wpd = (unsigned char *)&block_buffer[0];    // point destination to buffer
                             // Copy any data from message.  We don't need to check buffer length since it was just set "empty"
                             for (i=1; i<rcvmsglen; i++) {   // copy any remaining bytes
@@ -887,7 +891,10 @@ int main()
                                     k = block_bytecount;        // assume just going block
                                     memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 address bytes from incoming message
                                     // WB-2F check starting address and length for OK
-                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) || ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
+                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) 
+										|| ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
+										int numRows = 1; //JS
+
                                         lwork = laddrs;        // save for later
                                         wps += 4;
                                         if ((*wps)==ERASE_PRESERVE) {     // need to preserve before erase
@@ -900,21 +907,48 @@ int main()
                                             j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
                                             j <<= 1;        // *2 for bytes
                                             k = PAGE_BYTES;                   // reprogram whole block
+											numRows = 8; //JS
                                         } // end if need to save before copy
+										//JS: if address is not "row" aligned, 
+										// or if we are not programming a whole row
+										// preserve the existing row first
+										else if (((laddrs & ROW_OFFSET_MASK) != 0) 		// address not row aligned
+												|| (block_bytecount != ROW_BYTES)) {	// not a whole row
+											// need to preserve the rest of the row in these cases
+                                            lwork = laddrs & ROW_MASK;   // mask to row start
+                                            for (i=0; i<ROW_BYTES; i+=4) {
+                                                read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
+                                                lwork += 2;
+                                            } // end for loop over all bytes in save block
+                                            lwork = laddrs & ROW_MASK;
+                                            j = (unsigned int)(laddrs & ROW_OFFSET_MASK); // save offset for copy
+                                            j <<= 1;        // *2 for bytes
+										}
 
                                         // put the new data over the old[j] thru old[j+block_bytecount-1]
                                         memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
                                         save_SR = SR;           // save the Status Register
                                         SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                         if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
-                                            erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+											//JS: new routine to erase the page
+											nvmAdru = (laddrs&0xffff0000) >> 16;
+											nvmAdr = laddrs&0x0000ffff;
+											temp = flashPageErase(nvmAdru, nvmAdr);
+                                            //JS erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
                                         } // end if need to erase the page
                                         // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
                                         lwork2 = lwork;
-                                        for (i=0; i<k; i+=4) {
-                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
-                                            lwork += 2L;    // next write address
-                                        } // end loop over bytes
+										//JS: here is the new row wise programming
+										for(i=0; i<numRows; i++) {
+											// each row is 256 bytes in the buffer, 
+											// each instruction word is 24 bit instruction plus 8 bits dummy (0)
+											WritePMRow((unsigned char *)(readback_buffer + (i*256)), lwork);
+											lwork += 128; // 2 * 64 instructions addresses, address advances by  2
+										}
+//                                        for (i=0; i<k; i+=4) {
+//                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
+//                                            lwork += 2L;    // next write address
+//                                        } // end loop over bytes
                                         SR = save_SR;           // restore the saved status register
                                         // now check for correct writing
                                         lwork = lwork2;                             // recall the start address
@@ -950,8 +984,13 @@ int main()
 								laddrs = MAGICADDRESS;  // Magic address = 0x2ABFE
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
-                                erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+                                //JS erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+								//JS: new routine to erase the page
+								nvmAdru = (laddrs&0xffff0000) >> 16;
+								nvmAdr = laddrs&0x0000ffff;
+								temp = flashPageErase(nvmAdru, nvmAdr);
                                 // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+								//JS: should this be replaced by a whole row programming as well?
                                 write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
                                 SR = save_SR;           // restore the saved status register
 
@@ -2204,7 +2243,7 @@ void _ISR _T3Interrupt(void)
 }
 #endif
 
-unsigned long get_MCU_pm (UWord16, UWord16);
+unsigned long get_MCU_pm (UWord16, UWord16); //JS: in rtspApi.s
 
 void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 /* Read from MCU program memory address "addrs"
@@ -2222,13 +2261,52 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
     *(buf+3) = retval & 0xFF;  // MSByte
 }
 
-unsigned long get_MCU_pm (UWord16 addrh,UWord16 addrl){
-    TBLPAG = addrh;
-    __asm__ volatile ("tblrdl [W1],W0");
-    __asm__ volatile ("tblrdh [W1],W1");
-    return;
-}
+//JS: replaced with new routine in rtspApi.s
+//unsigned long get_MCU_pm (UWord16 addrh,UWord16 addrl){
+//    TBLPAG = addrh;
+//    __asm__ volatile ("tblrdl [W1],W0");
+//    __asm__ volatile ("tblrdh [W1],W1");
+//    return;
+//}
 
+//JS: new routine to write a whole row, with workaround from errata
+#define PM_ROW_WRITE 		0x4001
+
+extern void WriteLatch(UWord16, UWord16, UWord16, UWord16);
+extern void WriteMem(UWord16);
+
+void WritePMRow(unsigned char * ptrData, unsigned long SourceAddr)
+{
+	int    Size,Size1;
+	UReg32 Temp;
+	UReg32 TempAddr;
+	UReg32 TempData;
+
+	for(Size = 0,Size1=0; Size < 64; Size++) // one row of 64 instructions (256 bytes)
+	{
+		
+		Temp.Val[0]=ptrData[Size1+0];
+		Temp.Val[1]=ptrData[Size1+1];
+		Temp.Val[2]=ptrData[Size1+2];
+		Temp.Val[3]=0; // MSB always 0
+		Size1+=4;
+
+	   	WriteLatch((unsigned)(SourceAddr>>16), (unsigned)(SourceAddr&0xFFFF),Temp.Word.HW,Temp.Word.LW);
+
+		/* Device ID errata workaround: Save data at any address that has LSB 0x18 */
+		if((SourceAddr & 0x0000001F) == 0x18)
+		{
+			TempAddr.Val32 = SourceAddr;
+			TempData.Val32 = Temp.Val32;
+		}
+		SourceAddr += 2;
+	}
+
+	/* Device ID errata workaround: Reload data at address with LSB of 0x18 */
+	WriteLatch(TempAddr.Word.HW, TempAddr.Word.LW,TempData.Word.HW,TempData.Word.LW);
+
+	WriteMem(PM_ROW_WRITE);
+}
 
 void put_MCU_pm (UWord16, UWord16, UWord16, UWord16);
 void wrt_MCU_pm (void);
@@ -2272,24 +2350,25 @@ void wrt_MCU_pm (void) {
     SR = save_SR;           // restore the saved status register
 }
 
-void erase_MCU_pm (unsigned long addrs) {
-/* Execute the program memory page-erase sequence
-*/
-    put_MCU_pm ((unsigned)(addrs>>16), (unsigned)(addrs&0xFFFF), 0, 0);
-
-// Need to set interrupt level really high / lock out interrupts
-    int save_SR;            //
-    NVMCON = 0x4042;        // Operation is Memory Erase Page
-    save_SR = SR;           // Save the status register
-    SR |= 0xE0;             // Raise priority to lock out  interrupts
-    NVMKEY = 0x55;          // Unlock 1
-    NVMKEY = 0xAA;          // Unlock 2
-    NVMCONbits.WR = 1;          // Set the "Write" bit
-    __asm__ volatile ("nop");   // required NOPs for timing
-    __asm__ volatile ("nop");   // required NOPs for timing
-    while (NVMCONbits.WR) {}    // Spin until done
-    SR = save_SR;           // restore the saved status register
-}
+//JS: replaced wtih new routine in rtspApi.s
+//void erase_MCU_pm (unsigned long addrs) {
+///* Execute the program memory page-erase sequence
+//*/
+//    put_MCU_pm ((unsigned)(addrs>>16), (unsigned)(addrs&0xFFFF), 0, 0);
+//
+//// Need to set interrupt level really high / lock out interrupts
+//    int save_SR;            //
+//    NVMCON = 0x4042;        // Operation is Memory Erase Page
+//    save_SR = SR;           // Save the status register
+//    SR |= 0xE0;             // Raise priority to lock out  interrupts
+//    NVMKEY = 0x55;          // Unlock 1
+//    NVMKEY = 0xAA;          // Unlock 2
+//    NVMCONbits.WR = 1;          // Set the "Write" bit
+//    __asm__ volatile ("nop");   // required NOPs for timing
+//    __asm__ volatile ("nop");   // required NOPs for timing
+//    while (NVMCONbits.WR) {}    // Spin until done
+//    SR = save_SR;           // restore the saved status register
+//}
 
 #ifndef DOWNLOAD_CODE
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
