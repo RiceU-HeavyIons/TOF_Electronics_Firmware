@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.3 2009-08-26 21:53:19 jschamba Exp $ */
+/* $Id: CAN_HLP3.h,v 1.4 2009-09-02 14:51:29 jschamba Exp $ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
@@ -124,6 +124,7 @@
 	//JS: try this:
     #define C_WS_FPGA_CONF0   0x11      // 
     #define C_WS_FPGA_CONF1   0x12      // 
+	#define C_WS_SEND_ALARM	  0xA0		// Boolean for sending alarm messages
 	
 
 // Oscillator clock selection constants for C_WS_OSCSRCSEL
