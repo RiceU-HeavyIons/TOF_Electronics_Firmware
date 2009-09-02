@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.14 2009-08-26 21:55:05 jschamba Exp $
+// $Id: TCPU-C.C,v 1.15 2009-09-02 14:53:05 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'Q'   // version 2Q 'Q' = 0x51
+#define FIRMWARE_ID_0 'R'   // version 2R 'R' = 0x52
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -226,6 +226,7 @@ int main()
 
 	//JS
 	int isConfiguring = 0;
+	int bSendAlarms = 1;
 	unsigned int nvmAdru, nvmAdr;
 	int temp;
 
@@ -583,26 +584,30 @@ int main()
 		// CAN1 Buffer[2] Tray-->HOST
         if ( C1RXFUL1bits.RXFUL2 ) {                // Receive TDIG message on Tray CAN#1 */
                                                     // Add Extended Address and transmit on CAN#2
-            i = 0xFFF;                              // WB-1L add timeout
-//            while (C2TR01CONbits.TXREQ0==1) {};     // wait for transmit CAN#2 to complete
-            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
-                                                    // copy the message from CAN#1 Receive buffer #2 to
-                                                    // CAN#2 transmit buffer#0
-            //JS for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[3][i];
-            for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
-            C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
-                                            // Mark CAN#2 Buffer #0 for extended ID
-            ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
-            ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
-            ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
-            C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+			if((bSendAlarms == 0) && ((ecan1msgBuf[2][0] & 0x001F) == 0x1C)) { // an alarm message, while alarms are turned off
+				// don't resend this message, just mark OK to re-use
+        	    C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
+			}
+			else {
+	            i = 0xFFF;                              // WB-1L add timeout
+	            while ((C2TR01CONbits.TXREQ0==1)&&(i!= 0)) {--i;};     // wait for transmit CAN#2 to complete or time out
+    				                                                // copy the message from CAN#1 Receive buffer #2 to
+                    				                                // CAN#2 transmit buffer#0
+    	        for (i=0; i<8; i++) ecan2msgBuf[0][i] = ecan1msgBuf[2][i]; //JS
+        	    C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
+            	                                // Mark CAN#2 Buffer #0 for extended ID
+            	ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+            	ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+            	ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
+            	C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
 // JS: end old code
 // WB-2P: Begin: Adjust pacing if message is a reply to a rebroadcast message
-			if ( (rebroadcast != 0) &&
-			    ( (ecan2msgBuf[0][0]&0x1FC0) == (rebroadcast-0x040) ) ) {	// see if the message was a reply to rebroadcast
-				pacecount = PACEDELAY;		// keep waiting for last reply message
+				if ( (rebroadcast != 0) &&
+			    	( (ecan2msgBuf[0][0]&0x1FC0) == (rebroadcast-0x040) ) ) {	// see if the message was a reply to rebroadcast
+					pacecount = PACEDELAY;		// keep waiting for last reply message
 				} // end if adjusting rebroadcast pace because we got a reply
-// WB-2P: End:   Adjust pacing if message is a reply to a rebroadcast message
+				// WB-2P: End:   Adjust pacing if message is a reply to a rebroadcast message
+			}
 
         } else if ( C2RXFUL1bits.RXFUL2 ) {         // Receive TCPU message on CAN#2 buffer[2] (host-->tray) */
 			//**********************************************************************
@@ -719,6 +724,14 @@ int main()
 						// WB-2G: End Add temperature alert limit setting
                         case C_WS_LED:              // Write to LED register
                             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ~(*wps));
+                            break;  // end case C_WS_LED
+
+                        case C_WS_SEND_ALARM:		// Set bSendAlarms variable
+                            if (rcvmsglen == 2) {   // check length for proper value
+                            	bSendAlarms = (int)(*wps);
+                            } 
+							else 
+								retbuf[1] = C_STATUS_LTHERR;    // else mark wrong message length
                             break;  // end case C_WS_LED
 
                         case C_WS_FPGARESET:        // Issue an FPGA Reset
@@ -1234,7 +1247,7 @@ int main()
             } // end if we have CAN1 error flag (overflow)
 
 // WB-2F: CRC Error check - Start
-			if (isConfiguring == 0) {
+			if ((isConfiguring == 0) && (bSendAlarms == 1)) {
 	    		j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
 		    	if ( j != fpga_crc) {  // see if it has changed
         	        fpga_crc = j;
