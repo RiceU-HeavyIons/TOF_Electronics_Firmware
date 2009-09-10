@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.15 2009-09-02 14:53:05 jschamba Exp $
+// $Id: TCPU-C.C,v 1.16 2009-09-10 17:45:08 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'R'   // version 2R 'R' = 0x52
+#define FIRMWARE_ID_0 'S'   // version 2S 'S' = 0x53
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -189,6 +189,8 @@ unsigned int clock_status;      // will get identification from Clock switch/sel
 unsigned int clock_failed = 0;      // will get set by clock fail interrupt
 unsigned int clock_requested;   // will get requested clock ID
                                 // 00 = board, 01= PLL, 08= tray
+unsigned int baudRateJumper = 0;
+
 #ifndef DOWNLOAD_CODE
 unsigned int timerExpired = 0;
 #endif
@@ -350,7 +352,7 @@ int main()
 
 /* -------------------------------------------------------------------------------------------------------------- */
     jumpers = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & JUMPER_MASK;
-    oldjumpers = jumpers;           // remember state for next time
+    oldjumpers = baudRateJumper = jumpers;           // remember state for next time
 
 #if !defined (DOWNLOAD_CODE)
 /* -----------------12/9/2006 11:39AM----------------
@@ -1770,8 +1772,12 @@ Bit Time = (Sync Segment (1*TQ) +  Propagation Delay (3*TQ) +
  BRP = (20MHz / 2*10*1MBaud))-1 = 0
 */
 	/* Baud Rate Prescaler */
-//    C2CFG1bits.BRP = 0; /* for 1Mbit/s */
-    C2CFG1bits.BRP = 1; /* for 500kbit/s */
+    if ( (baudRateJumper & JUMPER_5_6) == JUMPER_5_6) {  // See if jumper IN
+	    C2CFG1bits.BRP = 0; /* for 1Mbit/s */
+	}
+	else {
+	    C2CFG1bits.BRP = 1; /* for 500kbit/s */
+	}
 
 	/* Synchronization Jump Width set to 2 TQ */
     C2CFG1bits.SJW = 0x1;
