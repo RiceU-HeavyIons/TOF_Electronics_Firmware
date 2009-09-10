@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.16 2009-09-10 17:45:08 jschamba Exp $
+// $Id: TCPU-C.C,v 1.17 2009-09-10 18:22:55 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -143,10 +143,13 @@ typedef union tureg32 {
     unsigned char Val[4];            // array of chars
 } UReg32;
 
-UReg32 temp;
+//UReg32 temp;
 
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
+int flashPageErase(unsigned int, unsigned int);
+void WritePMRow(unsigned char *, unsigned long);
+
 //JS void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
@@ -221,7 +224,7 @@ int main()
     unsigned int rcvmsglen = 0;     // will get received message length for dispatch
     unsigned int rcvmsgfrom = 0;    // source of message (CAN1 or CAN2)
     unsigned int rcvmsgindx = 0;   // message buffer index
-    unsigned int rcvmsg1indx = 0;   // message buffer index for FIFO'd CAN1
+    // unsigned int rcvmsg1indx = 0;   // message buffer index for FIFO'd CAN1
     unsigned char sendbuf[10], retbuf[10];
     unsigned char *wps;              // working pointer
     unsigned char *wpd;              // working pointer
@@ -230,7 +233,7 @@ int main()
 	int isConfiguring = 0;
 	int bSendAlarms = 1;
 	unsigned int nvmAdru, nvmAdr;
-	int temp;
+	int tmp;
 
 
 /* WB-2D - Begin significant rework in this area
@@ -948,7 +951,7 @@ int main()
 											//JS: new routine to erase the page
 											nvmAdru = (laddrs&0xffff0000) >> 16;
 											nvmAdr = laddrs&0x0000ffff;
-											temp = flashPageErase(nvmAdru, nvmAdr);
+											tmp = flashPageErase(nvmAdru, nvmAdr);
                                             //JS erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
                                         } // end if need to erase the page
                                         // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
@@ -1003,7 +1006,7 @@ int main()
 								//JS: new routine to erase the page
 								nvmAdru = (laddrs&0xffff0000) >> 16;
 								nvmAdr = laddrs&0x0000ffff;
-								temp = flashPageErase(nvmAdru, nvmAdr);
+								tmp = flashPageErase(nvmAdru, nvmAdr);
                                 // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
 								//JS: should this be replaced by a whole row programming as well?
                                 write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
