@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.17 2009-09-10 18:22:55 jschamba Exp $
+// $Id: TCPU-C.C,v 1.18 2009-10-20 22:50:46 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'S'   // version 2S 'S' = 0x53
+#define FIRMWARE_ID_0 'T'   // version 2T 'T' = 0x54
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -620,7 +620,7 @@ int main()
 			//**********************************************************************
 			//WB-2P: combine this with rebroadcast.
             wps = (unsigned char *)&ecan2msgBuf[2][3];  // pointer to source buffer (message data)
-			if (*wps == C_WS_TARGETMCU) {
+			if ((*wps == C_WS_TARGETMCU) && ((ecan2msgBuf[2][0]& 0x3c) == 0x08)) { // needs to be "WRITE"
 				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
 				unsigned int tmpAddr;
 				memcpy ((unsigned char *)&tmpAddr, wps, 4);   // copy 4 address bytes from incoming message
