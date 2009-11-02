@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.18 2009-11-02 15:52:24 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.19 2009-11-02 16:00:02 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
