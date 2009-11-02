@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.41 2009-04-21 16:11:00 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.42 2009-11-02 15:51:18 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-04-20
+-- Last update: 2009-10-31
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -184,7 +184,7 @@ ARCHITECTURE a OF master_fpga IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
-      special_wr : OUT std_logic;       -- FECTRL with "special" parameter "0xabc0"
+      special_wr : OUT std_logic;  -- FECTRL with "special" parameter "0xabc0"
       event_read : OUT std_logic;
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
@@ -824,7 +824,7 @@ BEGIN
     special_wr => s_l2special_wr,       -- indicates FECTRL with parameter "0xabc0"
     event_read => s_l2event_read,       -- indicates run in progress
     reset      => '0',                  -- reset,
-    fifo_q     => l2ddl_data,  -- "data" from external FIFO with event data
+    fifo_q     => l2ddl_data,           -- "data" from external FIFO with event data
     fifo_empty => l2ddlfifo_empty,      -- "empty" from external FIFO
     fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
     );
@@ -874,7 +874,7 @@ BEGIN
     special_wr => s_special_wr,         -- use this for CANbus alert message
     event_read => s_event_read,         -- indicates run in progress
     reset      => '0',                  -- reset,
-    fifo_q     => ddl_data,       -- "data" from external FIFO with event data
+    fifo_q     => ddl_data,             -- "data" from external FIFO with event data
     fifo_empty => ddlfifo_empty,        -- "empty" from external FIFO
     fifo_rdreq => rd_ddl_fifo           -- "rdreq" for external FIFO
     );
