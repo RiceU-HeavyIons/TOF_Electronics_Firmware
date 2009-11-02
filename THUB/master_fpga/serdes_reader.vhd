@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.17 2009-06-04 20:59:25 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.18 2009-11-02 15:52:24 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2009-06-04
+-- Last update: 2009-10-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -194,6 +194,7 @@ BEGIN  -- ARCHITECTURE a
           -- latch current trigger word internally
           -- also go busy (default) and stay busy until event is processed
         WHEN SLatchTrig =>
+          delayCtr := 0;
           l0_trgword <= triggerWord;
 
           TState <= SOutputL0;
@@ -237,6 +238,12 @@ BEGIN  -- ARCHITECTURE a
           sl_areset_n <= '1';
           timeout_clr <= s_slatch;      -- clear timeout on latch
 
+          IF s_slatch = '1' THEN
+            delayCtr := 0;              -- clear delayCtr on latch
+          ELSIF timeout_edge = '1' THEN
+            delayCtr := delayCtr + 1;
+          END IF;
+
           -- Condition for last word from that channel:
           IF (s_shiftout(15 DOWNTO 4) = X"E00") AND (s_prelatch = '1') THEN
             block_end <= true;
@@ -245,8 +252,10 @@ BEGIN  -- ARCHITECTURE a
           -- output the synchronizer data from the serdes fpga
           is_serdes_data <= true;
 
-          -- when finished, wait for next latch signal
-          IF (block_end AND (s_slatch = '1')) OR (timeout(10) = '1') THEN
+          -- when finished, wait for next latch SIGNAL
+          -- delayCtr = 4 is about 700us
+--          IF (block_end AND (s_slatch = '1')) OR (timeout(10) = '1') THEN
+          IF (block_end AND (s_slatch = '1')) OR (delayCtr = 4) THEN
             block_end <= false;
             TState    <= SChgChannel;
           END IF;
