@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.43 2009-11-02 15:58:13 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.44 2009-11-12 15:01:47 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-10-31
+-- Last update: 2009-11-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -227,7 +227,8 @@ ARCHITECTURE a OF master_fpga IS
     PORT (
       clk80mhz            : IN  std_logic;
       areset_n            : IN  std_logic;
-      sync_q              : IN  std_logic_vector(16 DOWNTO 0);
+      sync_q              : IN  std_logic_vector(31 DOWNTO 0);
+      sfifo_empty         : IN  std_logic;
       ser_status          : IN  std_logic_vector (3 DOWNTO 0);
       fifo_empty          : IN  std_logic;
       outfifo_almost_full : IN  boolean;
@@ -252,7 +253,8 @@ ARCHITECTURE a OF master_fpga IS
       serdes_indata : IN  std_logic_vector (7 DOWNTO 0);
       serdes_clk    : IN  std_logic;
       serdes_strb   : IN  std_logic;
-      sync_q        : OUT std_logic_vector (16 DOWNTO 0));
+      sfifo_empty   : OUT std_logic;
+      sync_q        : OUT std_logic_vector (31 DOWNTO 0));
   END COMPONENT synchronizer;
 
   COMPONENT serdesRdDecoder IS
@@ -363,11 +365,13 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL smif_fifo_empty : std_logic;
   SIGNAL smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL smif_rdenable   : std_logic;
-  SIGNAL s_sync_q        : std_logic_vector (16 DOWNTO 0);
+  SIGNAL s_sync_q        : std_logic_vector (31 DOWNTO 0);
+  SIGNAL s_sfifo_empty   : std_logic;
   SIGNAL s_smif_trigger  : std_logic;
 
   SIGNAL sa_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sa_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sa_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sa_sfifo_empty     : std_logic;
   SIGNAL sa_smif_fifo_empty : std_logic;
   SIGNAL sa_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sa_smif_rdenable   : std_logic;
@@ -378,7 +382,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sr_outdata         : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sb_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sb_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sb_sfifo_empty     : std_logic;
   SIGNAL sb_smif_fifo_empty : std_logic;
   SIGNAL sb_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sb_smif_rdenable   : std_logic;
@@ -386,7 +391,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sb_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sc_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sc_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sc_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sc_sfifo_empty     : std_logic;
   SIGNAL sc_smif_fifo_empty : std_logic;
   SIGNAL sc_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sc_smif_rdenable   : std_logic;
@@ -394,7 +400,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sc_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sd_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sd_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sd_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sd_sfifo_empty     : std_logic;
   SIGNAL sd_smif_fifo_empty : std_logic;
   SIGNAL sd_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sd_smif_rdenable   : std_logic;
@@ -402,7 +409,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sd_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL se_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL se_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL se_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL se_sfifo_empty     : std_logic;
   SIGNAL se_smif_fifo_empty : std_logic;
   SIGNAL se_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL se_smif_rdenable   : std_logic;
@@ -410,7 +418,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL se_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sf_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sf_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sf_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sf_sfifo_empty     : std_logic;
   SIGNAL sf_smif_fifo_empty : std_logic;
   SIGNAL sf_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sf_smif_rdenable   : std_logic;
@@ -418,7 +427,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sf_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sg_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sg_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sg_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sg_sfifo_empty     : std_logic;
   SIGNAL sg_smif_fifo_empty : std_logic;
   SIGNAL sg_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sg_smif_rdenable   : std_logic;
@@ -426,7 +436,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sg_smif_datatype   : std_logic_vector(3 DOWNTO 0);
 
   SIGNAL sh_smif_datain     : std_logic_vector (15 DOWNTO 0);
-  SIGNAL sh_sync_q          : std_logic_vector (16 DOWNTO 0);
+  SIGNAL sh_sync_q          : std_logic_vector (31 DOWNTO 0);
+  SIGNAL sh_sfifo_empty     : std_logic;
   SIGNAL sh_smif_fifo_empty : std_logic;
   SIGNAL sh_smif_select     : std_logic_vector(1 DOWNTO 0);
   SIGNAL sh_smif_rdenable   : std_logic;
@@ -526,6 +537,7 @@ BEGIN
     serdes_indata => sa_smif_datain(7 DOWNTO 0),
     serdes_clk    => sa_smif_datain(15),
     serdes_strb   => sa_smif_datain(8),
+    sfifo_empty   => sa_sfifo_empty,
     sync_q        => sa_sync_q);
 
   -- ***************** SERDES "B" *************************************************** 
@@ -546,6 +558,7 @@ BEGIN
     serdes_indata => sb_smif_datain(7 DOWNTO 0),
     serdes_clk    => sb_smif_datain(15),
     serdes_strb   => sb_smif_datain(8),
+    sfifo_empty   => sb_sfifo_empty,
     sync_q        => sb_sync_q);
 
   -- ***************** SERDES "C" *************************************************** 
@@ -566,6 +579,7 @@ BEGIN
     serdes_indata => sc_smif_datain(7 DOWNTO 0),
     serdes_clk    => sc_smif_datain(15),
     serdes_strb   => sc_smif_datain(8),
+    sfifo_empty   => sc_sfifo_empty,
     sync_q        => sc_sync_q);
 
   -- ***************** SERDES "D" *************************************************** 
@@ -586,6 +600,7 @@ BEGIN
     serdes_indata => sd_smif_datain(7 DOWNTO 0),
     serdes_clk    => sd_smif_datain(15),
     serdes_strb   => sd_smif_datain(8),
+    sfifo_empty   => sd_sfifo_empty,
     sync_q        => sd_sync_q);
 
   -- ***************** SERDES "E" *************************************************** 
@@ -606,6 +621,7 @@ BEGIN
     serdes_indata => se_smif_datain(7 DOWNTO 0),
     serdes_clk    => se_smif_datain(15),
     serdes_strb   => se_smif_datain(8),
+    sfifo_empty   => se_sfifo_empty,
     sync_q        => se_sync_q);
 
   -- ***************** SERDES "F" *************************************************** 
@@ -626,6 +642,7 @@ BEGIN
     serdes_indata => sf_smif_datain(7 DOWNTO 0),
     serdes_clk    => sf_smif_datain(15),
     serdes_strb   => sf_smif_datain(8),
+    sfifo_empty   => sf_sfifo_empty,
     sync_q        => sf_sync_q);
 
   -- ***************** SERDES "G" *************************************************** 
@@ -646,6 +663,7 @@ BEGIN
     serdes_indata => sg_smif_datain(7 DOWNTO 0),
     serdes_clk    => sg_smif_datain(15),
     serdes_strb   => sg_smif_datain(8),
+    sfifo_empty   => sg_sfifo_empty,
     sync_q        => sg_sync_q);
 
   -- ***************** SERDES "H" *************************************************** 
@@ -660,12 +678,13 @@ BEGIN
   mhO(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
 
   -- sync incoming data to 80MHz clock
-  syncH : synchronizer PORT MAP (
+  syncH : synchronizer PORT MAP (  
     clk80mhz      => clk_80mhz,
     areset_n      => sr_areset_n,
     serdes_indata => sh_smif_datain(7 DOWNTO 0),
     serdes_clk    => sh_smif_datain(15),
     serdes_strb   => sh_smif_datain(8),
+    sfifo_empty   => sh_sfifo_empty,
     sync_q        => sh_sync_q);
 
   -- ******* Serdes Readout State Machine *******************************************
@@ -675,6 +694,7 @@ BEGIN
     clk80mhz            => clk_80mhz,
     areset_n            => sr_areset_n,
     sync_q              => s_sync_q,
+    sfifo_empty         => s_sfifo_empty,
     ser_status          => s_serStatus,
     fifo_empty          => smif_fifo_empty,
     outfifo_almost_full => ddlfifo_almost_full,
@@ -706,6 +726,17 @@ BEGIN
     sf_sync_q WHEN "101",
     sg_sync_q WHEN "110",
     sh_sync_q WHEN OTHERS;
+
+  WITH s_serSel SELECT
+    s_sfifo_empty <=
+    sa_sfifo_empty WHEN "000",
+    sb_sfifo_empty WHEN "001",
+    sc_sfifo_empty WHEN "010",
+    sd_sfifo_empty WHEN "011",
+    se_sfifo_empty WHEN "100",
+    sf_sfifo_empty WHEN "101",
+    sg_sfifo_empty WHEN "110",
+    sh_sfifo_empty WHEN OTHERS;
 
   -- connect selected status bits
   WITH s_serSel SELECT
@@ -823,7 +854,7 @@ BEGIN
     run_reset  => s_l2runReset,         -- external logic reset at run start
     special_wr => s_l2special_wr,       -- indicates FECTRL with parameter "0xabc0"
     event_read => s_l2event_read,       -- indicates run in progress
-    reset      => '0',                  -- reset,
+    reset      => s_reg0(2),            -- reset,
     fifo_q     => l2ddl_data,           -- "data" from external FIFO with event data
     fifo_empty => l2ddlfifo_empty,      -- "empty" from external FIFO
     fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
@@ -873,7 +904,7 @@ BEGIN
     run_reset  => s_runReset,           -- external logic reset at run start
     special_wr => s_special_wr,         -- use this for CANbus alert message
     event_read => s_event_read,         -- indicates run in progress
-    reset      => '0',                  -- reset,
+    reset      => s_reg0(2),            -- reset,
     fifo_q     => ddl_data,             -- "data" from external FIFO with event data
     fifo_empty => ddlfifo_empty,        -- "empty" from external FIFO
     fifo_rdreq => rd_ddl_fifo           -- "rdreq" for external FIFO
