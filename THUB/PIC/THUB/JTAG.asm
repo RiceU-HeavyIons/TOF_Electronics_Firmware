@@ -1,4 +1,4 @@
-; $Id: JTAG.asm,v 1.2 2007-12-07 19:34:56 jschamba Exp $
+; $Id: JTAG.asm,v 1.3 2009-11-18 23:24:36 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      JTAG.asm                                                  *
@@ -56,6 +56,7 @@ str_TCK macro
     endm
 
 reset_TAP	macro
+    clr_TCK ; start with clock low
 	set_TMS
 	str_TCK
 	str_TCK
