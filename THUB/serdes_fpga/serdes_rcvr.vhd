@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.8 2009-03-03 21:17:01 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.9 2009-11-19 21:16:39 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2009-03-03
+-- Last update: 2009-11-19
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -35,13 +35,13 @@ ENTITY serdes_rcvr IS
   PORT
     (
       areset_n   : IN  std_logic;       -- asynchronous reset, active low
-      clk40mhz   : IN  std_logic;       -- Master clock
+      clk80mhz   : IN  std_logic;       -- 80MHz PLL clock
       rdreq_in   : IN  std_logic;
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
       ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
       geo_id     : IN  std_logic_vector (6 DOWNTO 0);
-      dataout    : OUT std_logic_vector (15 DOWNTO 0);
+      dataout    : OUT std_logic_vector (31 DOWNTO 0);
       fifo_empty : OUT std_logic
       );
 END serdes_rcvr;
@@ -54,15 +54,13 @@ ARCHITECTURE a OF serdes_rcvr IS
   SIGNAL s_fifo_rdreq : std_logic;
   SIGNAL s_fifo_empty : std_logic;
   SIGNAL s_fifo_q     : std_logic_vector(31 DOWNTO 0);
-
-  SIGNAL s_geo_id : std_logic_vector(6 DOWNTO 0);
-
-  SIGNAL s_ddr_inh  : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_ddr_inl  : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_latch    : std_logic;
-  SIGNAL s_valid    : std_logic;
-  SIGNAL s_shiftout : std_logic_vector (31 DOWNTO 0);
-  SIGNAL s_dff_q    : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_geo_id     : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_latch      : std_logic;
+  SIGNAL s_valid      : std_logic;
+  SIGNAL s_shiftout   : std_logic_vector (31 DOWNTO 0);
+  SIGNAL s_dff_q      : std_logic_vector(31 DOWNTO 0);
 
 
 BEGIN
@@ -86,10 +84,10 @@ BEGIN
       s_valid    <= '0';
       s_shiftout <= (OTHERS => '0');
       
-    ELSIF rising_edge(ch_rclk) THEN  -- rising clock edge
+    ELSIF rising_edge(ch_rclk) THEN     -- rising clock edge
       s_valid <= ch_rxd(17);
 
-      IF ch_rxd(17) = '1' THEN                   -- use highest bit as shift enable
+      IF ch_rxd(17) = '1' THEN          -- use highest bit as shift enable
         s_shiftout(31 DOWNTO 16) <= s_shiftout(15 DOWNTO 0);
         s_shiftout(15 DOWNTO 0)  <= ch_rxd(15 DOWNTO 0);
       END IF;
@@ -120,7 +118,7 @@ BEGIN
       wrclk             => NOT ch_rclk,
       rdreq             => s_fifo_rdreq,
       aclr              => fifo_aclr,
-      rdclk             => clk40mhz,
+      rdclk             => clk80mhz,
       wrreq             => s_fifo_wrreq,
       data(31 DOWNTO 8) => s_shiftout(31 DOWNTO 8),
       data(7 DOWNTO 1)  => s_geo_id,
@@ -129,41 +127,25 @@ BEGIN
       q                 => s_fifo_q
       );
 
+  dataout <= s_fifo_q;
 
-  s_dff_q <= s_fifo_q;
 
-  dff_inst1: PROCESS (clk40mhz, areset_n) IS
+  dff_inst1 : PROCESS (clk80mhz, areset_n) IS
   BEGIN
-    IF areset_n = '0' THEN                   -- asynchronous reset (active low)
+    IF areset_n = '0' THEN              -- asynchronous reset (active low)
       fifo_empty <= '1';
       
-    ELSIF falling_edge(clk40mhz) THEN
+    ELSIF rising_edge(clk80mhz) THEN
       -- Only put out a valid fifo_empty, when rdreq is valid
       -- otherwise, fifo_emtpy = '1'
       IF rdreq_in = '1' THEN
-        fifo_empty   <= s_fifo_empty;
+        fifo_empty <= s_fifo_empty;
       ELSE
-        fifo_empty <= '1';  
+        fifo_empty <= '1';
       END IF;
     END IF;
   END PROCESS dff_inst1;
 
-  -- register the incoming rdreq  with the falling edge
-  -- of the 40MHz clock
-  dff_inst2: PROCESS (clk40mhz, areset_n) IS
-  BEGIN
-    IF areset_n = '0' THEN                   -- asynchronous reset (active low)
-      s_fifo_rdreq <= '0';
-      
-    ELSIF falling_edge(clk40mhz) THEN
-        s_fifo_rdreq <= rdreq_in;
-    END IF;
-  END PROCESS dff_inst2;
-
-  WITH clk40mhz SELECT
-    dataout <=
-    s_dff_q(15 DOWNTO 0)  WHEN '0',
-    s_dff_q(31 DOWNTO 16) WHEN OTHERS;
-  
+  s_fifo_rdreq <= rdreq_in;
 
 END a;
