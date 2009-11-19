@@ -1,4 +1,4 @@
--- $Id: TDIG.vhd,v 1.9 2009-05-07 14:19:43 jschamba Exp $
+-- $Id: TDIG.vhd,v 1.10 2009-11-19 16:49:01 jschamba Exp $
 -- TDIG.vhd
 
 -- 
@@ -636,6 +636,10 @@ BEGIN
     NOT global_40mhz WHEN "000",
     NOT global_40mhz WHEN "100",
     global_40mhz     WHEN OTHERS;
+
+  -- in case of the start detectors, use the following line instead
+  -- of the above WITH statement:
+--    br_inclk <= global_40mhz;             -- always for the start detector
 
   -- the clock with which the bunch reset is strobed out is fixed:
   br_outclk <= global_40mhz;
