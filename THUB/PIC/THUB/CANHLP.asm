@@ -1,4 +1,4 @@
-; $Id: CANHLP.asm,v 1.30 2009-06-19 14:29:25 jschamba Exp $
+; $Id: CANHLP.asm,v 1.31 2009-11-19 15:13:41 jschamba Exp $
 ;******************************************************************************
 ;                                                                             *
 ;    Filename:      CANHLP.asm                                                *
@@ -146,14 +146,39 @@ TofHandleWrite:
     GLOBAL TofHandleWrite
 
     ;**************************************************************
+    ;****** A "Program PLD" command: ***********************************
+    ;* msgID = 0x402
+    ;* RxData[0] = between 32..39, depending on sub command
+    ;**************************************************************
+    movf    RxData,W            ; WREG = RxData
+    andlw   0xF8
+    sublw   0x20                ; if (32 <= RxData[0] <= 39)
+    bnz     is_it_Write_PLDReg  ; false: test next command
+    call    TofProgramPLD       ; true: a "program PLD" command
+    return
+
+is_it_Write_PLDReg:
+    ;**************************************************************
     ;****** Write PLD Register: ***********************************
     ;* msgID = 0x402
     ;* RxData[0] = Register address, 0x80 < address < 0xff
     ;* RxData[1] = Data to write
     ;**************************************************************
     btfss   RxData, 7           ; test if bit 7 in RxData[0] is set
-    bra     is_it_MCU_RDOUT_MODE    ; false: test next command
+    bra     is_it_Reset_FPGAs   ; false: test next command
     call    TofWriteReg             ; true: write PLD register
+    return
+
+is_it_Reset_FPGAs:
+    ;**************************************************************
+    ;****** Reset FPGAs & init THUB: ******************************
+    ;* msgID = 0x402
+    ;* RxData[0] = 0xd
+    ;**************************************************************
+    movf    RxData,W            ; WREG = RxData
+    sublw   0x0D                ; if (RxData[0] == 0x0d)
+    bnz     is_it_MCU_RDOUT_MODE    ; false: test next command
+    call    HLPResetFPGAs           ; true: call HLPResetFPGAs
     return
 
 is_it_MCU_RDOUT_MODE:
@@ -200,22 +225,15 @@ is_it_SETALERT_MODE:
     ;**************************************************************
     movf    RxData,W            ; WREG = RxData
     sublw   0x0C                ; if (RxData[0] == 0x0a)
-    bnz     is_it_programPLD  ; false: test next command
+    bnz     unknown_message     ; false: send error response
     movff   RxData+1, checkAlertFlag     ; set checkAlertFlag to received data
     call    HLPSendWriteResponseOK  ; send response    
     return
+;*******************************************************************************************
 
-is_it_programPLD:
-    movf    RxData,W            ; WREG = RxData
-    andlw   0xF8
-    sublw   0x20                ; if (32 <= RxData[0] <= 39)
-    bnz     unknown_message     ; false: send error message
-    call    TofProgramPLD       ; true: a "program PLD" command
-    return
-    
 
 ;**************************************************************
-;* which read command? 
+;*********************** which read command? ******************
 ;**************************************************************
 TofHandleRead:
     GLOBAL TofHandleRead
@@ -377,9 +395,10 @@ unknown_message:
     mCANSendAlert_IDL   RxDtLngth
 
     return
+;***************************************************************************************
 
 ;**************************************************************
-;* CAN "Write" Commands
+;**************** CAN "Write" Commands ************************
 ;**************************************************************
 TofSetCANTestMsg_MODE:
     ;**************************************************************
@@ -437,6 +456,110 @@ moreWriteReg:
     bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     call    HLPSendWriteResponseOK  ; send response    
     return                  ; back to receiver loop
+
+HLPResetFPGAs:
+    ;**************************************************************
+    ;****** Reset all FPGAs & init THUB ***************************
+    mAsSelect 1         ;  Set FPGA progamming lines to FPGA A (1)
+    ; This sequence resets FPGAs
+    call    asStart ; resets FPGAs A - D & M
+    nop
+    call    asDone
+
+    mAsSelect 5         ;  Set FPGA progamming lines to FPGA E (5)
+    ; This sequence resets FPGAs
+    call    asStart ; resets FPGAs E - H
+    nop
+    call    asDone
+
+    ;;; first wait a while for FPGAs to initialize
+    movlw   0x87
+    movwf   T0CON           ; initialize TIMER0
+    bcf     INTCON, TMR0IF  ; clear Timer 1 interrupt flag
+    movlw   0xf0            ; ~210ms
+    movwf   TMR0H           ; load timer register
+    clrf    TMR0L
+
+    btfss   INTCON, TMR0IF  ; wait for timer1 overflow
+    bra     $ - 2
+
+    clrf    T0CON           ; turn off timer
+    bcf     INTCON, TMR0IF  ; clear Timer 1 interrupt flag
+
+    ;;; Check that FPGAs are initialized
+    mAsSelect 5         ;  Set FPGA progamming lines to FPGA E (5)
+    btfss   as_CONFIG_DONE  ; check if FPGA M is configured
+	bra		HLP_FPGA_PROGERROR
+    mAsSelect 1             ;  Set FPGA progamming lines to FPGA A (1)
+    btfss   as_CONFIG_DONE  ; check if FPGA A is configured
+	bra		HLP_FPGA_PROGERROR
+    
+    ;;; Now setup the EEPROM address
+    clrf    EECON1
+    clrf    EEADR           ; Point to first location of EEDATA
+    clrf    EEADRH
+
+    ;; read EEPROM data at address 0 - 3 and write to FPGA register 0x91
+    ;; set bit 7 in  the data to indicate writing to GEO registers
+    movlw   0x91            
+    movwf   TXB0D0          ; "mis-use" TXB0D0 to hold the FPGA register address
+
+    movlw   8               ; loop over 8 Serdes FPGAs
+    movwf   hlpCtr2
+
+    banksel uc_fpga_DATA
+    bcf     uc_fpga_DIR     ; DIR lo: uc -> FPGA
+    clrf    uc_fpga_DATADIR ; DATA PORT as output
+
+HLPeeloop2:
+    movlw   4               ; loop over 4 values
+    movwf   hlpCtr1          
+HLPeeloop1:
+    movff   TXB0D0, uc_fpga_DATA    ; register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+    
+    bsf     EECON1, RD      ; Read EEPROM
+
+    movff   EEDATA, uc_fpga_DATA ; register data on DATA PORT
+    bsf     uc_fpga_DATA, 7 ; raise bit 7 for GEO_DATA write
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+
+    incf    EEADR,F         ; increase EEPROM address
+    decfsz  hlpCtr1
+    bra     HLPeeloop1
+
+    incf    TXB0D0, F       ; next Serdes FPGA
+    decfsz  hlpCtr2
+    bra     HLPeeloop2
+
+    setf    uc_fpga_DATADIR ; DATA PORT as input
+    bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
+
+    ;;; finished with EEPROM writing to Serdes FPGA
+
+    ; finished:
+    ;;; reset FPGA select
+    mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
+    call    HLPSendWriteResponseOK  ; send response    
+    return                          ; back to receiver loop
+
+HLP_FPGA_PROGERROR:
+    mAsSelect 8         ;  Set FPGA progamming lines to FPGA H (8)
+	banksel	TXB0CON
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+    movff   RXB0D0, TXB0D0          ; copy first byte to Tx buffer
+    movlw    0x04
+    movwf   TXB0D1                  ; second byte = 4
+    mCANSendWrResponse   2
+
+    return
+
 
 TofProgramPLD:
     ;**************************************************************
