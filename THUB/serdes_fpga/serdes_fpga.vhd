@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.32 2009-03-16 14:16:26 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.33 2009-11-19 21:13:53 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-03-16
+-- Last update: 2009-11-18
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -150,16 +150,6 @@ ARCHITECTURE a OF serdes_fpga IS
       d      : OUT std_logic_vector(16 DOWNTO 0));
   END COMPONENT LFSR;
 
-  COMPONENT mux17x4 IS
-    PORT (
-      data0x : IN  std_logic_vector (16 DOWNTO 0);
-      data1x : IN  std_logic_vector (16 DOWNTO 0);
-      data2x : IN  std_logic_vector (16 DOWNTO 0);
-      data3x : IN  std_logic_vector (16 DOWNTO 0);
-      sel    : IN  std_logic_vector (1 DOWNTO 0);
-      result : OUT std_logic_vector (16 DOWNTO 0));
-  END COMPONENT mux17x4;
-
   COMPONENT decoder IS
     PORT (
       input_sig : IN  std_logic;
@@ -170,13 +160,13 @@ ARCHITECTURE a OF serdes_fpga IS
   COMPONENT serdes_rcvr IS
     PORT (
       areset_n   : IN  std_logic;
-      clk40mhz   : IN  std_logic;
+      clk80mhz   : IN  std_logic;
       rdreq_in   : IN  std_logic;
       fifo_aclr  : IN  std_logic;
       ch_rclk    : IN  std_logic;
       ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
       geo_id     : IN  std_logic_vector (6 DOWNTO 0);
-      dataout    : OUT std_logic_vector (15 DOWNTO 0);
+      dataout    : OUT std_logic_vector (31 DOWNTO 0);
       fifo_empty : OUT std_logic);
   END COMPONENT serdes_rcvr;
 
@@ -200,7 +190,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL serdes_clk        : std_logic;
   SIGNAL pll_locked        : std_logic;
   SIGNAL counter_q         : std_logic_vector (16 DOWNTO 0);
-  SIGNAL lsfr_d            : std_logic_vector (16 DOWNTO 0);
+  SIGNAL lfsr_d            : std_logic_vector (16 DOWNTO 0);
   SIGNAL serdes_data       : std_logic_vector (17 DOWNTO 0);
   SIGNAL serdes_tst_data   : std_logic_vector (17 DOWNTO 0);
   SIGNAL txfifo_rdreq      : std_logic;
@@ -250,19 +240,19 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch0fifo_rdreq : std_logic;
   SIGNAL s_ch0fifo_aclr  : std_logic;
   SIGNAL s_ch0fifo_empty : std_logic;
-  SIGNAL s_ch0fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch0fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch1fifo_rdreq : std_logic;
   SIGNAL s_ch1fifo_aclr  : std_logic;
   SIGNAL s_ch1fifo_empty : std_logic;
-  SIGNAL s_ch1fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch1fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch2fifo_rdreq : std_logic;
   SIGNAL s_ch2fifo_aclr  : std_logic;
   SIGNAL s_ch2fifo_empty : std_logic;
-  SIGNAL s_ch2fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch2fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch3fifo_rdreq : std_logic;
   SIGNAL s_ch3fifo_aclr  : std_logic;
   SIGNAL s_ch3fifo_empty : std_logic;
-  SIGNAL s_ch3fifo_q     : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ch3fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch0_rclk      : std_logic;
   SIGNAL s_ch1_rclk      : std_logic;
   SIGNAL s_ch2_rclk      : std_logic;
@@ -270,7 +260,8 @@ ARCHITECTURE a OF serdes_fpga IS
 
   SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_rxfifo_out : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_rxfifo_out : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_ddio_in    : std_logic_vector(15 DOWNTO 0);
 
   SIGNAL s_geo_id_ch0 : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_geo_id_ch1 : std_logic_vector(6 DOWNTO 0);
@@ -279,6 +270,9 @@ ARCHITECTURE a OF serdes_fpga IS
 
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
+
+  TYPE LState_type IS (S1, S2);
+  SIGNAL lstate : LState_type;
 
   TYPE Geo_state_type IS (g_data, g_geo);
   SIGNAL geoState0 : Geo_state_type;
@@ -465,7 +459,7 @@ BEGIN
   ch0rcvr : serdes_rcvr
     PORT MAP (
       areset_n   => s_ch0_locked,
-      clk40mhz   => globalclk,
+      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch0fifo_rdreq,
       fifo_aclr  => s_ch0fifo_aclr,
       ch_rclk    => s_ch0_rclk,
@@ -480,7 +474,7 @@ BEGIN
   ch1rcvr : serdes_rcvr
     PORT MAP (
       areset_n   => s_ch1_locked,
-      clk40mhz   => globalclk,
+      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch1fifo_rdreq,
       fifo_aclr  => s_ch1fifo_aclr,
       ch_rclk    => s_ch1_rclk,
@@ -495,7 +489,7 @@ BEGIN
   ch2rcvr : serdes_rcvr
     PORT MAP (
       areset_n   => s_ch2_locked,
-      clk40mhz   => globalclk,
+      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch2fifo_rdreq,
       fifo_aclr  => s_ch2fifo_aclr,
       ch_rclk    => s_ch2_rclk,
@@ -510,7 +504,7 @@ BEGIN
   ch3rcvr : serdes_rcvr
     PORT MAP (
       areset_n   => s_ch3_locked,
-      clk40mhz   => globalclk,
+      clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch3fifo_rdreq,
       fifo_aclr  => s_ch3fifo_aclr,
       ch_rclk    => s_ch3_rclk,
@@ -524,7 +518,7 @@ BEGIN
   -- FIFO output decoded to Master FPGA lines -----------------
   -- select which FIFO to send read enable to
   rdreq_decode : decoder PORT MAP (
-    input_sig => s_smif_rdenable,
+    input_sig => s_synced_rdenable,
     adr       => s_smif_select,
     y(0)      => s_ch2fifo_rdreq,
     y(1)      => s_ch3fifo_rdreq,
@@ -532,41 +526,57 @@ BEGIN
     y(3)      => s_ch1fifo_rdreq);
 
   -- select which FIFO to read
-  rxmux_inst : mux17x4 PORT MAP (
-    data0x(15 DOWNTO 0) => s_ch2fifo_q,
-    data0x(16)          => s_ch2fifo_empty,
-    data1x(15 DOWNTO 0) => s_ch3fifo_q,
-    data1x(16)          => s_ch3fifo_empty,
-    data2x(15 DOWNTO 0) => s_ch0fifo_q,
-    data2x(16)          => s_ch0fifo_empty,
-    data3x(15 DOWNTO 0) => s_ch1fifo_q,
-    data3x(16)          => s_ch1fifo_empty,
-    sel                 => s_smif_select,
-    result(15 DOWNTO 0) => s_rxfifo_out,
-    result(16)          => s_smif_fifo_empty);
+  WITH s_smif_select SELECT
+    s_rxfifo_out <=
+    s_ch2fifo_q WHEN "00",
+    s_ch3fifo_q WHEN "01",
+    s_ch0fifo_q WHEN "10",
+    s_ch1fifo_q WHEN OTHERS;
+
+  WITH s_smif_select SELECT
+    s_smif_fifo_empty <=
+    s_ch2fifo_empty WHEN "00",
+    s_ch3fifo_empty WHEN "01",
+    s_ch0fifo_empty WHEN "10",
+    s_ch1fifo_empty WHEN OTHERS;
+
+  -- alternately, put upper and lower 16 bytes of RXfifo
+  -- on ddio
+  -- with lower 16bit data also raise the latch SIGNAL
+  -- on smif_dataout(8)
+  latcher : PROCESS (pll_80mhz, s_smif_rdenable) IS
+  BEGIN
+    IF s_smif_rdenable = '0' THEN
+      s_ddio_in         <= (OTHERS => '0');
+      s_smif_dataout(8) <= '0';
+      s_synced_rdenable <= '0';
+      lstate            <= S1;
+    ELSIF rising_edge(pll_80mhz) THEN
+      s_smif_dataout(8) <= '0';
+      s_synced_rdenable <= '0';
+      CASE lstate IS
+        -- now alternate between states S1 and S2
+        -- in state S2, put the latch high
+        WHEN S1 =>
+          s_ddio_in <= s_rxfifo_out(15 DOWNTO 0);
+          lstate    <= S2;
+        WHEN S2 =>
+          s_synced_rdenable <= '1';
+          s_ddio_in         <= s_rxfifo_out(31 DOWNTO 16);
+          IF s_smif_fifo_empty = '0' THEN
+            s_smif_dataout(8) <= '1';
+          END IF;
+          lstate <= S1;
+      END CASE;
+    END IF;
+  END PROCESS latcher;
 
   -- output 8bit data on each clock edge of the 80MHz clock
   ddio_out_inst : ddio_out PORT MAP (
-    datain_h => s_rxfifo_out(15 DOWNTO 8),
-    datain_l => s_rxfifo_out(7 DOWNTO 0),
+    datain_h => s_ddio_in(15 DOWNTO 8),
+    datain_l => s_ddio_in(7 DOWNTO 0),
     outclock => pll_80mhz,
     dataout  => s_smif_dataout(7 DOWNTO 0));
-
-  -- sync rd_enable to 40MHz clock
-  PROCESS (globalclk) IS
-  BEGIN
-    IF falling_edge(globalclk) THEN
-      s_synced_rdenable <= s_smif_rdenable;
-    END IF;
-  END PROCESS;
-
-  -- sync to 80 MHz clock. put out latch signal on last two bytes when valid transmissions
-  latcher : PROCESS (pll_80mhz) IS
-  BEGIN
-    IF rising_edge(pll_80mhz) THEN
-      s_smif_dataout(8) <= (globalclk NOR s_smif_fifo_empty) AND s_synced_rdenable;
-    END IF;
-  END PROCESS latcher;
 
   s_smif_dataout(9)  <= '0';
   s_smif_dataout(10) <= s_ch2_locked;
@@ -744,14 +754,14 @@ BEGIN
 --    PORT MAP (
 --      RESETn => '1',
 --      clock  => serdes_clk,
---      d      => lsfr_d);
+--      d      => lfsr_d);
 
   -- SERDES data:
 --  s_send_data <= s_ch0_locked AND s_serdes_reg(6);  -- control sending of data with serdes register bit 6
 
 -- serdes_tst_data(16 DOWNTO 0) <= counter_q;
---  serdes_tst_data(15 DOWNTO 0) <= lsfr_d(15 DOWNTO 0);
---  serdes_tst_data(16)          <= lsfr_d(16) AND s_serdes_reg(6);
+--  serdes_tst_data(15 DOWNTO 0) <= lfsr_d(15 DOWNTO 0);
+--  serdes_tst_data(16)          <= lfsr_d(16) AND s_serdes_reg(6);
 --  serdes_tst_data(17)          <= s_send_data;
 
 
