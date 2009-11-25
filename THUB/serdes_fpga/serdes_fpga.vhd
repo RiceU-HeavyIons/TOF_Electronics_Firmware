@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.33 2009-11-19 21:13:53 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.34 2009-11-25 19:50:03 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-11-18
+-- Last update: 2009-11-23
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -271,7 +271,7 @@ ARCHITECTURE a OF serdes_fpga IS
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE LState_type IS (S1, S2);
+  TYPE LState_type IS (S0, S1, S2);
   SIGNAL lstate : LState_type;
 
   TYPE Geo_state_type IS (g_data, g_geo);
@@ -550,13 +550,17 @@ BEGIN
       s_ddio_in         <= (OTHERS => '0');
       s_smif_dataout(8) <= '0';
       s_synced_rdenable <= '0';
-      lstate            <= S1;
+      lstate            <= S0;
     ELSIF rising_edge(pll_80mhz) THEN
       s_smif_dataout(8) <= '0';
       s_synced_rdenable <= '0';
       CASE lstate IS
         -- now alternate between states S1 and S2
         -- in state S2, put the latch high
+        WHEN S0 =>
+          -- give a little time before starting the DDIO
+          s_ddio_in <= s_rxfifo_out(31 DOWNTO 16);
+          lstate    <= S1;
         WHEN S1 =>
           s_ddio_in <= s_rxfifo_out(15 DOWNTO 0);
           lstate    <= S2;
