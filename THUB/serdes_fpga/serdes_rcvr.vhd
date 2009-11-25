@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.9 2009-11-19 21:16:39 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.10 2009-11-25 19:52:02 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2009-11-19
+-- Last update: 2009-11-23
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -50,80 +50,86 @@ END serdes_rcvr;
 ARCHITECTURE a OF serdes_rcvr IS
 
 
-  SIGNAL s_fifo_wrreq : std_logic;
-  SIGNAL s_fifo_rdreq : std_logic;
-  SIGNAL s_fifo_empty : std_logic;
-  SIGNAL s_fifo_q     : std_logic_vector(31 DOWNTO 0);
-  SIGNAL s_geo_id     : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_latch      : std_logic;
-  SIGNAL s_valid      : std_logic;
-  SIGNAL s_shiftout   : std_logic_vector (31 DOWNTO 0);
-  SIGNAL s_dff_q      : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_fifo_wrreq   : std_logic;
+  SIGNAL s_fifo_rdreq   : std_logic;
+  SIGNAL s_fifo_empty   : std_logic;
+  SIGNAL syncfifo_empty : std_logic;
+  SIGNAL s_fifo_q       : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_geo_id       : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_ddr_inh      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ddr_inl      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_latch        : std_logic;
+  SIGNAL s_valid        : std_logic;
+  SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
+  SIGNAL s_dff_q        : std_logic_vector(31 DOWNTO 0);
 
 
 BEGIN
 
-  -- create a latch signal that has half the frequency of ch_rclk
-  -- reset, when there is nothing being sent (chvalid = 0)
-  ch_latch : TFF PORT MAP (
-    t    => '1',
-    clk  => ch_rclk,
-    clrn => s_valid,
-    prn  => '1',
-    q    => s_latch);
+  -- use a mixed width dual-clock FIFO to convert the 2x16bit
+  -- words received into 32bit words, and to synchronize between
+  -- the serdes clock and the local 80MHz PLL clock
+  -- The upper and lower 16-bits need to be exchanged due to  the
+  -- order in which they are received
+  sync_fifo : dcfifo_mixed_widths
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=7,",
+      lpm_numwords           => 16,
+      lpm_showahead          => "ON",
+      lpm_type               => "dcfifo",
+      lpm_width              => 16,
+      lpm_widthu             => 4,
+      lpm_widthu_r           => 3,
+      lpm_width_r            => 32,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 5,
+      underflow_checking     => "ON",
+      use_eab                => "ON",
+      write_aclr_synch       => "OFF",
+      wrsync_delaypipe       => 5
+      )
+    PORT MAP (
+      wrclk           => ch_rclk,
+      rdreq           => '1',
+      aclr            => fifo_aclr,
+      rdclk           => clk80mhz,
+      wrreq           => ch_rxd(17),
+      data            => ch_rxd(15 DOWNTO 0),
+      rdempty         => syncfifo_empty,
+      q(31 DOWNTO 16) => s_shiftout(15 DOWNTO 0),
+      q(15 DOWNTO 0)  => s_shiftout(31 DOWNTO 16)
+      );
 
-  -- shift the incoming data 16 bits at a time on each ch_rclk
-  -- reset when nothing is being sent (chvalid = 0)
-
-  -- Shift register
-  shiftreg_ch : PROCESS (ch_rclk, areset_n) IS
-  BEGIN
-    IF areset_n = '0' THEN              -- asynchronous reset (active low)
-      s_valid    <= '0';
-      s_shiftout <= (OTHERS => '0');
-      
-    ELSIF rising_edge(ch_rclk) THEN     -- rising clock edge
-      s_valid <= ch_rxd(17);
-
-      IF ch_rxd(17) = '1' THEN          -- use highest bit as shift enable
-        s_shiftout(31 DOWNTO 16) <= s_shiftout(15 DOWNTO 0);
-        s_shiftout(15 DOWNTO 0)  <= ch_rxd(15 DOWNTO 0);
-      END IF;
-      
-    END IF;
-  END PROCESS shiftreg_ch;
-
+  -- in case of a geographical word, latch the correct geographical information
   WITH (s_shiftout(31 DOWNTO 16) = X"C000") SELECT
     s_geo_id <=
     geo_id                 WHEN true,
     s_shiftout(7 DOWNTO 1) WHEN OTHERS;
 
-  s_fifo_wrreq <= s_latch;  -- will be disabled when FIFO is full due to overflow checking
-  rxfifo : dcfifo
+  s_fifo_wrreq <= NOT syncfifo_empty;  -- will be disabled when FIFO is full due to overflow checking
+  rxfifo : scfifo
     GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_hint               => "MAXIMIZE_SPEED=7",
-      lpm_numwords           => 2048,
-      lpm_showahead          => "ON",
-      lpm_type               => "dcfifo",
-      lpm_width              => 32,
-      lpm_widthu             => 11,
-      overflow_checking      => "ON",
-      rdsync_delaypipe       => 4,
-      underflow_checking     => "ON",
-      wrsync_delaypipe       => 4)
+      add_ram_output_register => "OFF",
+      intended_device_family  => "Cyclone II",
+      lpm_numwords            => 2048,
+      lpm_showahead           => "ON",
+      lpm_type                => "scfifo",
+      lpm_width               => 32,
+      lpm_widthu              => 11,
+      overflow_checking       => "ON",
+      underflow_checking      => "ON",
+      use_eab                 => "ON"
+      )
     PORT MAP (
-      wrclk             => NOT ch_rclk,
       rdreq             => s_fifo_rdreq,
       aclr              => fifo_aclr,
-      rdclk             => clk80mhz,
+      clock             => clk80mhz,
       wrreq             => s_fifo_wrreq,
       data(31 DOWNTO 8) => s_shiftout(31 DOWNTO 8),
       data(7 DOWNTO 1)  => s_geo_id,
       data(0)           => s_shiftout(0),
-      rdempty           => s_fifo_empty,
+      empty             => s_fifo_empty,
       q                 => s_fifo_q
       );
 
