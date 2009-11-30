@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.6 2009-03-16 14:59:46 jschamba Exp $
+-- $Id: serdes_poweron.vhd,v 1.7 2009-11-30 17:11:41 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron
 -- Project    : SERDES_FPGA
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-05-24
--- Last update: 2009-03-13
+-- Last update: 2009-11-30
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -83,7 +83,7 @@ BEGIN
       ch_ready        <= '0';
       s_serdes_tx_sel <= '1';
       
-    ELSIF rising_edge(clk) THEN
+    ELSIF falling_edge(clk) THEN
       -- defaults:
       tpwdn_n         <= '0';           -- tx powered down
       rpwdn_n         <= '0';           -- rx powered down
