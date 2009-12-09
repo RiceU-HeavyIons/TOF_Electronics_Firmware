@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.20 2009-11-12 14:56:38 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.21 2009-12-09 17:07:42 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2009-11-04
+-- Last update: 2009-12-05
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -85,6 +85,7 @@ ARCHITECTURE a OF serdes_reader IS
     SChkChannel,
     SFifoChk,
     SRdSerA,
+    SLowerRdReq,
     SChgChannel,
     SRdTrg,
     SEnd,
@@ -229,9 +230,12 @@ BEGIN  -- ARCHITECTURE a
 --          IF (block_end AND (s_slatch = '1')) OR (timeout(10) = '1') THEN
           IF block_end OR (delayCtr = 4) THEN
             block_end <= false;
-            TState    <= SChgChannel;
+            TState    <= SLowerRdReq;
           END IF;
 
+        WHEN SLowerRdReq =>
+          TState <= SChgChannel;
+          
           -- move on to next channel from same Serdes FPGA
         WHEN SChgChannel =>
           delayCtr := 0;
