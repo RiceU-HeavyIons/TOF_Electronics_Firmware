@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.44 2009-11-12 15:01:47 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.45 2010-01-07 17:27:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2009-11-04
+-- Last update: 2010-01-05
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -163,6 +163,7 @@ ARCHITECTURE a OF master_fpga IS
       data        : IN  std_logic_vector (3 DOWNTO 0);
       clock       : IN  std_logic;
       reset_n     : IN  std_logic;
+      working     : OUT std_logic;
       trgword     : OUT std_logic_vector (19 DOWNTO 0);
       master_rst  : OUT std_logic;
       trigger     : OUT std_logic;
@@ -325,6 +326,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_reg6         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_reg7         : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_serdes_reg   : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_tcd_working  : std_logic;
+  SIGNAL s_tcd_rst_n    : std_logic;
   SIGNAL s_master_rst   : std_logic;
   SIGNAL s_trigger      : std_logic;
   SIGNAL s_evt_trg      : std_logic;
@@ -990,7 +993,8 @@ BEGIN
       reg4_out => s_reg4);
 
   -- use a read to reg4 as status register
-  s_reg4_stat(7 DOWNTO 2) <= s_reg4(7 DOWNTO 2);
+  s_reg4_stat(7 DOWNTO 3) <= s_reg4(7 DOWNTO 3);
+  s_reg4_stat(2)          <= s_tcd_working;  -- TCD acquire status
   s_reg4_stat(1)          <= s_event_read;  -- Fiber status (active high)
   s_reg4_stat(0)          <= s_tcd_busy_n;  -- busy status (active low)
 
@@ -1036,13 +1040,16 @@ BEGIN
   -- Trigger interface
   -- ********************************************************************************
   -- tcd trigger
+  -- reset when pll NOT locked, or when reg0(2) or runReset from DDL is high
+  s_tcd_rst_n <= pll_locked AND (NOT (s_runReset OR s_reg0(2)));
   tcd_inst : tcd
     PORT MAP (
       rhic_strobe => tcd_strb,
       data_strobe => tcd_clk,
       data        => tcd_d,
       clock       => globalclk,
-      reset_n     => pll_locked,        -- reset when pll NOT locked
+      reset_n     => s_tcd_rst_n,
+      working     => s_tcd_working,     -- TCD is getting trigger data
       trgword     => s_triggerword,
       master_rst  => s_master_rst,
       trigger     => s_trigger,
@@ -1053,7 +1060,7 @@ BEGIN
   BEGIN
     IF trgctr_arst = '1' THEN           -- asynchronous reset (active high)
       s_reg3_ctr <= (OTHERS => '0');
-    ELSIF s_tcdevt_trg'event AND s_tcdevt_trg = '1' THEN  -- rising clock edge
+    ELSIF rising_edge(s_tcdevt_trg) THEN  -- rising clock edge
       s_reg3_ctr <= s_reg3_ctr + 1;
     END IF;
   END PROCESS trg_ctr;
@@ -1071,7 +1078,7 @@ BEGIN
   -- pulser trigger: shorten counter signal to 25ns
   shorten_pls : PROCESS (globalclk) IS
   BEGIN
-    IF globalclk'event AND globalclk = '1' THEN  -- rising clock edge
+    IF rising_edge(globalclk) THEN  -- rising clock edge
       s_stage2 <= s_stage1;
       s_stage1 <= s_internal_plsr;
     END IF;
