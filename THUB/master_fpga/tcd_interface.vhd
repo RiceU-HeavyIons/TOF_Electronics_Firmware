@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.11 2009-05-29 13:37:31 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.12 2010-01-07 17:24:16 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2009-05-26
+-- Last update: 2010-01-04
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -39,6 +39,7 @@ ENTITY tcd IS
     data        : IN  std_logic_vector (3 DOWNTO 0);   -- TCD data
     clock       : IN  std_logic;        -- 40 MHz clock
     reset_n     : IN  std_logic;
+    working     : OUT std_logic;
     trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
     master_rst  : OUT std_logic;        -- indicates master reset command
     trigger     : OUT std_logic;        -- strobe signal sync'd to clock
@@ -99,12 +100,14 @@ BEGIN  -- ARCHITECTURE a
       s_reg4    <= (OTHERS => '0');
       s_reg5    <= (OTHERS => '0');
       s_reg20_1 <= (OTHERS => '0');
+      working   <= '0';
       rsState   <= R0l;
       
     ELSIF falling_edge(data_strobe) THEN
-
+      working <= '1';                   -- default: "it works"
       CASE rsState IS
         WHEN R0l =>
+          working   <= '0';             -- not "working right" (yet)
           s_reg1    <= (OTHERS => '0');
           s_reg2    <= (OTHERS => '0');
           s_reg3    <= (OTHERS => '0');
@@ -116,7 +119,8 @@ BEGIN  -- ARCHITECTURE a
             rsState <= R0h;
           END IF;
         WHEN R0h =>
-          s_reg1 <= data;               -- latch current nibble
+          working <= '0';               -- not "working right" (yet)
+          s_reg1  <= data;              -- latch current nibble
           -- wait for RHICstrobe to go hi
           IF rhic_strobe = '1' THEN
             rsState <= R2;
