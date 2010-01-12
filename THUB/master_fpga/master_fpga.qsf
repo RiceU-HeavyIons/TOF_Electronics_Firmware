@@ -529,7 +529,7 @@ set_instance_assignment -name CLOCK_SETTINGS mhI_clk -to mhI[15]
 
 set_global_assignment -name CRC_ERROR_CHECKING ON
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
-set_global_assignment -name MISC_FILE "F:/Jo/TOF/THUB/master_fpga/master_fpga.dpf"
+set_global_assignment -name MISC_FILE master_fpga.dpf
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE ddio_in.vhd
