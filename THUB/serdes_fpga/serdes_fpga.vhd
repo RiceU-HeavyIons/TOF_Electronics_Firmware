@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.34 2009-11-25 19:50:03 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.35 2010-01-12 22:15:34 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-11-23
+-- Last update: 2009-12-05
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -183,6 +183,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL pll_20mhz         : std_logic;
   SIGNAL pll_80mhz         : std_logic;
   SIGNAL s_pll_80mhz       : std_logic;
+  SIGNAL s_pll_160mhz      : std_logic;
   SIGNAL pll_160mhz        : std_logic;  -- PLL 4x output
   SIGNAL pll_160mhz_p      : std_logic;  -- PLL 4x output with phase shift
   SIGNAL clk20mhz          : std_logic;
@@ -258,10 +259,11 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch2_rclk      : std_logic;
   SIGNAL s_ch3_rclk      : std_logic;
 
-  SIGNAL s_ddr_inh    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_ddr_inl    : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_rxfifo_out : std_logic_vector(31 DOWNTO 0);
-  SIGNAL s_ddio_in    : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ddr_inh      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ddr_inl      : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_rxfifo_out   : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_ddio_in      : std_logic_vector(15 DOWNTO 0);
+  SIGNAL do_latchsignal : std_logic;
 
   SIGNAL s_geo_id_ch0 : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_geo_id_ch1 : std_logic_vector(6 DOWNTO 0);
@@ -271,7 +273,7 @@ ARCHITECTURE a OF serdes_fpga IS
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE LState_type IS (S0, S1, S2);
+  TYPE LState_type IS (S0a, S0b, S1, S2, S3, S4);
   SIGNAL lstate : LState_type;
 
   TYPE Geo_state_type IS (g_data, g_geo);
@@ -296,9 +298,9 @@ BEGIN
 
   -- PLL to generate 80MHz, 160MHz, and 160MHz phase shifted clocks
   pll_instance : pll PORT MAP (
-    areset => '0',
+    areset => m_all(2),
     inclk0 => clk,
-    c0     => pll_160mhz,
+    c0     => s_pll_160mhz,
     c1     => pll_160mhz_p,
     c2     => s_pll_80mhz,
     locked => pll_locked);
@@ -306,6 +308,7 @@ BEGIN
   global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
   global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
   global_clk_buffer3 : global PORT MAP (a_in => s_pll_80mhz, a_out => pll_80mhz);
+  global_clk_buffer4 : global PORT MAP (a_in => s_pll_160mhz, a_out => pll_160mhz);
 
   ch0_clk_buffer : global PORT MAP (a_in => ch0_rclk, a_out => s_ch0_rclk);
   ch1_clk_buffer : global PORT MAP (a_in => ch1_rclk, a_out => s_ch1_rclk);
@@ -544,43 +547,100 @@ BEGIN
   -- on ddio
   -- with lower 16bit data also raise the latch SIGNAL
   -- on smif_dataout(8)
-  latcher : PROCESS (pll_80mhz, s_smif_rdenable) IS
+  latcher : PROCESS (pll_160mhz, pll_locked) IS
+    VARIABLE delayCtr : integer RANGE 0 TO 3 := 0;
   BEGIN
-    IF s_smif_rdenable = '0' THEN
-      s_ddio_in         <= (OTHERS => '0');
-      s_smif_dataout(8) <= '0';
+    IF pll_locked = '0' THEN
+      s_smif_dataout(8 DOWNTO 0) <= (OTHERS => '0');
+      s_ddio_in                  <= (OTHERS => '0');
+      s_synced_rdenable          <= '0';
+      do_latchsignal             <= '0';
+      delayCtr                   := 0;
+      lstate                     <= S0a;
+      
+    ELSIF rising_edge(pll_160mhz) THEN
       s_synced_rdenable <= '0';
-      lstate            <= S0;
-    ELSIF rising_edge(pll_80mhz) THEN
-      s_smif_dataout(8) <= '0';
-      s_synced_rdenable <= '0';
+
       CASE lstate IS
-        -- now alternate between states S1 and S2
-        -- in state S2, put the latch high
-        WHEN S0 =>
-          -- give a little time before starting the DDIO
-          s_ddio_in <= s_rxfifo_out(31 DOWNTO 16);
-          lstate    <= S1;
-        WHEN S1 =>
-          s_ddio_in <= s_rxfifo_out(15 DOWNTO 0);
-          lstate    <= S2;
-        WHEN S2 =>
-          s_synced_rdenable <= '1';
-          s_ddio_in         <= s_rxfifo_out(31 DOWNTO 16);
-          IF s_smif_fifo_empty = '0' THEN
-            s_smif_dataout(8) <= '1';
+        WHEN S0a =>
+          s_smif_dataout(15) <= '1';
+          IF s_smif_rdenable = '1' THEN
+            delayCtr := delayCtr + 1;
+          ELSE
+            delayCtr := 0;
           END IF;
-          lstate <= S1;
+
+          s_smif_dataout(8 DOWNTO 0) <= (OTHERS => '0');
+          s_smif_dataout(8)          <= '0';
+          lstate                     <= S0b;
+
+        WHEN S0b =>
+          s_smif_dataout(15) <= '0';
+          do_latchsignal     <= '0';
+          IF delayCtr = 3 THEN
+            lstate <= S1;
+          ELSE
+            lstate <= S0a;
+          END IF;
+
+        WHEN S1 =>
+          s_smif_dataout(15)         <= '1';
+          s_ddio_in                  <= s_rxfifo_out(15 DOWNTO 0);
+          s_smif_dataout(7 DOWNTO 0) <= s_rxfifo_out(31 DOWNTO 24);
+          s_smif_dataout(8)          <= '0';
+          delayCtr                   := 0;
+          lstate                     <= S2;
+
+        WHEN S2 =>
+          s_smif_dataout(15)         <= '0';
+          s_smif_dataout(7 DOWNTO 0) <= s_rxfifo_out(23 DOWNTO 16);
+          IF s_smif_rdenable = '1' THEN
+            lstate <= S3;
+          ELSE
+            lstate <= S0a;
+          END IF;
+
+        WHEN S3 =>
+          s_smif_dataout(15)         <= '1';
+          s_smif_dataout(7 DOWNTO 0) <= s_ddio_in(15 DOWNTO 8);
+
+          IF s_smif_rdenable = '1' THEN
+            s_synced_rdenable <= '1';
+          END IF;
+
+          IF s_smif_fifo_empty = '0' THEN
+            do_latchsignal <= '1';
+          ELSE
+            do_latchsignal <= '0';
+          END IF;
+
+          IF do_latchsignal = '1' THEN
+            s_smif_dataout(8) <= '1';
+          ELSE
+            s_smif_dataout(8) <= '0';
+          END IF;
+          lstate <= S4;
+
+        WHEN S4 =>
+          s_smif_dataout(15)         <= '0';
+          s_smif_dataout(7 DOWNTO 0) <= s_ddio_in(7 DOWNTO 0);
+
+          IF s_smif_rdenable = '1' THEN
+            s_synced_rdenable <= '1';
+            lstate            <= S1;
+          ELSE
+            lstate <= S0a;
+          END IF;
       END CASE;
     END IF;
   END PROCESS latcher;
 
   -- output 8bit data on each clock edge of the 80MHz clock
-  ddio_out_inst : ddio_out PORT MAP (
-    datain_h => s_ddio_in(15 DOWNTO 8),
-    datain_l => s_ddio_in(7 DOWNTO 0),
-    outclock => pll_80mhz,
-    dataout  => s_smif_dataout(7 DOWNTO 0));
+--  ddio_out_inst : ddio_out PORT MAP (
+--    datain_h => s_ddio_in(15 DOWNTO 8),
+--    datain_l => s_ddio_in(7 DOWNTO 0),
+--    outclock => pll_80mhz,
+--    dataout  => s_smif_dataout(7 DOWNTO 0));
 
   s_smif_dataout(9)  <= '0';
   s_smif_dataout(10) <= s_ch2_locked;
@@ -588,7 +648,7 @@ BEGIN
   s_smif_dataout(12) <= s_ch0_locked;
   s_smif_dataout(13) <= s_ch1_locked;
   s_smif_dataout(14) <= '0';
-  s_smif_dataout(15) <= pll_80mhz;
+--  s_smif_dataout(15) <= pll_80mhz;
 
   -----------------------------------------------------------------------------
   -- SERDES power on procedures
