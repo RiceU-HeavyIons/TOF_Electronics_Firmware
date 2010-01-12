@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.10 2009-11-25 19:52:02 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.11 2010-01-12 22:03:48 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2009-11-23
+-- Last update: 2009-12-09
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -62,9 +62,17 @@ ARCHITECTURE a OF serdes_rcvr IS
   SIGNAL s_valid        : std_logic;
   SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_dff_q        : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_ch_rxd       : std_logic_vector (17 DOWNTO 0);
 
 
 BEGIN
+
+  PROCESS (ch_rclk) IS
+  BEGIN  -- PROCESS
+    IF rising_edge(ch_rclk) THEN  -- rising clock edge
+      s_ch_rxd <= ch_rxd;
+    END IF;
+  END PROCESS;
 
   -- use a mixed width dual-clock FIFO to convert the 2x16bit
   -- words received into 32bit words, and to synchronize between
@@ -90,12 +98,12 @@ BEGIN
       wrsync_delaypipe       => 5
       )
     PORT MAP (
-      wrclk           => ch_rclk,
+      wrclk           => NOT ch_rclk,
       rdreq           => '1',
       aclr            => fifo_aclr,
       rdclk           => clk80mhz,
-      wrreq           => ch_rxd(17),
-      data            => ch_rxd(15 DOWNTO 0),
+      wrreq           => s_ch_rxd(17),
+      data            => s_ch_rxd(15 DOWNTO 0),
       rdempty         => syncfifo_empty,
       q(31 DOWNTO 16) => s_shiftout(15 DOWNTO 0),
       q(15 DOWNTO 0)  => s_shiftout(31 DOWNTO 16)
@@ -108,50 +116,52 @@ BEGIN
     s_shiftout(7 DOWNTO 1) WHEN OTHERS;
 
   s_fifo_wrreq <= NOT syncfifo_empty;  -- will be disabled when FIFO is full due to overflow checking
-  rxfifo : scfifo
+  rxfifo : dcfifo
     GENERIC MAP (
-      add_ram_output_register => "OFF",
-      intended_device_family  => "Cyclone II",
-      lpm_numwords            => 2048,
-      lpm_showahead           => "ON",
-      lpm_type                => "scfifo",
-      lpm_width               => 32,
-      lpm_widthu              => 11,
-      overflow_checking       => "ON",
-      underflow_checking      => "ON",
-      use_eab                 => "ON"
-      )
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=7",
+      lpm_numwords           => 2048,
+      lpm_showahead          => "OFF",
+      lpm_type               => "dcfifo",
+      lpm_width              => 32,
+      lpm_widthu             => 11,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 4,
+      underflow_checking     => "ON",
+      wrsync_delaypipe       => 4)
     PORT MAP (
+      wrclk             => clk80mhz,
       rdreq             => s_fifo_rdreq,
       aclr              => fifo_aclr,
-      clock             => clk80mhz,
+      rdclk             => clk80mhz,
       wrreq             => s_fifo_wrreq,
       data(31 DOWNTO 8) => s_shiftout(31 DOWNTO 8),
       data(7 DOWNTO 1)  => s_geo_id,
       data(0)           => s_shiftout(0),
-      empty             => s_fifo_empty,
+      rdempty           => s_fifo_empty,
       q                 => s_fifo_q
       );
 
   dataout <= s_fifo_q;
 
 
-  dff_inst1 : PROCESS (clk80mhz, areset_n) IS
-  BEGIN
-    IF areset_n = '0' THEN              -- asynchronous reset (active low)
-      fifo_empty <= '1';
+--  dff_inst1 : PROCESS (clk80mhz, areset_n) IS
+--  BEGIN
+--    IF areset_n = '0' THEN              -- asynchronous reset (active low)
+--      fifo_empty <= '1';
       
-    ELSIF rising_edge(clk80mhz) THEN
-      -- Only put out a valid fifo_empty, when rdreq is valid
-      -- otherwise, fifo_emtpy = '1'
-      IF rdreq_in = '1' THEN
-        fifo_empty <= s_fifo_empty;
-      ELSE
-        fifo_empty <= '1';
-      END IF;
-    END IF;
-  END PROCESS dff_inst1;
+--    ELSIF rising_edge(clk80mhz) THEN
+--      -- Only put out a valid fifo_empty, when rdreq is valid
+--      -- otherwise, fifo_emtpy = '1'
+--      IF rdreq_in = '1' THEN
+--        fifo_empty <= s_fifo_empty;
+--      ELSE
+--        fifo_empty <= '1';
+--      END IF;
+--    END IF;
+--  END PROCESS dff_inst1;
 
+  fifo_empty   <= s_fifo_empty;
   s_fifo_rdreq <= rdreq_in;
 
 END a;
