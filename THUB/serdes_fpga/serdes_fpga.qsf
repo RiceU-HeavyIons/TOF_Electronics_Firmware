@@ -498,7 +498,7 @@ set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch2_lock_n
 set_instance_assignment -name WEAK_PULL_UP_RESISTOR ON -to ch3_lock_n
 set_global_assignment -name SMART_RECOMPILE ON
 set_global_assignment -name CRC_ERROR_CHECKING ON
-set_global_assignment -name MISC_FILE "F:/Jo/TOF/THUB/serdes_fpga/serdes_fpga.dpf"
+set_global_assignment -name MISC_FILE serdes_fpga.dpf
 
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
 set_global_assignment -name SAFE_STATE_MACHINE ON
