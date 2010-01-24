@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.11 2010-01-12 22:03:48 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.12 2010-01-24 15:48:03 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2009-12-09
+-- Last update: 2010-01-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -98,7 +98,7 @@ BEGIN
       wrsync_delaypipe       => 5
       )
     PORT MAP (
-      wrclk           => NOT ch_rclk,
+      wrclk           => ch_rclk,
       rdreq           => '1',
       aclr            => fifo_aclr,
       rdclk           => clk80mhz,
