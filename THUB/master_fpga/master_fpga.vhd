@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.45 2010-01-07 17:27:48 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.46 2010-01-28 22:54:36 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2010-01-05
+-- Last update: 2010-01-07
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -46,7 +46,7 @@ ENTITY master_fpga IS
       m_all         : OUT   std_logic_vector(3 DOWNTO 0);
       -- CPLD and Micro connections
       cpld          : IN    std_logic_vector(9 DOWNTO 0);  -- CPLD/FPGA bus (0-3 = dip-switches)
-      uc_fpga_hi    : IN    std_logic_vector(10 DOWNTO 8);  -- FPGA/Micro bus
+      uc_fpga_hi    : IN    std_logic_vector(10 DOWNTO 8); -- FPGA/Micro bus
       uc_fpga_lo    : INOUT std_logic_vector(7 DOWNTO 0);  -- FPGA/Micro bus
       -- Buttons & LEDs
       butn          : IN    std_logic_vector(1 DOWNTO 0);  -- buttons
@@ -185,7 +185,7 @@ ARCHITECTURE a OF master_fpga IS
       fifo_empty : IN  std_logic;       -- interface fifo "emtpy" signal
       ext_trg    : IN  std_logic;       -- external trigger
       run_reset  : OUT std_logic;       -- reset external logic at Run Start
-      special_wr : OUT std_logic;  -- FECTRL with "special" parameter "0xabc0"
+      special_wr : OUT std_logic;       -- FECTRL with "special" parameter "0xabc0"
       event_read : OUT std_logic;
       foD        : OUT std_logic_vector(31 DOWNTO 0);
       foBSY_N    : OUT std_logic;
@@ -232,7 +232,7 @@ ARCHITECTURE a OF master_fpga IS
       sfifo_empty         : IN  std_logic;
       ser_status          : IN  std_logic_vector (3 DOWNTO 0);
       fifo_empty          : IN  std_logic;
-      outfifo_almost_full : IN  boolean;
+      outfifo_almost_full : IN  std_logic;
       evt_trg             : IN  std_logic;
       triggerWord         : IN  std_logic_vector (19 DOWNTO 0);
       trgFifo_empty       : IN  std_logic;
@@ -240,9 +240,11 @@ ARCHITECTURE a OF master_fpga IS
       clk_10mhz           : IN  std_logic;
       serSel              : OUT std_logic_vector (2 DOWNTO 0);
       trgFifo_rdreq       : OUT std_logic;
-      busy                : OUT std_logic;
+      busy_n              : OUT std_logic;
       rdsel_out           : OUT std_logic_vector (1 DOWNTO 0);
       rdreq_out           : OUT std_logic;
+      l2_wrreq_out        : OUT std_logic;
+      l2_outdata          : OUT std_logic_vector (31 DOWNTO 0);
       wrreq_out           : OUT std_logic;
       outdata             : OUT std_logic_vector (31 DOWNTO 0));
   END COMPONENT serdes_reader;
@@ -345,12 +347,14 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL ddl_data            : std_logic_vector (31 DOWNTO 0);
   SIGNAL l2ddl_data          : std_logic_vector (31 DOWNTO 0);
   SIGNAL ddlfifo_usedw       : std_logic_vector (12 DOWNTO 0);
+  SIGNAL l2fifo_usedw        : std_logic_vector (10 DOWNTO 0);
   SIGNAL ddlfifo_aclr        : std_logic;
+  SIGNAL l2fifo_aclr         : std_logic;
   SIGNAL ddlfifo_empty       : std_logic;
   SIGNAL l2ddlfifo_empty     : std_logic;
   SIGNAL rd_ddl_fifo         : std_logic;
   SIGNAL rd_l2ddl_fifo       : std_logic;
-  SIGNAL ddlfifo_almost_full : boolean;
+  SIGNAL ddlfifo_almost_full : std_logic;
 
   SIGNAL s_triggerword   : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_trgfifo_empty : std_logic;
@@ -360,6 +364,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_internal_plsr : std_logic;
   SIGNAL clk_80mhz       : std_logic;
   SIGNAL clk_10mhz       : std_logic;
+  SIGNAL sclk_80mhz      : std_logic;
+  SIGNAL sclk_10mhz      : std_logic;
   SIGNAL pll_locked      : std_logic;
   SIGNAL test_clk        : std_logic;
 
@@ -382,7 +388,9 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL sa_smif_datatype   : std_logic_vector(3 DOWNTO 0);
   SIGNAL sr_areset_n        : std_logic;
   SIGNAL sr_wrreq_out       : std_logic;
+  SIGNAL l2_wrreq_out       : std_logic;
   SIGNAL sr_outdata         : std_logic_vector(31 DOWNTO 0);
+  SIGNAL l2_outdata         : std_logic_vector(31 DOWNTO 0);
 
   SIGNAL sb_smif_datain     : std_logic_vector (15 DOWNTO 0);
   SIGNAL sb_sync_q          : std_logic_vector (31 DOWNTO 0);
@@ -463,8 +471,6 @@ BEGIN
   -- Clocks, LEDs, and other defaults
   -----------------------------------------------------------------------------
 
-  global_clk_buffer : global PORT MAP (a_in => clk, a_out => globalclk);
-
   arstn <= '1';                         -- no reset for now
 
   -- PLL
@@ -476,11 +482,14 @@ BEGIN
   -- this one for testing only:
   pll_instance : pll PORT MAP (
     inclk0 => clk,
-    c0     => clk_80mhz,
+    c0     => sclk_80mhz,
     c1     => test_clk,
-    c2     => clk_10mhz,
+    c2     => sclk_10mhz,
     locked => pll_locked);
 
+  global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
+  global_clk_buffer2 : global PORT MAP (a_in => sclk_80mhz, a_out => clk_80mhz);
+  global_clk_buffer3 : global PORT MAP (a_in => sclk_10mhz, a_out => clk_10mhz);
 
   -- counter to divide clock
   counter23b : lpm_counter
@@ -500,7 +509,7 @@ BEGIN
 
   -- Other defaults
 
-  tcd_busy_p <= s_tcd_busy_n AND filf_n;  -- active "low"
+  tcd_busy_p <= s_tcd_busy_n AND filf_n AND l2_filf_n;  -- active "low"
 --  tcd_busy_p <= s_tcd_busy_n;           -- active "low"
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
@@ -511,13 +520,15 @@ BEGIN
   -----------------------------------------------------------------------------
 
   -- display trigger word on Mictor
-  mic(19 DOWNTO 0)  <= s_triggerword;
-  mic(20)           <= s_trigger;
-  mic(21)           <= s_evt_trg;
-  mic(27 DOWNTO 22) <= (OTHERS => '0');
+--  mic(19 DOWNTO 0)  <= s_triggerword;
+--  mic(20)           <= s_trigger;
+--  mic(21)           <= s_evt_trg;
+--  mic(27 DOWNTO 22) <= (OTHERS => '0');
 
-  -- mictor clock
-  mic(28) <= globalclk;
+--  -- mictor clock
+--  mic(28) <= globalclk;
+
+  mic <= (OTHERS => '0');
 
   -----------------------------------------------------------------------------
   -- SERDES-MAIN FPGA interface
@@ -681,7 +692,7 @@ BEGIN
   mhO(35 DOWNTO 32) <= sh_smif_datatype;  -- 4bit data type indicator from M to S
 
   -- sync incoming data to 80MHz clock
-  syncH : synchronizer PORT MAP (  
+  syncH : synchronizer PORT MAP (
     clk80mhz      => clk_80mhz,
     areset_n      => sr_areset_n,
     serdes_indata => sh_smif_datain(7 DOWNTO 0),
@@ -708,9 +719,11 @@ BEGIN
     clk_10mhz           => clk_10mhz,
     serSel              => s_serSel,
     trgFifo_rdreq       => s_ddltrgFifo_rdreq,
-    busy                => s_tcd_busy_n,
+    busy_n              => s_tcd_busy_n,
     rdsel_out           => smif_select,
     rdreq_out           => smif_rdenable,
+    l2_wrreq_out        => l2_wrreq_out,
+    l2_outdata          => l2_outdata,
     wrreq_out           => sr_wrreq_out,
     outdata             => sr_outdata);
   -- control reader with ddl fiber connect: when not connected, reset
@@ -863,8 +876,38 @@ BEGIN
     fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
     );
 
-  l2ddl_data      <= (OTHERS => '0');
-  l2ddlfifo_empty <= '1';
+  -- FIFO to store the L2 data.
+  -- This FIFO is then read by the L2 DDL state machines to transfer 
+  -- over the L2 DDL fibers
+  l2fifo : dcfifo
+    GENERIC MAP (
+      intended_device_family => "Cyclone II",
+      lpm_hint               => "MAXIMIZE_SPEED=7,",
+      lpm_numwords           => 2048,
+      lpm_showahead          => "OFF",
+      lpm_type               => "dcfifo",
+      lpm_width              => 32,
+      lpm_widthu             => 11,
+      overflow_checking      => "ON",
+      rdsync_delaypipe       => 5,
+      underflow_checking     => "ON",
+      use_eab                => "ON",
+      wrsync_delaypipe       => 5
+      )
+    PORT MAP (
+      wrclk   => clk_80mhz,
+      wrreq   => (l2_wrreq_out AND s_l2event_read),  -- only write when L2 fiber is connnected
+      rdclk   => NOT globalclk,
+      rdreq   => rd_l2ddl_fifo,
+      data    => l2_outdata,
+      aclr    => l2fifo_aclr,
+      rdempty => l2ddlfifo_empty,
+      wrusedw => l2fifo_usedw,
+      q       => l2ddl_data
+      );
+
+  l2fifo_aclr <= s_runReset OR s_l2runReset;  -- clear at Begin Run
+                                              -- or any time L2 sends ready to receive
 
   -- ********************************************************************************
   -- DAQ DDL Interface
@@ -926,10 +969,10 @@ BEGIN
       lpm_width              => 32,
       lpm_widthu             => 13,
       overflow_checking      => "ON",
-      rdsync_delaypipe       => 4,
+      rdsync_delaypipe       => 5,
       underflow_checking     => "ON",
       use_eab                => "ON",
-      wrsync_delaypipe       => 4
+      wrsync_delaypipe       => 5
       )
     PORT MAP (
       wrclk   => clk_80mhz,
@@ -946,7 +989,10 @@ BEGIN
   ddlfifo_aclr <= s_runReset;           -- clear at Begin Run
 
   -- if there are less than 2048 words left:
-  ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 11) = "11");
+--  ddlfifo_almost_full <= (ddlfifo_usedw(12 DOWNTO 11) = "11");
+  ddlfifo_almost_full <= '1' WHEN ((ddlfifo_usedw(12 DOWNTO 11) = "11") OR  -- 2048 words
+                                   (l2fifo_usedw(10 DOWNTO 8) = "111"))  -- 256 words
+                         ELSE '0';
 
   -- ********************************************************************************
   -- Micro Controller interface
