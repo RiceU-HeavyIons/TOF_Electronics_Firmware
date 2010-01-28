@@ -1,33 +1,74 @@
-# Copyright (C) 1991-2005 Altera Corporation
+# -------------------------------------------------------------------------- #
+#
+# Copyright (C) 1991-2009 Altera Corporation
 # Your use of Altera Corporation's design tools, logic functions 
-# and other software and tools, and its AMPP partner logic       
-# functions, and any output files any of the foregoing           
-# (including device programming or simulation files), and any    
-# associated documentation or information are expressly subject  
-# to the terms and conditions of the Altera Program License      
-# Subscription Agreement, Altera MegaCore Function License       
-# Agreement, or other applicable license agreement, including,   
-# without limitation, that your use is for the sole purpose of   
-# programming logic devices manufactured by Altera and sold by   
-# Altera or its authorized distributors.  Please refer to the    
+# and other software and tools, and its AMPP partner logic 
+# functions, and any output files from any of the foregoing 
+# (including device programming or simulation files), and any 
+# associated documentation or information are expressly subject 
+# to the terms and conditions of the Altera Program License 
+# Subscription Agreement, Altera MegaCore Function License 
+# Agreement, or other applicable license agreement, including, 
+# without limitation, that your use is for the sole purpose of 
+# programming logic devices manufactured by Altera and sold by 
+# Altera or its authorized distributors.  Please refer to the 
 # applicable agreement for further details.
-
-
-# The default values for assignments are stored in the file
+#
+# -------------------------------------------------------------------------- #
+#
+# Quartus II
+# Version 9.1 Build 222 10/21/2009 Service Pack 0.63 SJ Full Version
+# Date created = 16:40:45  January 28, 2010
+#
+# -------------------------------------------------------------------------- #
+#
+# Notes:
+#
+# 1) The default values for assignments are stored in the file:
 #		master_fpga_assignment_defaults.qdf
-# If this file doesn't exist, and for assignments not listed, see file
+#    If this file doesn't exist, see file:
 #		assignment_defaults.qdf
+#
+# 2) Altera recommends that you do not modify this file. This
+#    file is updated automatically by the Quartus II software
+#    and any changes you make may be lost or overwritten.
+#
+# -------------------------------------------------------------------------- #
 
-# Altera recommends that you do not modify this file. This
-# file is updated automatically by the Quartus II software
-# and any changes you make may be lost or overwritten.
 
 
 # Project-Wide Assignments
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:56:07  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION "9.0 SP2"
+set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP0.63"
+set_global_assignment -name MISC_FILE master_fpga.dpf
+set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
+set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE l2bitmap.vhd
+set_global_assignment -name VHDL_FILE ddio_in.vhd
+set_global_assignment -name VHDL_FILE synchronizer.vhd
+set_global_assignment -name VHDL_FILE serdesRdDecoder.vhd
+set_global_assignment -name VHDL_FILE serdes_reader.vhd
+set_global_assignment -name VHDL_FILE pll.vhd
+set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
+set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_receiver.vhd
+set_global_assignment -name VHDL_FILE ddl_registers.vhd
+set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
+set_global_assignment -name VHDL_FILE ddl_top.vhd
+set_global_assignment -name VHDL_FILE tcd_interface.vhd
+set_global_assignment -name VHDL_FILE smif.vhd
+set_global_assignment -name VHDL_FILE master_fpga.vhd
+set_global_assignment -name VHDL_FILE control_registers.vhd
+set_global_assignment -name VHDL_FILE serdes_registers.vhd
+set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
+set_global_assignment -name SIGNALTAP_FILE stp5.stp
+set_global_assignment -name QIP_FILE pll.qip
+set_global_assignment -name SIGNALTAP_FILE stp6.stp
+set_global_assignment -name SIGNALTAP_FILE stp8.stp
 
 # Pin & Location Assignments
 # ==========================
@@ -466,6 +507,10 @@ set_location_assignment PIN_K2 -to uc_fpga_hi[8]
 set_location_assignment PIN_K1 -to uc_fpga_hi[9]
 set_location_assignment PIN_J7 -to uc_fpga_hi[10]
 
+# Classic Timing Assignments
+# ==========================
+set_global_assignment -name ENABLE_CLOCK_LATENCY ON
+
 # Analysis & Synthesis Assignments
 # ================================
 set_global_assignment -name TOP_LEVEL_ENTITY master_fpga
@@ -476,83 +521,176 @@ set_global_assignment -name FAMILY "Cyclone II"
 # ==================
 set_global_assignment -name DEVICE EP2C35F672C8
 set_instance_assignment -name IO_STANDARD LVDS -to clk
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
+set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
+set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
+set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
+set_global_assignment -name CRC_ERROR_CHECKING ON
 
 # EDA Netlist Writer Assignments
 # ==============================
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
 
-# ---------------------------------------
+# Assembler Assignments
+# =====================
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
+set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
+
+# SignalTap II Assignments
+# ========================
+set_global_assignment -name ENABLE_SIGNALTAP OFF
+set_global_assignment -name USE_SIGNALTAP_FILE stp8.stp
+
 # start EDA_TOOL_SETTINGS(eda_simulation)
+# ---------------------------------------
 
 	# EDA Netlist Writer Assignments
 	# ==============================
-set_global_assignment -name EDA_INCLUDE_VHDL_CONFIGURATION_DECLARATION ON -section_id eda_simulation
-set_global_assignment -name EDA_MAP_ILLEGAL_CHARACTERS ON -section_id eda_simulation
-set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+	set_global_assignment -name EDA_INCLUDE_VHDL_CONFIGURATION_DECLARATION ON -section_id eda_simulation
+	set_global_assignment -name EDA_MAP_ILLEGAL_CHARACTERS ON -section_id eda_simulation
+	set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
 
 # end EDA_TOOL_SETTINGS(eda_simulation)
 # -------------------------------------
 
-set_global_assignment -name FMAX_REQUIREMENT "40 MHz" -section_id clk
-set_instance_assignment -name CLOCK_SETTINGS clk -to clk
-set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id tcd_strb
-set_instance_assignment -name CLOCK_SETTINGS tcd_strb -to tcd_strb
-set_global_assignment -name FMAX_REQUIREMENT "50 MHz" -section_id tcd_clk
-set_instance_assignment -name CLOCK_SETTINGS tcd_clk -to tcd_clk
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
-set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
-set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
-set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
-set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPCS16
-set_global_assignment -name RESERVE_ASDO_AFTER_CONFIGURATION "AS INPUT TRI-STATED"
-set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE stp7.stp
-set_global_assignment -name OPTIMIZE_HOLD_TIMING "ALL PATHS"
-set_global_assignment -name FITTER_EFFORT "STANDARD FIT"
-set_global_assignment -name ENABLE_CLOCK_LATENCY ON
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id maI_clk
-set_instance_assignment -name CLOCK_SETTINGS maI_clk -to maI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mbI_clk
-set_instance_assignment -name CLOCK_SETTINGS mbI_clk -to mbI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mcI_clk
-set_instance_assignment -name CLOCK_SETTINGS mcI_clk -to mcI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mdI_clk
-set_instance_assignment -name CLOCK_SETTINGS mdI_clk -to mdI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id meI_clk
-set_instance_assignment -name CLOCK_SETTINGS meI_clk -to meI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mfI_clk
-set_instance_assignment -name CLOCK_SETTINGS mfI_clk -to mfI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mgI_clk
-set_instance_assignment -name CLOCK_SETTINGS mgI_clk -to mgI[15]
-set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mhI_clk
-set_instance_assignment -name CLOCK_SETTINGS mhI_clk -to mhI[15]
+# start CLOCK(clk)
+# ----------------
 
-set_global_assignment -name CRC_ERROR_CHECKING ON
-set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-STATED"
-set_global_assignment -name MISC_FILE master_fpga.dpf
-set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
-set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
-set_global_assignment -name VHDL_FILE ddio_in.vhd
-set_global_assignment -name VHDL_FILE synchronizer.vhd
-set_global_assignment -name VHDL_FILE serdesRdDecoder.vhd
-set_global_assignment -name VHDL_FILE serdes_reader.vhd
-set_global_assignment -name VHDL_FILE pll.vhd
-set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
-set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
-set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
-set_global_assignment -name VHDL_FILE ddl_receiver.vhd
-set_global_assignment -name VHDL_FILE ddl_registers.vhd
-set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
-set_global_assignment -name VHDL_FILE ddl_top.vhd
-set_global_assignment -name VHDL_FILE tcd_interface.vhd
-set_global_assignment -name VHDL_FILE smif.vhd
-set_global_assignment -name VHDL_FILE master_fpga.vhd
-set_global_assignment -name VHDL_FILE control_registers.vhd
-set_global_assignment -name VHDL_FILE serdes_registers.vhd
-set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
-set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
-set_global_assignment -name SIGNALTAP_FILE stp1.stp
-set_global_assignment -name SIGNALTAP_FILE stp3.stp
-set_global_assignment -name SIGNALTAP_FILE stp5.stp
-set_global_assignment -name QIP_FILE pll.qip
-set_global_assignment -name SIGNALTAP_FILE stp6.stp
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "40 MHz" -section_id clk
+
+# end CLOCK(clk)
+# --------------
+
+# start CLOCK(tcd_strb)
+# ---------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "10 MHz" -section_id tcd_strb
+
+# end CLOCK(tcd_strb)
+# -------------------
+
+# start CLOCK(tcd_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "50 MHz" -section_id tcd_clk
+
+# end CLOCK(tcd_clk)
+# ------------------
+
+# start CLOCK(maI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id maI_clk
+
+# end CLOCK(maI_clk)
+# ------------------
+
+# start CLOCK(mbI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mbI_clk
+
+# end CLOCK(mbI_clk)
+# ------------------
+
+# start CLOCK(mcI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mcI_clk
+
+# end CLOCK(mcI_clk)
+# ------------------
+
+# start CLOCK(mdI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mdI_clk
+
+# end CLOCK(mdI_clk)
+# ------------------
+
+# start CLOCK(meI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id meI_clk
+
+# end CLOCK(meI_clk)
+# ------------------
+
+# start CLOCK(mfI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mfI_clk
+
+# end CLOCK(mfI_clk)
+# ------------------
+
+# start CLOCK(mgI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mgI_clk
+
+# end CLOCK(mgI_clk)
+# ------------------
+
+# start CLOCK(mhI_clk)
+# --------------------
+
+	# Classic Timing Assignments
+	# ==========================
+	set_global_assignment -name FMAX_REQUIREMENT "80 MHz" -section_id mhI_clk
+
+# end CLOCK(mhI_clk)
+# ------------------
+
+# -------------------------
+# start ENTITY(master_fpga)
+
+	# Classic Timing Assignments
+	# ==========================
+	set_instance_assignment -name CLOCK_SETTINGS clk -to clk
+	set_instance_assignment -name CLOCK_SETTINGS tcd_strb -to tcd_strb
+	set_instance_assignment -name CLOCK_SETTINGS tcd_clk -to tcd_clk
+	set_instance_assignment -name CLOCK_SETTINGS maI_clk -to maI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mbI_clk -to mbI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mcI_clk -to mcI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mdI_clk -to mdI[15]
+	set_instance_assignment -name CLOCK_SETTINGS meI_clk -to meI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mfI_clk -to mfI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mgI_clk -to mgI[15]
+	set_instance_assignment -name CLOCK_SETTINGS mhI_clk -to mhI[15]
+
+	# start LOGICLOCK_REGION(Root Region)
+	# -----------------------------------
+
+		# LogicLock Region Assignments
+		# ============================
+		set_global_assignment -name LL_ROOT_REGION ON -section_id "Root Region"
+		set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
+
+	# end LOGICLOCK_REGION(Root Region)
+	# ---------------------------------
+
+# end ENTITY(master_fpga)
+# -----------------------
