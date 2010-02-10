@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.14 2009-06-09 22:08:35 jschamba Exp $
+// $Id: TDIG-F.c,v 1.15 2010-02-10 17:10:00 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -26,7 +26,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'Y'      // 0x11 0x59
+#define FIRMWARE_ID_0 'Z'      // 0x11 0x5A
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x91
@@ -36,7 +36,7 @@
 
 // Define implementation on the TDIG board (I/O ports, etc)
 #define TDIG 1              // This is a TDIG board.
-#define CONFIG_CPU 1		// Make TDIG-D_Board.h define the CPU options
+#define CONFIG_CPU 1		// Make TDIG-F_Board.h define the CPU options
 #include "TDIG-F_Board.h"
 
 #define RC15_TOGGLE 1		// Make a toggle bit on RC15/OSC2
@@ -107,9 +107,11 @@ typedef union tureg32 {
 
 UReg32 temp;
 
+void WritePMRow(unsigned char *, unsigned long);
+
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
-void erase_MCU_pm (unsigned long);
+//JS20090821 void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
 void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
 
@@ -118,14 +120,17 @@ void initialize_ad_converter(void);
 unsigned int sample_ad_converter(unsigned int chan);
 // WB-11U: end
 
+//JS20090821: had to move the addresses up by 0x400, since linker complained about not
+// being able to allocate address at 0x3000 (??). Program too big?
+
 // WB-11P: - Weird looking braces make the compiler happier (eliminates "missing braces" warning).
 //JS: put HPTDC setup bits into program memory, three sets of configurations
 //#define PM_ROW	__attribute__((space(prog), aligned(1024)))
 //unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
 #if !defined (DOWNLOAD_CODE)
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x003000)))
+    unsigned char __attribute__((space(prog), aligned(1024), address(0x003400)))
 #else
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x007000)))
+    unsigned char __attribute__((space(prog), aligned(1024), address(0x007400)))
 #endif
     basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
         {
@@ -144,9 +149,9 @@ unsigned int sample_ad_converter(unsigned int chan);
  */
 //unsigned char PM_ROW enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
 #if !defined (DOWNLOAD_CODE)
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x003400)))
+    unsigned char __attribute__((space(prog), aligned(1024), address(0x003800)))
 #else
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x007400)))
+    unsigned char __attribute__((space(prog), aligned(1024), address(0x007800)))
 #endif
     enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
         {
@@ -236,6 +241,7 @@ int main()
 	//JS
 	int isConfiguring = 0;
 	int configuredEeprom = 1;
+	int bSendAlarms = 1;
 
 // This applies to first-image code, does not apply to second "download" image.
 #if !defined (DOWNLOAD_CODE)
@@ -394,6 +400,8 @@ int main()
 
 // Delay power-on by 2 second + 1 second x board-position switch value
 #define DELAYPOWER 36
+
+#ifndef DOWNLOAD_CODE
 #if defined (DELAYPOWER)
     j = board_posn + 2;
     while ( j != 0 ) {
@@ -401,6 +409,7 @@ int main()
         --j;
     }                                   // end while spinning 1 sec per board posn
 #endif                                  // DELAYPOWER conditional
+#endif
 
 // Turn on power to HPTDC
     ecsrwbits |= ECSR_TDC_POWER;      // Write the TDC Power-ON bit
@@ -642,6 +651,14 @@ int main()
                             Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ~(*wps));
                             break;
 
+                        case C_WS_SEND_ALARM:		// Set bSendAlarms variable
+                            if (rcvmsglen == 2) {   // check length for proper value
+                            	bSendAlarms = (int)(*wps);
+                            } 
+							else 
+								retbuf[1] = C_STATUS_LTHERR;    // else mark wrong message length
+                            break;  // end case C_WS_LED
+
                         case C_WS_OSCSRCSEL:        // Change Oscillators if possible
                             j = *wps++ ;               // which one is it?
                             // Length must be right AND two copies must match AND selection must be valid (...CAN_HLP3.h)
@@ -699,6 +716,8 @@ int main()
                             block_status = BLOCK_INPROGRESS;
                             block_bytecount = 0;    // clear block buffer counter
                             block_checksum = 0L;    // clear block buffer checksum
+							//JS20090821: set all bytes in block_buffer to 0xff
+							memset((void *)block_buffer, 0xff, BLOCK_BUFFERSIZE);
                             wpd = (unsigned char *)&block_buffer[0];    // point destination to buffer
                             // Copy any data from message.  We don't need to check buffer length since it was just set "empty"
                             for (i=1; i<rcvmsglen; i++) {   // copy any remaining bytes
@@ -965,7 +984,9 @@ int main()
                                     k = block_bytecount;        // assume just going block
                                     memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 address bytes from incoming message
                                     // WB-11U check starting address and length for OK
-                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) || ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
+                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) || 
+										((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
+										int numRows = 1;
 
                                         lwork = laddrs;        // save for later
                                         wps += 4;
@@ -979,21 +1000,51 @@ int main()
                                             j = (unsigned int)(laddrs & OFFSET_MASK); // save offset for copy
                                             j <<= 1;        // *2 for bytes
                                             k = PAGE_BYTES;                   // reprogram whole block
+											numRows = 8;
                                         } // end if need to save before copy
+
+										//JS20090821: if address is not "row" aligned, 
+										// or if we are not programming a whole row
+										// preserve the existing row first
+										else if (((laddrs & ROW_OFFSET_MASK) != 0) 		// address not row aligned
+												|| (block_bytecount != ROW_BYTES)) {	// not a whole row
+											// need to preserve the rest of the row in these cases
+                                            lwork = laddrs & ROW_MASK;   // mask to row start
+                                            for (i=0; i<ROW_BYTES; i+=4) {
+                                                read_MCU_pm ((unsigned char *)&readback_buffer[i], lwork);
+                                                lwork += 2;
+                                            } // end for loop over all bytes in save block
+                                            lwork = laddrs & ROW_MASK;
+                                            j = (unsigned int)(laddrs & ROW_OFFSET_MASK); // save offset for copy
+                                            j <<= 1;        // *2 for bytes
+										}
 
                                         // put the new data over the old[j] thru old[j+block_bytecount-1]
                                         memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
                                         save_SR = SR;           // save the Status Register
                                         SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                         if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
-                                            erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+											//JS20090821: new routine to erase the page
+											nvmAdru = (laddrs&0xffff0000) >> 16;
+											nvmAdr = laddrs&0x0000ffff;
+											temp = flashPageErase(nvmAdru, nvmAdr);
+//JS20090821                                        	erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
                                         } // end if need to erase the page
                                         // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
                                         lwork2 = lwork;
-                                        for (i=0; i<k; i+=4) {
-                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
-                                            lwork += 2L;    // next write address
-                                        } // end loop over bytes
+										
+										//JS20090821: here is the new row wise programming
+										for(i=0; i<numRows; i++) {
+											// each row is 256 bytes in the buffer, 
+											// each instruction word is 24 bit instruction plus 8 bits dummy (0)
+											WritePMRow((unsigned char *)(readback_buffer + (i*256)), lwork);
+											lwork += 128; // 2 * 64 instructions addresses, address advances by  2
+										}
+
+//JS20090821                                        for (i=0; i<k; i+=4) {
+//JS20090821                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
+//JS20090821                                            lwork += 2L;    // next write address
+//JS20090821                                        } // end loop over bytes
                                         SR = save_SR;           // restore the saved status register
                                         // now check for correct writing
                                         lwork = lwork2;                             // recall the start address
@@ -1026,11 +1077,16 @@ int main()
                             	} // end loop over any bytes in message
 
 								// magic address at end of PIC24HJ64 device program memory
-                                laddrs = MAGICADDRESS;  // WB-11U: Magic address (0x157FE)
+                                laddrs = MAGICADDRESS;  // Magic address (0xABFE)
                                 save_SR = SR;           // save the Status Register
                                 SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
-                                erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
-                                // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
+								//JS20090821: new routine to erase the page
+								nvmAdru = (laddrs&0xffff0000) >> 16;
+								nvmAdr = laddrs&0x0000ffff;
+								temp = flashPageErase(nvmAdru, nvmAdr);
+								
+//JS20090821                                erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
+								//JS20090821: should this be replaced by a whole row programming as well?
                                 write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
                                 SR = save_SR;           // restore the saved status register
 
@@ -1391,7 +1447,7 @@ int main()
 #endif
 
 // WB-11J,R Check ECSR for change-of-state on PLD_CRC_ERROR bit
-		if (isConfiguring == 0) { //JS: only check when we are not configuring
+		if ((isConfiguring == 0) && (bSendAlarms == 1)) { //JS: only check when we are not configuring and alarms turned on
 			j = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read the port bit
 			if ( j != fpga_crc) {  // see if it has changed
             	fpga_crc = j;
@@ -1403,7 +1459,7 @@ int main()
 // WB-11R - Clock status monitoring
 //        if (clock_status != OSCCON) {   // if something changed (interrupt routine)
 //        if (OSCCONbits.CF != 0) {   // if clock failed (interrupt routine)
-        if (clock_failed != 0) {   // if clock failed (interrupt routine)
+        if ((clock_failed != 0) && (bSendAlarms == 1)) {   // if clock failed (interrupt routine)
             clock_status = OSCCON;
             lwork = C_ALERT_CLOCKFAIL_CODE;
             send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_CLOCKFAIL_LEN, (unsigned char *)&lwork);
@@ -1412,7 +1468,7 @@ int main()
 // WB-11R - End Clock status monitoring
 
 // WB-11V - Temperature Alert Monitoring (WB-11X)
-        if (temp_alert_throttle == 0) {     // if time to send another one
+        if ((temp_alert_throttle == 0) && (bSendAlarms == 1)) {     // if time to send another one
             if (temp_alert != 0) {          // if temperature alert
                 lwork = (temp_alert<<8) | C_ALERT_OVERTEMP_CODE;  // upper byte is event mask
                 send_CAN1_message (board_posn, (C_BOARD | C_ALERT), C_ALERT_OVERTEMP_LEN, (unsigned char *)&lwork);
@@ -1897,7 +1953,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 }
 #endif
 
-unsigned long get_MCU_pm (UWord16, UWord16);
+unsigned long get_MCU_pm (UWord16, UWord16); //JS: in rtspApi.s
 
 void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 /* Read from MCU program memory address "addrs"
@@ -1915,14 +1971,44 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
     *(buf+3) = retval & 0xFF;  // MSByte
 }
 
-unsigned long get_MCU_pm (UWord16 addrh,UWord16 addrl){
-//    unsigned long temp;
-    TBLPAG = addrh;
-    __asm__ volatile ("tblrdl [W1],W0");
-    __asm__ volatile ("tblrdh [W1],W1");
-    return;
-}
+//JS20090821: new routine to write a whole row, with workaround from errata
+#define PM_ROW_WRITE 		0x4001
 
+extern void WriteLatch(UWord16, UWord16, UWord16, UWord16);
+extern void WriteMem(UWord16);
+
+void WritePMRow(unsigned char * ptrData, unsigned long SourceAddr)
+{
+	int    Size,Size1;
+	UReg32 Temp;
+	UReg32 TempAddr;
+	UReg32 TempData;
+
+	for(Size = 0,Size1=0; Size < 64; Size++) // one row of 64 instructions (256 bytes)
+	{
+		
+		Temp.Val[0]=ptrData[Size1+0];
+		Temp.Val[1]=ptrData[Size1+1];
+		Temp.Val[2]=ptrData[Size1+2];
+		Temp.Val[3]=0; // MSB always 0
+		Size1+=4;
+
+	   	WriteLatch((unsigned)(SourceAddr>>16), (unsigned)(SourceAddr&0xFFFF),Temp.Word.HW,Temp.Word.LW);
+
+		/* Device ID errata workaround: Save data at any address that has LSB 0x18 */
+		if((SourceAddr & 0x0000001F) == 0x18)
+		{
+			TempAddr.Val32 = SourceAddr;
+			TempData.Val32 = Temp.Val32;
+		}
+		SourceAddr += 2;
+	}
+
+	/* Device ID errata workaround: Reload data at address with LSB of 0x18 */
+	WriteLatch(TempAddr.Word.HW, TempAddr.Word.LW,TempData.Word.HW,TempData.Word.LW);
+
+	WriteMem(PM_ROW_WRITE);
+}
 
 void put_MCU_pm (UWord16, UWord16, UWord16, UWord16);
 void wrt_MCU_pm (void);
@@ -1955,25 +2041,6 @@ void wrt_MCU_pm (void) {
 // Need to set interrupt level really high / lock out interrupts
     int save_SR;            //
     NVMCON = 0x4003;        // Operation is Memory Write Word
-    save_SR = SR;           // Save the status register
-    SR |= 0xE0;             // Raise priority to lock out  interrupts
-    NVMKEY = 0x55;          // Unlock 1
-    NVMKEY = 0xAA;          // Unlock 2
-    NVMCONbits.WR = 1;          // Set the "Write" bit
-    __asm__ volatile ("nop");   // required NOPs for timing
-    __asm__ volatile ("nop");   // required NOPs for timing
-    while (NVMCONbits.WR) {}    // Spin until done
-    SR = save_SR;           // restore the saved status register
-}
-
-void erase_MCU_pm (unsigned long addrs) {
-/* Execute the program memory page-erase sequence
-*/
-    put_MCU_pm ((unsigned)(addrs>>16), (unsigned)(addrs&0xFFFF), 0, 0);
-
-// Need to set interrupt level really high / lock out interrupts
-    int save_SR;            //
-    NVMCON = 0x4042;        // Operation is Memory Erase Page
     save_SR = SR;           // Save the status register
     SR |= 0xE0;             // Raise priority to lock out  interrupts
     NVMKEY = 0x55;          // Unlock 1
