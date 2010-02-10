@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.1 2009-05-20 13:51:11 jschamba Exp $ */
+/* $Id: CAN_HLP3.h,v 1.2 2010-02-10 17:14:38 jschamba Exp $ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
@@ -19,39 +19,6 @@
 ** liability for unauthorized use of these data by third parties.
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
 **
-**  16-Feb-thru-19-Feb-2009, W. Burton (WB-11X)
-**      Add symbolics for Report HPTDC Configuration and Control Word readback.
-**      Relabel "Alarm" to "Alert" for consistency (e.g. TEMPALARMS_LEN is now TEMPALERTS_LEN).
-**  02-Feb-2009, W. Burton (WB-2H)
-**      Add symbolic limit for CAN1-to-CAN2 transfer loop
-**  30-Jan-2009, W. Burton
-**      Add symbolics for CAN1 and CAN2 Overflow/Error alert messages
-**  17-Dec-2008, W. Burton
-**      TEMPALARMS_LEN and TEMPALARMS_INTERVAL values are conditional on whether TDIG or TCPU is being
-**      built.
-**  10-Dec-2008, W. Burton
-**      Add C_WS_TOGGLETINO == Toggle_TINO_TEST_MCU line function to CANBus protocol.
-**      Add C_WS_TEMPALARMS == Temperature Alarm Limits
-**  05-Sep-2008, W. Burton
-**     THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
-**     C_BOARD definition is conditional on whether TCPU or TDIG symbol is defined at entry
-**             to this file.
-** 04-Sep-2008, W. Burton
-**     C_RS_CLKSTATUS changed to 0x0C to avoid overlap with data switch message.
-** 02-Sep-2008, W. Burton
-**     Added C_RS_MCUCKSUM, C_RS_EEP2CKSUM, C_STATUS_BADADDRS
-** 22-Jul-2008, W. Burton
-**     Added C_RS_CLKSTATUS to get read clock status
-** 21-Jul-2007, W. Burton
-**    Added Clock Source Selection code C_WS_OSCSRCSEL
-** 29-Jun-2007, W. Burton
-**    Created header file to be used in common with TCPU to define the HLP codes
-**
-** These implement the new codes as described in the HLP_3 document
-** "Standard" CAN address/packet ID (11 bits)
-** Low nibble: command function code
-** 2nd nibble: 3- or 4-bits of board ID (position switch)
-** Top 3 bits: 1-bit of board ID (position switch and 2 bits of Destination
 */
 
 // Low Nibble Codes (Function):
@@ -125,6 +92,7 @@
 	//JS: try this for faster eeprom2 loading:
     #define C_WS_FPGA_CONF0   0x11      // 
     #define C_WS_FPGA_CONF1   0x12      // 
+	#define C_WS_SEND_ALARM	  0xA0		// Boolean for sending alarm messages
 
 // Oscillator clock selection constants for C_WS_OSCSRCSEL
     #define OSCSRCSEL_LEN 3             // 3 payload bytes exactly
@@ -174,6 +142,11 @@
     #define PAGE_MASK 0xFFFFFC00L       // Page address mask0xFFFFFC00L
     #define OFFSET_MASK 0x3FF           // Offset mask
     #define PAGE_BYTES 2048             // Page size, bytes
+
+	//JS20090821: new defines for row wise programming
+	#define ROW_MASK 0xFFFFFF80L
+	#define ROW_OFFSET_MASK 0x7F
+	#define ROW_BYTES 256				// Row size, bytes
 
 /* Allowable ranges for MCU Target addresses are defined in TCPU-C_Board.h  or TDIG-F_Board.h */
 
@@ -253,3 +226,41 @@
     #define C_ALERT_ERRCAN2_LEN 2
     #define C_ALERT_ERRCAN2_CODE 0xC2
 #endif
+
+/* CAN_HLP3.h
+** comments moved from top of file to here:
+**
+**  16-Feb-thru-19-Feb-2009, W. Burton (WB-11X)
+**      Add symbolics for Report HPTDC Configuration and Control Word readback.
+**      Relabel "Alarm" to "Alert" for consistency (e.g. TEMPALARMS_LEN is now TEMPALERTS_LEN).
+**  02-Feb-2009, W. Burton (WB-2H)
+**      Add symbolic limit for CAN1-to-CAN2 transfer loop
+**  30-Jan-2009, W. Burton
+**      Add symbolics for CAN1 and CAN2 Overflow/Error alert messages
+**  17-Dec-2008, W. Burton
+**      TEMPALARMS_LEN and TEMPALARMS_INTERVAL values are conditional on whether TDIG or TCPU is being
+**      built.
+**  10-Dec-2008, W. Burton
+**      Add C_WS_TOGGLETINO == Toggle_TINO_TEST_MCU line function to CANBus protocol.
+**      Add C_WS_TEMPALARMS == Temperature Alarm Limits
+**  05-Sep-2008, W. Burton
+**     THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
+**     C_BOARD definition is conditional on whether TCPU or TDIG symbol is defined at entry
+**             to this file.
+** 04-Sep-2008, W. Burton
+**     C_RS_CLKSTATUS changed to 0x0C to avoid overlap with data switch message.
+** 02-Sep-2008, W. Burton
+**     Added C_RS_MCUCKSUM, C_RS_EEP2CKSUM, C_STATUS_BADADDRS
+** 22-Jul-2008, W. Burton
+**     Added C_RS_CLKSTATUS to get read clock status
+** 21-Jul-2007, W. Burton
+**    Added Clock Source Selection code C_WS_OSCSRCSEL
+** 29-Jun-2007, W. Burton
+**    Created header file to be used in common with TCPU to define the HLP codes
+**
+** These implement the new codes as described in the HLP_3 document
+** "Standard" CAN address/packet ID (11 bits)
+** Low nibble: command function code
+** 2nd nibble: 3- or 4-bits of board ID (position switch)
+** Top 3 bits: 1-bit of board ID (position switch and 2 bits of Destination
+*/
