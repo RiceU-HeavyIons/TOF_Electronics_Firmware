@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.12 2010-01-24 15:48:03 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.12.2.1 2010-03-12 17:17:23 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2010-01-24
+-- Last update: 2010-01-25
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -67,12 +67,13 @@ ARCHITECTURE a OF serdes_rcvr IS
 
 BEGIN
 
-  PROCESS (ch_rclk) IS
-  BEGIN  -- PROCESS
-    IF rising_edge(ch_rclk) THEN  -- rising clock edge
-      s_ch_rxd <= ch_rxd;
-    END IF;
-  END PROCESS;
+--  PROCESS (ch_rclk) IS
+--  BEGIN  -- PROCESS
+--    IF rising_edge(ch_rclk) THEN  -- rising clock edge
+--      s_ch_rxd <= ch_rxd;
+--    END IF;
+--  END PROCESS;
+  s_ch_rxd <= ch_rxd;
 
   -- use a mixed width dual-clock FIFO to convert the 2x16bit
   -- words received into 32bit words, and to synchronize between
