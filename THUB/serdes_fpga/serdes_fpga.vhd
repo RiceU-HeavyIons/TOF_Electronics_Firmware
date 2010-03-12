@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.35 2010-01-12 22:15:34 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.35.2.1 2010-03-12 17:24:19 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2009-12-05
+-- Last update: 2010-02-03
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -79,6 +79,14 @@ END serdes_fpga;
 
 
 ARCHITECTURE a OF serdes_fpga IS
+
+  COMPONENT serdes_rcvrclkshift IS
+    PORT (
+      aclr    : IN  std_logic;
+      clock   : IN  std_logic;
+      shiftin : IN  std_logic;
+      q       : OUT std_logic_vector(7 DOWNTO 0));
+  END COMPONENT serdes_rcvrclkshift;
 
   COMPONENT serdes_poweron IS
     PORT (
@@ -258,7 +266,15 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch1_rclk      : std_logic;
   SIGNAL s_ch2_rclk      : std_logic;
   SIGNAL s_ch3_rclk      : std_logic;
-
+  SIGNAL s_ch0_rclkdelay : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ch1_rclkdelay : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ch2_rclkdelay : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ch3_rclkdelay : std_logic_vector(7 DOWNTO 0);
+  SIGNAL s_ch0_rclkin    : std_logic;
+  SIGNAL s_ch1_rclkin    : std_logic;
+  SIGNAL s_ch2_rclkin    : std_logic;
+  SIGNAL s_ch3_rclkin    : std_logic;
+  
   SIGNAL s_ddr_inh      : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_ddr_inl      : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_rxfifo_out   : std_logic_vector(31 DOWNTO 0);
@@ -305,15 +321,44 @@ BEGIN
     c2     => s_pll_80mhz,
     locked => pll_locked);
 
+
   global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
   global_clk_buffer2 : global PORT MAP (a_in => div2out, a_out => clk20mhz);
   global_clk_buffer3 : global PORT MAP (a_in => s_pll_80mhz, a_out => pll_80mhz);
   global_clk_buffer4 : global PORT MAP (a_in => s_pll_160mhz, a_out => pll_160mhz);
 
-  ch0_clk_buffer : global PORT MAP (a_in => ch0_rclk, a_out => s_ch0_rclk);
-  ch1_clk_buffer : global PORT MAP (a_in => ch1_rclk, a_out => s_ch1_rclk);
-  ch2_clk_buffer : global PORT MAP (a_in => ch2_rclk, a_out => s_ch2_rclk);
-  ch3_clk_buffer : global PORT MAP (a_in => ch3_rclk, a_out => s_ch3_rclk);
+
+  -- delay the receiver clock to align the data properly
+  ch0_shift : serdes_rcvrclkshift PORT MAP (
+    aclr    => NOT pll_locked,
+    clock   => pll_160mhz,
+    shiftin => ch0_rclk,
+    q       => s_ch0_rclkdelay);
+  ch1_shift : serdes_rcvrclkshift PORT MAP (
+    aclr    => NOT pll_locked,
+    clock   => pll_160mhz,
+    shiftin => ch1_rclk,
+    q       => s_ch1_rclkdelay);
+  ch2_shift : serdes_rcvrclkshift PORT MAP (
+    aclr    => NOT pll_locked,
+    clock   => pll_160mhz,
+    shiftin => ch2_rclk,
+    q       => s_ch2_rclkdelay);
+  ch3_shift : serdes_rcvrclkshift PORT MAP (
+    aclr    => NOT pll_locked,
+    clock   => pll_160mhz,
+    shiftin => ch3_rclk,
+    q       => s_ch3_rclkdelay);
+
+  s_ch0_rclkin <= s_ch0_rclkdelay(7);
+  s_ch1_rclkin <= s_ch1_rclkdelay(7);
+  s_ch2_rclkin <= s_ch2_rclkdelay(7);
+  s_ch3_rclkin <= s_ch3_rclkdelay(7);
+  
+  ch0_clk_buffer : global PORT MAP (a_in => s_ch0_rclkin, a_out => s_ch0_rclk);
+  ch1_clk_buffer : global PORT MAP (a_in => s_ch1_rclkin, a_out => s_ch1_rclk);
+  ch2_clk_buffer : global PORT MAP (a_in => s_ch2_rclkin, a_out => s_ch2_rclk);
+  ch3_clk_buffer : global PORT MAP (a_in => s_ch3_rclkin, a_out => s_ch3_rclk);
 
   serdes_clk <= clk20mhz;
   -- serdes_clk <= '0'; -- turned off
