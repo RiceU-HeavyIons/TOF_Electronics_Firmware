@@ -1,15 +1,6 @@
-// $Id: TDIG-F_Board.h,v 1.13 2009-06-22 14:33:39 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.14 2010-03-17 19:39:08 jschamba Exp $
 
-/* TDIG-D_Board.h
-** This header file defines the TDIG-D rev 0 board layout per schematic
-**  dated September 29, 2006.  Also applies to TDIG-E rev 0, TDIG-F Rev 0
-**  TDIG-F Rev 1.
-**
-**  It defines:
-**  a) overall characteristics of the MCU interface to board hardware;
-**  b) Symbolic names
-**  c) Interfaces to MCU modules used.
-**
+/*
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
 ** BNL Contract No. 79217.  For a period of 4 years after acceptance of all items delivered
 ** under this Grant, the Government, BNL and Rice agree to use these data for the following
@@ -24,80 +15,8 @@
 ** Government, BNL and Rice shall be relieved of all disclosure prohibitions and have no
 ** liability for unauthorized use of these data by third parties.
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
-**
-**
-**  Modified:
-**      19-Feb-2009, W. Burton (WB-11X)
-**          "Alarm" is now "Alert" for consistency.
-**      15-Dec-2008, W. Burton
-**          Define MCP9801_CFGR_FQUEx bits for temperature alert "Fault Queue" (WB-11X)
-**      12-Dec-2008, W. Burton
-**          Define MCU_HEAT_ALERT in register F
-**     10-Dec-2008, W. Burton
-**         Firmware ID is now 0x11 0x56 (11V)
-**      10-Sep-2008, W. Burton
-**         Firmware ID is still 0x11 0x55 (11U)
-**         Start adding A/D conversion support (Analog inputs from TINO)
-**     03-Sep-08, W. Burton
-**         Memory limits DEFINEd
-**     05-Aug-08, W. Burton
-**         Boot code protection UNdefined
-**     01-Aug-08, W. Burton
-**         User ID "T"
-**         Boot code protection defined.
-**     15-Oct-07, W. Burton
-**         Default build with REVTDCNBR defined.
-**     08-Sep-07, W. Burton
-**         Add definition for UCONFIG_IN and DCONFIG_OUT bits
-**     06-Sep-07, W. Burton
-**         Add definition for Pass-thru bit in FPGA reg 14 (Write)
-**     03-Jul-07, W. Burton
-**         Add definitions for Oscillator Selections
-**         Add definition for CANBus Termination On/Off Select
-**     02-Jul-07, W. Burton
-**         Fix FUID0, FUID1f to reflect configuration.
-**     29-Jun-07, W. Burton
-**         Conditionalize MCU definition/includes
-**         Conditionalize A/D channel assignments and setups.
-**     06-Jun-07, W. Burton
-**         Define MCU2ADDRESS address for second code image.  NOTE THIS DEFINITION MUST AGREE
-**         with the corresponding definition of _resetPRI in the linker file used (.GLD file)
-**     21-May-07, W. Burton
-**         Modify CAN1 for 500Kbits/Sec
-**     15-May-07, W. Burton
-**         Add symbolic names for CAN1 timing parameters.
-**     17-Apr-07, W. Burton
-**         Update symbolic locations in MCU-PLD interface per today's discussion.
-**     16-Apr-07, W. Burton
-**         Update symbolic locations in MCU-PLD interface per spreadsheet 4/3/2007.
-**     19-Feb-07, W. Burton
-**         Initialization of PORTG.9 = 0 (CANBus Termination OFF).  Sometime later we will want
-**         to turn ON if this is "first" or "last" board on bus.
-**     15-Feb-07, W. Burton
-**         Add PORTG stuff and more bits in ECSR
-**     14-Feb-07, W. Burton
-**         Add CONFIG3 definition for debugger.
-**     08-Feb-07, W. Burton
-**         Start DEFINE registers for MCU-to-FPGA FIFO reading.
-**     02-Feb-07, W. Burton
-**         DEFINE bit patterns for MCU-to-FPGA (MCU_PLD_) usage.
-**     15-Jan-07, W. Burton
-**         DEFINE HPTDC_RESET bit for power-on reset sequence
-**     06-Jan-07, W. Burton
-**         DEFINE RC15_IO for blinking LED D9 of boards w/out MCU_TEST LED.
-**         DEFINE ECO14_SW4 to fix board ID bit swap (SW4)
-**     02-Jan-07, W. Burton
-**         UN-define SN_ADDR to match boards without U60 (DS28CM00 serial nbr)
-**     12-Dec-06, W. Burton
-**         Define ports and bits for JTAG used for TDC configuration
-**     07-Dec-06, W. Burton
-**         Use 40 MHz (PLL'd) clock
-**     05-Dec-06, W. Burton
-**         Conditionalize usage of RC15/OSC2 pin 40.
-**         Pin will be I/O if RC15_IO is DEFINED, otherwise it will be Clock output
-**  Written:
-**     02-Nov-06, W. Burton
-**  --------------------------------------------------*/
+*/
+
 /* **************************************************************************
 ** Define the Processor
 ** THIS MUST BE DONE BEFORE the #INCLUDES
@@ -121,13 +40,8 @@
     #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
     #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
     #define MCU2CODEL   0x4000          // Second-image Code space start
-//    #if defined (__24HJ128GP506_H)      // IF using 128K processor
-//        #define MCU2UPLIMIT 0x157FDL     // Second-image Code space upper end of available memory not including magic
-//        #define MAGICADDRESS 0x157FEL    // Jo's Magic Number Location
-//    #else                               // else assume 64K processor
 	#define MCU2UPLIMIT 0xABFDL      // Second-image Code space upper end of available memory not including magic
     #define MAGICADDRESS 0xABFEL     // Jo's Magic Number Location
-//    #endif
 
 // External oscillator frequency
 	#define SYSCLK          40000000
@@ -208,6 +122,7 @@
 
 //  Watchdog disabled & Windowed Disabled
 	_FWDT( FWDTEN_OFF & WINDIS_ON )
+//	_FWDT( FWDTEN_OFF & WINDIS_OFF )
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
@@ -467,3 +382,87 @@
 
 // Default to turn on local header for Boards 0,4 TDC 1
 //	#define LOCAL_HEADER_BOARD0
+/* TDIG-D_Board.h
+** This header file defines the TDIG-D rev 0 board layout per schematic
+**  dated September 29, 2006.  Also applies to TDIG-E rev 0, TDIG-F Rev 0
+**  TDIG-F Rev 1.
+**
+**  It defines:
+**  a) overall characteristics of the MCU interface to board hardware;
+**  b) Symbolic names
+**  c) Interfaces to MCU modules used.
+**
+**
+**
+**  Modified:
+**      19-Feb-2009, W. Burton (WB-11X)
+**          "Alarm" is now "Alert" for consistency.
+**      15-Dec-2008, W. Burton
+**          Define MCP9801_CFGR_FQUEx bits for temperature alert "Fault Queue" (WB-11X)
+**      12-Dec-2008, W. Burton
+**          Define MCU_HEAT_ALERT in register F
+**     10-Dec-2008, W. Burton
+**         Firmware ID is now 0x11 0x56 (11V)
+**      10-Sep-2008, W. Burton
+**         Firmware ID is still 0x11 0x55 (11U)
+**         Start adding A/D conversion support (Analog inputs from TINO)
+**     03-Sep-08, W. Burton
+**         Memory limits DEFINEd
+**     05-Aug-08, W. Burton
+**         Boot code protection UNdefined
+**     01-Aug-08, W. Burton
+**         User ID "T"
+**         Boot code protection defined.
+**     15-Oct-07, W. Burton
+**         Default build with REVTDCNBR defined.
+**     08-Sep-07, W. Burton
+**         Add definition for UCONFIG_IN and DCONFIG_OUT bits
+**     06-Sep-07, W. Burton
+**         Add definition for Pass-thru bit in FPGA reg 14 (Write)
+**     03-Jul-07, W. Burton
+**         Add definitions for Oscillator Selections
+**         Add definition for CANBus Termination On/Off Select
+**     02-Jul-07, W. Burton
+**         Fix FUID0, FUID1f to reflect configuration.
+**     29-Jun-07, W. Burton
+**         Conditionalize MCU definition/includes
+**         Conditionalize A/D channel assignments and setups.
+**     06-Jun-07, W. Burton
+**         Define MCU2ADDRESS address for second code image.  NOTE THIS DEFINITION MUST AGREE
+**         with the corresponding definition of _resetPRI in the linker file used (.GLD file)
+**     21-May-07, W. Burton
+**         Modify CAN1 for 500Kbits/Sec
+**     15-May-07, W. Burton
+**         Add symbolic names for CAN1 timing parameters.
+**     17-Apr-07, W. Burton
+**         Update symbolic locations in MCU-PLD interface per today's discussion.
+**     16-Apr-07, W. Burton
+**         Update symbolic locations in MCU-PLD interface per spreadsheet 4/3/2007.
+**     19-Feb-07, W. Burton
+**         Initialization of PORTG.9 = 0 (CANBus Termination OFF).  Sometime later we will want
+**         to turn ON if this is "first" or "last" board on bus.
+**     15-Feb-07, W. Burton
+**         Add PORTG stuff and more bits in ECSR
+**     14-Feb-07, W. Burton
+**         Add CONFIG3 definition for debugger.
+**     08-Feb-07, W. Burton
+**         Start DEFINE registers for MCU-to-FPGA FIFO reading.
+**     02-Feb-07, W. Burton
+**         DEFINE bit patterns for MCU-to-FPGA (MCU_PLD_) usage.
+**     15-Jan-07, W. Burton
+**         DEFINE HPTDC_RESET bit for power-on reset sequence
+**     06-Jan-07, W. Burton
+**         DEFINE RC15_IO for blinking LED D9 of boards w/out MCU_TEST LED.
+**         DEFINE ECO14_SW4 to fix board ID bit swap (SW4)
+**     02-Jan-07, W. Burton
+**         UN-define SN_ADDR to match boards without U60 (DS28CM00 serial nbr)
+**     12-Dec-06, W. Burton
+**         Define ports and bits for JTAG used for TDC configuration
+**     07-Dec-06, W. Burton
+**         Use 40 MHz (PLL'd) clock
+**     05-Dec-06, W. Burton
+**         Conditionalize usage of RC15/OSC2 pin 40.
+**         Pin will be I/O if RC15_IO is DEFINED, otherwise it will be Clock output
+**  Written:
+**     02-Nov-06, W. Burton
+**  --------------------------------------------------*/
