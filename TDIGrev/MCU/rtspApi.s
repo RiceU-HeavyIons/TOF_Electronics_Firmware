@@ -58,9 +58,12 @@
 
 .equ    FLASH_PAGE_ERASE_CODE, 	0x4042
 .equ    FLASH_ROW_PROG_CODE, 	0x4001
+.equ    CONF_BYTE_ERASE_CODE, 	0x4040
+.equ    CONF_BYTE_PROG_CODE, 	0x4000
 
 	.global _flashPageRead
 	.global _flashPageErase
+	.global _confByteErase
 	.global _flashPageWrite
 	.global _flashPageModify
     .global _get_MCU_pm
@@ -218,5 +221,37 @@ prog_wait:
         pop     TBLPAG
         return
 
+
+/******************************************************************************
+  Configuration Byte Erase 
+  Erase one configuration byte
+*******************************************************************************/
+_confByteErase:
+        push    TBLPAG
+
+        mov     w0, TBLPAG		; Init Pointer to row to be erased
+		tblwtl  w1,[w1]			; Dummy write to select the row
+
+								; Setup NVCON for configuration byte erase
+		mov   	#CONF_BYTE_ERASE_CODE,w7
+        mov     w7, NVMCON
+		bset 	w7,#WR
+		disi 	#5				; Block all interrupt with priority <7 for next 5 instructions	
+		mov     #0x55, W0
+        mov     W0, NVMKEY
+        mov     #0xAA, W0
+        mov     W0, NVMKEY		
+		mov     w7,NVMCON		; Start Program Operation
+        nop
+        nop
+
+
+erase2_wait:     
+		btsc    NVMCON, #WR
+        bra     erase2_wait
+
+		clr 	w0
+		pop     TBLPAG
+        return
 
 .end

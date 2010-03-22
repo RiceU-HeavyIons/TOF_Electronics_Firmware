@@ -121,6 +121,19 @@ extern int flashPageModify(unsigned int row, unsigned int size, int *rowBuf, int
 */
 extern int flashPageWrite(unsigned int nvmAdru, unsigned int nvmAdr, int *pageBufPtr);
 
+/*
+ * CONFIGURATION BYTE ERASE
+ *
+ * Parameters Definition:
+ * nvmAdru:	Selects the upper 8bits of the location to program or erase in configuration memory
+ * nvmAdr:  Selects the location to program or erase in configuration memory
+*           It must be aligned to 512 instruction boundary, LSB 10bits of address must be zero
+ 
+ * Return Value:
+ * Function returns ERROREE (or -1), if it is not successful
+ * Function return ZERO, if successful
+*/
+extern int confByteErase(unsigned int nvmAdru, unsigned int nvmAdr);
 
 
 #endif
