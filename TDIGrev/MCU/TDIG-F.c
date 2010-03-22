@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.15 2010-02-10 17:10:00 jschamba Exp $
+// $Id: TDIG-F.c,v 1.16 2010-03-22 21:29:20 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -26,12 +26,12 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'Z'      // 0x11 0x5A
+#define FIRMWARE_ID_0 'A'      // 0x12 0x41
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
-    #define FIRMWARE_ID_1 0x91
+    #define FIRMWARE_ID_1 0x92
 #else
-    #define FIRMWARE_ID_1 0x11
+    #define FIRMWARE_ID_1 0x12
 #endif
 
 // Define implementation on the TDIG board (I/O ports, etc)
@@ -107,7 +107,8 @@ typedef union tureg32 {
 
 UReg32 temp;
 
-void WritePMRow(unsigned char *, unsigned long);
+void writePMRow(unsigned char *, unsigned long);
+void writeConfRegByte(unsigned char, unsigned char);
 
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
@@ -399,15 +400,18 @@ int main()
     clock_status = OSCCON;     // read the OSCCON reg - returns clock status
 
 // Delay power-on by 2 second + 1 second x board-position switch value
-#define DELAYPOWER 36
+//JS: make this a little faster: 1/3 second + 1/3 second x board-position switch value
+//JS #define DELAYPOWER 36
+#define DELAYPOWER 12
 
 #ifndef DOWNLOAD_CODE
 #if defined (DELAYPOWER)
-    j = board_posn + 2;
+    //JS j = board_posn + 2;
+    j = board_posn + 1;
     while ( j != 0 ) {
         spin(DELAYPOWER);               // delay approx 1 second per 36 counts
         --j;
-    }                                   // end while spinning 1 sec per board posn
+    }                                   // end while spinning 1/3 sec per board posn
 #endif                                  // DELAYPOWER conditional
 #endif
 
@@ -568,6 +572,10 @@ int main()
 	      retbuf[3] = 0x0;
 	  else
 		  retbuf[3] = 0xff;	
+	  if (_WDTO) {
+		  _WDTO = 0;
+		  retbuf[2] = 0xee;
+      }
       if (clock_status != 0x2200) {
         memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
       }
@@ -601,8 +609,17 @@ int main()
 #endif
 // WB-11U: end timer assignment changes
 
+	//JS: watchdog timer: turn it on
+	_SWDTEN = 1;
+
+//***************** MAIN LOOP ******************************************
 /* Look for Have-a-Message */
     do {                            // Do Forever
+
+		//JS: watchdog timer: reset WDT
+		ClrWdt();
+
+
 /* WB-11V: multiple buffers to support broadcast messages
  * Buffer[1][] is for "our address received message"
  * Buffer[2][] is for "broadcast address received messge"
@@ -825,8 +842,6 @@ int main()
                                         maskoff = 0xFF;
                                         for (l=0; l<J_HPTDC_SETUPBYTES;l++){ // checking readback
                                             if (l == (J_HPTDC_SETUPBYTES-1)) maskoff = 0x7F;     // don't need last bit!
-// WB-11V fix indexing
-// WB-11V                                   if ((unsigned char)hptdc_setup[j][i] != (((unsigned char)readback_setup[i])&maskoff)) {
                                             if ((unsigned char)hptdc_setup[j][l] != (((unsigned char)readback_setup[l])&maskoff)) {
                                                 retbuf[1] = C_STATUS_BADCFG;    // bad configuration status
                                                 if ((ledbits & 0x10) != 0) {
@@ -898,8 +913,6 @@ int main()
                                 pld_ident = read_FPGA (IDENT_7_R);
                                 retbuf[2] = pld_ident;  // tell the FPGA ID code value
                                 replylength = 3;
-//                                fpga_crc = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & ECSR_PLD_CRC_ERROR; // Read CRC state
-								//JS: when first reconfigured, assume CRC error is 0 (will be checked later anyways)
                                 fpga_crc = 0;
                             } else {        // else we could not do it
                                 retbuf[1] = C_STATUS_INVALID;   // Assume ERROR REPLY
@@ -931,7 +944,6 @@ int main()
                                     memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
                                     eeprom_address &= 0xFFFF00L; // mask off lowest bits (byte in page)
                                     wps += 4;
-//JS                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
                                     sel_EE2;            // select EEPROM #2
                                     if ((*wps)==1) {// see if need to erase
                                         // Write-enable the CSR, data doesn't matter
@@ -952,7 +964,6 @@ int main()
                                     for (i=0; i<block_bytecount; i+= 8) {
                                         lwork = eeprom_address + i;
                                         spi_read_adr (EE_AL_RDDA, (unsigned char *)&lwork, LS2MSBIT, 8, (unsigned char *)&sendbuf[0]);
-//                                        for (j=0; j<8; j++) if (sendbuf[j] != block_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
                                         // WB:11T - Fix for non-mult of 8
                                         k = block_bytecount-i;
                                         if (k > 8) k = 8;
@@ -962,10 +973,6 @@ int main()
 
                                     sel_EE1;        // de-select EEPROM #2
                                     set_EENCS;      //
-//JS                                    MCU_CONFIG_PLD = 1; // re-enable FPGA
-//JS                                    waitfor_FPGA(); // wait for FPGA to reconfigure
-//JS                                    reset_FPGA();   // reset FPGA
-//JS                                    init_regs_FPGA(board_posn); // initialize FPGA
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -1028,7 +1035,6 @@ int main()
 											nvmAdru = (laddrs&0xffff0000) >> 16;
 											nvmAdr = laddrs&0x0000ffff;
 											temp = flashPageErase(nvmAdru, nvmAdr);
-//JS20090821                                        	erase_MCU_pm ((laddrs & PAGE_MASK));      // erase the page
                                         } // end if need to erase the page
                                         // now write the block_bytecount or PAGE_BYTES starting at actual address or begin page
                                         lwork2 = lwork;
@@ -1037,14 +1043,10 @@ int main()
 										for(i=0; i<numRows; i++) {
 											// each row is 256 bytes in the buffer, 
 											// each instruction word is 24 bit instruction plus 8 bits dummy (0)
-											WritePMRow((unsigned char *)(readback_buffer + (i*256)), lwork);
+											writePMRow((unsigned char *)(readback_buffer + (i*256)), lwork);
 											lwork += 128; // 2 * 64 instructions addresses, address advances by  2
 										}
 
-//JS20090821                                        for (i=0; i<k; i+=4) {
-//JS20090821                                            write_MCU_pm ((unsigned char *)(readback_buffer+i), lwork); // Write a word
-//JS20090821                                            lwork += 2L;    // next write address
-//JS20090821                                        } // end loop over bytes
                                         SR = save_SR;           // restore the saved status register
                                         // now check for correct writing
                                         lwork = lwork2;                             // recall the start address
@@ -1095,6 +1097,20 @@ int main()
                             } // end else block was not in progress
 
                             break;  // end case C_WS_MAGICNUMWR
+
+						case C_WS_CONF_REG: //  write Configuration Register 
+                            if (rcvmsglen == 3) {
+								unsigned char cfgRegAddr = *wps++; 	// recvBuffer[1] (which configuration register)
+								unsigned char cfgRegVal = *wps;		// recvBuffer[2]
+								cfgRegAddr &= 0xFE; // even addresses only
+                                save_SR = SR;           // save the Status Register
+                                SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
+								writeConfRegByte(cfgRegVal, cfgRegAddr);
+                                SR = save_SR;           // restore the saved status register
+                            } else {  // Length is not right
+                            	retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                            } // end else length was not OK
+							break;
 
                         case C_WS_BLOCKCKSUM:       // Block Data Checksum
                             retbuf[1] = C_STATUS_INVALID;
@@ -1973,39 +1989,40 @@ void read_MCU_pm (unsigned char *buf, unsigned long addrs){
 
 //JS20090821: new routine to write a whole row, with workaround from errata
 #define PM_ROW_WRITE 		0x4001
+#define CFG_BYTE_WRITE 		0x4000
 
 extern void WriteLatch(UWord16, UWord16, UWord16, UWord16);
 extern void WriteMem(UWord16);
 
-void WritePMRow(unsigned char * ptrData, unsigned long SourceAddr)
+void writePMRow(unsigned char * ptrData, unsigned long sourceAddr)
 {
-	int    Size,Size1;
-	UReg32 Temp;
-	UReg32 TempAddr;
-	UReg32 TempData;
+	int    size,size1;
+	UReg32 temp;
+	UReg32 tempAddr;
+	UReg32 tempData;
 
-	for(Size = 0,Size1=0; Size < 64; Size++) // one row of 64 instructions (256 bytes)
+	for(size = 0,size1=0; size < 64; size++) // one row of 64 instructions (256 bytes)
 	{
 		
-		Temp.Val[0]=ptrData[Size1+0];
-		Temp.Val[1]=ptrData[Size1+1];
-		Temp.Val[2]=ptrData[Size1+2];
-		Temp.Val[3]=0; // MSB always 0
-		Size1+=4;
+		temp.Val[0]=ptrData[size1+0];
+		temp.Val[1]=ptrData[size1+1];
+		temp.Val[2]=ptrData[size1+2];
+		temp.Val[3]=0; // MSB always 0
+		size1+=4;
 
-	   	WriteLatch((unsigned)(SourceAddr>>16), (unsigned)(SourceAddr&0xFFFF),Temp.Word.HW,Temp.Word.LW);
+	   	WriteLatch((unsigned)(sourceAddr>>16), (unsigned)(sourceAddr&0xFFFF), temp.Word.HW, temp.Word.LW);
 
 		/* Device ID errata workaround: Save data at any address that has LSB 0x18 */
-		if((SourceAddr & 0x0000001F) == 0x18)
+		if((sourceAddr & 0x0000001F) == 0x18)
 		{
-			TempAddr.Val32 = SourceAddr;
-			TempData.Val32 = Temp.Val32;
+			tempAddr.Val32 = sourceAddr;
+			tempData.Val32 = temp.Val32;
 		}
-		SourceAddr += 2;
+		sourceAddr += 2;
 	}
 
 	/* Device ID errata workaround: Reload data at address with LSB of 0x18 */
-	WriteLatch(TempAddr.Word.HW, TempAddr.Word.LW,TempData.Word.HW,TempData.Word.LW);
+	WriteLatch(tempAddr.Word.HW, tempAddr.Word.LW, tempData.Word.HW, tempData.Word.LW);
 
 	WriteMem(PM_ROW_WRITE);
 }
@@ -2052,6 +2069,20 @@ void wrt_MCU_pm (void) {
     SR = save_SR;           // restore the saved status register
 }
 
+void writeConfRegByte(unsigned char data, unsigned char cfgRegister)
+{
+	int     ret;
+	UWord16 sourceAddr;
+	UWord16 val;
+
+	sourceAddr = (UWord16)cfgRegister;
+	val = 0xFF00 | (UWord16)data;
+
+	ret = confByteErase(0xF8, sourceAddr);
+
+	WriteLatch(0xF8, sourceAddr, 0xFFFF, val);
+	WriteMem(CFG_BYTE_WRITE);
+}
 
 /* WB-11U: A/D Converter support */
 void __attribute__((__interrupt__))_ADC1Interrupt(void)
