@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.14 2010-03-17 19:39:08 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.15 2010-03-22 14:42:13 jschamba Exp $
 
 /*
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -120,14 +120,38 @@
     #define MCU_FRCPLL 1
     #define MCU_EXTERN 2
 
-//  Watchdog disabled & Windowed Disabled
-	_FWDT( FWDTEN_OFF & WINDIS_ON )
-//	_FWDT( FWDTEN_OFF & WINDIS_OFF )
+/*
+**   Watchdog prescaler:
+**     WDTPRE_PR32          1:32
+**     WDTPRE_PR128         1:128
+**
+**   Watchdog postscaler:
+**     WDTPOST_PS1          1:1
+**     WDTPOST_PS2          1:2
+**     WDTPOST_PS4          1:4
+**     WDTPOST_PS8          1:8
+**     WDTPOST_PS16         1:16
+**     WDTPOST_PS32         1:32
+**     WDTPOST_PS64         1:64
+**     WDTPOST_PS128        1:128
+**     WDTPOST_PS256        1:256
+**     WDTPOST_PS512        1:512
+**     WDTPOST_PS1024       1:1,024
+**     WDTPOST_PS2048       1:2,048
+**     WDTPOST_PS4096       1:4,096
+**     WDTPOST_PS8192       1:8,192
+**     WDTPOST_PS16384      1:16,384
+**     WDTPOST_PS32768      1:32,768
+*/
+//  Watchdog disabled & Windowed Disabled; timeout ~ 32sec
+//	_FWDT( FWDTEN_OFF & WINDIS_ON )
+	_FWDT( FWDTEN_OFF & WINDIS_OFF & WDTPRE_PR32 & WDTPOST_PS32768 )
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
+
 //  User IDs
-    _FUID0( 'Y' )       // "Y" = 0x59
-    _FUID1( 0x11)       // 0x11
+    _FUID0( 'A' )       // "A" = 0x41
+    _FUID1( 0x12)       // 0x12
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
 
