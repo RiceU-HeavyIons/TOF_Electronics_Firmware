@@ -41,7 +41,7 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:56:07  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP0.63"
+set_global_assignment -name LAST_QUARTUS_VERSION "9.1 SP1"
 set_global_assignment -name MISC_FILE master_fpga.dpf
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
@@ -540,7 +540,7 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-
 # SignalTap II Assignments
 # ========================
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE stp8.stp
+set_global_assignment -name USE_SIGNALTAP_FILE synchronizer.stp
 
 # start EDA_TOOL_SETTINGS(eda_simulation)
 # ---------------------------------------
@@ -694,3 +694,8 @@ set_global_assignment -name USE_SIGNALTAP_FILE stp8.stp
 
 # end ENTITY(master_fpga)
 # -----------------------
+set_global_assignment -name SIGNALTAP_FILE tcd.stp
+set_global_assignment -name SYNTH_TIMING_DRIVEN_SYNTHESIS OFF
+set_global_assignment -name SAFE_STATE_MACHINE ON
+set_global_assignment -name QIP_FILE ddio_in.qip
+set_global_assignment -name SIGNALTAP_FILE synchronizer.stp
