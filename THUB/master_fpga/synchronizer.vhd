@@ -1,4 +1,4 @@
--- $Id: synchronizer.vhd,v 1.3 2009-11-12 14:54:44 jschamba Exp $
+-- $Id: synchronizer.vhd,v 1.4 2010-05-10 14:19:53 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Syncrhonizer
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2008-01-16
--- Last update: 2009-11-02
+-- Last update: 2010-04-29
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -38,9 +38,9 @@ ENTITY synchronizer IS
   PORT (
     clk80mhz      : IN  std_logic;
     areset_n      : IN  std_logic;
-    serdes_indata : IN  std_logic_vector(7 DOWNTO 0);  -- 8 bit on both clock edges
-    serdes_clk    : IN  std_logic;      -- 80MHz clock xmitted with data
-    serdes_strb   : IN  std_logic;      -- strobe every 4 bytes
+    serdes_indata : IN  std_logic_vector(7 DOWNTO 0);   -- 8 bit on both clock edges
+    serdes_clk    : IN  std_logic;                      -- 80MHz clock xmitted with data
+    serdes_strb   : IN  std_logic;                      -- strobe every 4 bytes
     sfifo_empty   : OUT std_logic;
     sync_q        : OUT std_logic_vector (31 DOWNTO 0)  -- 32bit data
     );
@@ -60,10 +60,13 @@ ARCHITECTURE a OF synchronizer IS
   SIGNAL s_ddio_outh : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_ddio_outl : std_logic_vector (7 DOWNTO 0);
   SIGNAL s_ddio_out  : std_logic_vector (15 DOWNTO 0);
+  SIGNAL s1_ddio_out : std_logic_vector (15 DOWNTO 0);
+  SIGNAL s_d32_out   : std_logic_vector (31 DOWNTO 0);
 
   SIGNAL s_latch1, s_latch2 : std_logic;
   SIGNAL s_latch3, s_latch4 : std_logic;
   SIGNAL s_latch            : std_logic;
+  SIGNAL s_latch32          : std_logic;
   SIGNAL s_fifo_q           : std_logic_vector (31 DOWNTO 0);
   
 BEGIN  -- ARCHITECTURE a
@@ -79,36 +82,61 @@ BEGIN  -- ARCHITECTURE a
   -- now combine the resulting 16 bit (2x8) data into 32 bit data
   -- with a shift REGISTER
   -- also delay the strobe appropriately
+
+  -- create delayed versions of serdes strobe:
   PROCESS (serdes_clk, areset_n) IS
   BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
-      s_ddio_out <= (OTHERS => '0');
-    ELSIF falling_edge(serdes_clk) THEN
-      s_ddio_out(15 DOWNTO 8) <= s_ddio_outl;
-      s_ddio_out(7 DOWNTO 0)  <= s_ddio_outh;
-
-      -- delay the serdes strobe a little
+      s_latch1 <= '0';
+      s_latch2 <= '0';
+      s_latch3 <= '0';
+    ELSIF rising_edge(serdes_clk) THEN
       s_latch1 <= serdes_strb;
       s_latch2 <= s_latch1;
-      
+      s_latch3 <= s_latch2;
     END IF;
   END PROCESS;
 
-  -- make the serdes strobe last 2 clocks, so two 16bit values
-  -- are latched into the sync fifo
-  s_latch <= s_latch1 OR s_latch2;
+  -- shift 16bit data
+  PROCESS (serdes_clk, areset_n) IS
+  BEGIN
+    IF areset_n = '0' THEN              -- asynchronous reset (active low)
+      s_ddio_out  <= (OTHERS => '0');
+      s1_ddio_out <= (OTHERS => '0');
+    ELSIF rising_edge(serdes_clk) THEN
+      -- first stage
+      s1_ddio_out(15 DOWNTO 8) <= s_ddio_outl;
+      s1_ddio_out(7 DOWNTO 0)  <= s_ddio_outh;
+      -- second stage
+      s_ddio_out               <= s1_ddio_out;
+    END IF;
+  END PROCESS;
 
-  sync_fifo : dcfifo_mixed_widths
+  -- latch 32bit data
+  s_latch32 <= s_latch2;
+  PROCESS (serdes_clk, areset_n) IS
+  BEGIN
+    IF areset_n = '0' THEN              -- asynchronous reset (active low)
+      s_d32_out <= (OTHERS => '0');
+    ELSIF falling_edge(serdes_clk) THEN
+      IF s_latch32 = '1' THEN
+        s_d32_out(31 DOWNTO 16) <= s_ddio_out;
+        s_d32_out(15 DOWNTO 0)  <= s1_ddio_out;
+      END IF;
+    END IF;
+  END PROCESS;
+
+  -- synchronize to 80MHz clock with small dual-clock FIFO
+  s_latch <= s_latch3;
+  sync_fifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
       lpm_hint               => "MAXIMIZE_SPEED=7,",
-      lpm_numwords           => 16,
+      lpm_numwords           => 8,
       lpm_showahead          => "ON",
       lpm_type               => "dcfifo",
-      lpm_width              => 16,
-      lpm_widthu             => 4,
-      lpm_widthu_r           => 3,
-      lpm_width_r            => 32,
+      lpm_width              => 32,
+      lpm_widthu             => 3,
       overflow_checking      => "ON",
       rdsync_delaypipe       => 5,
       underflow_checking     => "ON",
@@ -122,15 +150,13 @@ BEGIN  -- ARCHITECTURE a
       aclr    => NOT areset_n,
       rdclk   => clk80mhz,
       wrreq   => s_latch,
-      data    => s_ddio_out,
+      data    => s_d32_out,
       rdempty => sfifo_empty,
       q       => s_fifo_q
       );
 
-  -- mixed width fifo's latch LS word first, so
-  -- reverse the two 16bit parts of the 32bit word
-  sync_q(31 DOWNTO 16) <= s_fifo_q(15 DOWNTO 0);
-  sync_q(15 DOWNTO 0)  <= s_fifo_q(31 DOWNTO 16);
+  -- component data output is the FIFO q
+  sync_q <= s_fifo_q;
   
 
 END ARCHITECTURE a;
