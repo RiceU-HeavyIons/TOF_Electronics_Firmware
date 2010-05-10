@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.46 2010-01-28 22:54:36 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.47 2010-05-10 14:17:46 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2010-01-07
+-- Last update: 2010-04-29
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -330,6 +330,8 @@ ARCHITECTURE a OF master_fpga IS
   SIGNAL s_serdes_reg   : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_tcd_working  : std_logic;
   SIGNAL s_tcd_rst_n    : std_logic;
+  SIGNAL s_tcd_strb     : std_logic;
+  SIGNAL s_tcd_clk      : std_logic;
   SIGNAL s_master_rst   : std_logic;
   SIGNAL s_trigger      : std_logic;
   SIGNAL s_evt_trg      : std_logic;
@@ -490,6 +492,8 @@ BEGIN
   global_clk_buffer1 : global PORT MAP (a_in => clk, a_out => globalclk);
   global_clk_buffer2 : global PORT MAP (a_in => sclk_80mhz, a_out => clk_80mhz);
   global_clk_buffer3 : global PORT MAP (a_in => sclk_10mhz, a_out => clk_10mhz);
+  global_clk_buffer4 : global PORT MAP (a_in => tcd_strb, a_out => s_tcd_strb);
+  global_clk_buffer5 : global PORT MAP (a_in => tcd_clk, a_out => s_tcd_clk);
 
   -- counter to divide clock
   counter23b : lpm_counter
@@ -1090,8 +1094,8 @@ BEGIN
   s_tcd_rst_n <= pll_locked AND (NOT (s_runReset OR s_reg0(2)));
   tcd_inst : tcd
     PORT MAP (
-      rhic_strobe => tcd_strb,
-      data_strobe => tcd_clk,
+      rhic_strobe => s_tcd_strb,
+      data_strobe => s_tcd_clk,
       data        => tcd_d,
       clock       => globalclk,
       reset_n     => s_tcd_rst_n,
