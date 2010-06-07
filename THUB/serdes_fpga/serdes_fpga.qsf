@@ -519,3 +519,4 @@ set_global_assignment -name VHDL_FILE serdes_fpga.vhd
 set_global_assignment -name VECTOR_WAVEFORM_FILE serdes_fpga.vwf
 set_global_assignment -name SIGNALTAP_FILE stp4.stp
 set_global_assignment -name QIP_FILE serdes_rcvrclkshift.qip
+set_global_assignment -name QIP_FILE pll.qip
