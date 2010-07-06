@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.15 2010-03-22 14:42:13 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.16 2010-07-06 18:26:59 jschamba Exp $
 
 /*
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -25,9 +25,9 @@
 //  #define PIC24HJ128GP506 1
 
 #if defined (PIC24HJ64GP506)
-    #include "p24HJ64GP506.h"
+    #include <p24HJ64GP506.h>
 #else
-    #include "p24HJ128GP506.h"
+    #include <p24HJ128GP506.h>
 #endif
 
 	#define ECO14_SW4 1		// Enable Software ECO14 for board posn
@@ -160,6 +160,7 @@
 #define _CONFIG3(x) __attribute__((section("__CONFIG3.sec,code"))) int _CONFIG3 = (x); //JS
 //    _CONFIG3 (0x42)        // set up for PGC2/PGD2 EMUC2/EMUD2
     _CONFIG3 (0xC2)        // set up for PGC2/PGD2 EMUC2/EMUD2 //JS
+//	_FICD(JTAGEN_OFF & ICS_PGD2) // defined in newer compiler version
 
 #undef CONFIG_CPU
 #endif // (CONFIG_CPU)
