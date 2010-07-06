@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.16 2010-03-22 21:29:20 jschamba Exp $
+// $Id: TDIG-F.c,v 1.17 2010-07-06 18:26:12 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -400,9 +400,9 @@ int main()
     clock_status = OSCCON;     // read the OSCCON reg - returns clock status
 
 // Delay power-on by 2 second + 1 second x board-position switch value
-//JS: make this a little faster: 1/3 second + 1/3 second x board-position switch value
+//JS: make this a little faster: 1/4 second + 1/4 second x board-position switch value
 //JS #define DELAYPOWER 36
-#define DELAYPOWER 12
+#define DELAYPOWER 9
 
 #ifndef DOWNLOAD_CODE
 #if defined (DELAYPOWER)
@@ -483,13 +483,13 @@ int main()
 	nvmAdru=__builtin_tblpage(basic_setup_pm);
 	nvmAdr=__builtin_tbloffset(basic_setup_pm);
 	// Read the page and place the data into readback_buffer array
-	temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+	temp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
 	memcpy ((unsigned char *)basic_setup, (unsigned char *)readback_buffer, J_HPTDC_SETUPBYTES*NBR_HPTDCS);
 
 	// retrieve control bits from program memory
 	nvmAdru=__builtin_tblpage(enable_final_pm);
 	nvmAdr=__builtin_tbloffset(enable_final_pm);
-	temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+	temp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
 	memcpy ((unsigned char *)enable_final, (unsigned char *)readback_buffer, J_HPTDC_CONTROLBYTES*NBR_HPTDCS);
 
     for (j=1; j<=NBR_HPTDCS; j++) {
@@ -783,7 +783,7 @@ int main()
 									nvmAdru=__builtin_tblpage(basic_setup_pm);
 									nvmAdr=__builtin_tbloffset(basic_setup_pm);
 									// Read the page and place the data into readback_buffer array
-									temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+									temp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
                                     if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
 										i = 0;
 										k = NBR_HPTDCS;
@@ -800,7 +800,7 @@ int main()
 									temp = flashPageErase(nvmAdru,nvmAdr);
 
 									// Program the page with modified data
-									temp = flashPageWrite(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+									temp = flashPageWrite(nvmAdru, nvmAdr, (int *)readback_buffer);
                                 } else {  // Length is not right
                                     retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                                 } // end else length was not OK
@@ -1124,7 +1124,7 @@ int main()
 							nvmAdru=__builtin_tblpage(enable_final_pm);
 							nvmAdr=__builtin_tbloffset(enable_final_pm);
 							// Read the page and place the data into readback_buffer array
-							temp = flashPageRead(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+							temp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
                             if ((retbuf[0]&0x3) == 0) { // are we doing all 3?
                                 i = 0;                  // yes, set first is number 1
                                 k = NBR_HPTDCS;         // yes, set last is NBR_HPTDCS
@@ -1139,7 +1139,7 @@ int main()
 							temp = flashPageErase(nvmAdru,nvmAdr);
 
 							// Program the page with modified data
-							temp = flashPageWrite(nvmAdru, nvmAdr, (unsigned int *)readback_buffer);
+							temp = flashPageWrite(nvmAdru, nvmAdr, (int *)readback_buffer);
                             break; // end of C_WS_CONTROLTDCx
 
                         case C_WS_CONTROLTDCS:           // Copy Control word to ALL TDCs
