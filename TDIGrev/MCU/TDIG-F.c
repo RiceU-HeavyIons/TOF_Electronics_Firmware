@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.17 2010-07-06 18:26:12 jschamba Exp $
+// $Id: TDIG-F.c,v 1.18 2010-07-09 18:51:48 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -1052,8 +1052,16 @@ int main()
                                         lwork = lwork2;                             // recall the start address
                                         for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
                                             read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
-                                            for (j=0; j<4; j++) {       // check each word
-                                                if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
+                                            for (j=0; j<3; j++) {       // check each word, ignoring highest byte
+                                                if (bwork[j] != readback_buffer[i+j]) {
+													retbuf[1] = C_STATUS_BADEE2;
+//													retbuf[2] = readback_buffer[i+0];
+//													retbuf[3] = readback_buffer[i+1];
+//													retbuf[4] = readback_buffer[i+2];
+//													retbuf[5] = readback_buffer[i+3];
+//													retbuf[6] = j;
+//													replylength = 7;
+												}
                                             } // end loop checking 4 bytes within each word
                                             lwork += 2L;    // next write address
                                         } // end loop over bytes
@@ -1072,7 +1080,7 @@ int main()
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
                             	// Copy any data from message.
-								memset(readback_buffer, 0xff, 4);
+								memset(readback_buffer, 0x0, 4);
                             	wpd = (unsigned char *)readback_buffer;    // point destination to buffer
                             	for (i=1; i<3; i++) {   // copy any remaining bytes
                                     *wpd++ = *wps++;        // copy byte into buffer
