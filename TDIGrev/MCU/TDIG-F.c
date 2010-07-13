@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.18 2010-07-09 18:51:48 jschamba Exp $
+// $Id: TDIG-F.c,v 1.19 2010-07-13 20:06:21 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -26,7 +26,7 @@
 //JS	#define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'A'      // 0x12 0x41
+#define FIRMWARE_ID_0 'B'      // 0x12 0x42
 // WB-11H make downloaded version have different ID
 #ifdef DOWNLOAD_CODE
     #define FIRMWARE_ID_1 0x92
@@ -114,7 +114,7 @@ void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
 //JS20090821 void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
-void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
+//void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
 
 // WB-11U: - Prototypes for A/D Converter Routines
 void initialize_ad_converter(void);
@@ -128,11 +128,13 @@ unsigned int sample_ad_converter(unsigned int chan);
 //JS: put HPTDC setup bits into program memory, three sets of configurations
 //#define PM_ROW	__attribute__((space(prog), aligned(1024)))
 //unsigned char PM_ROW basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
-#if !defined (DOWNLOAD_CODE)
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x003400)))
-#else
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x007400)))
-#endif
+
+//#if !defined (DOWNLOAD_CODE)
+//    unsigned char __attribute__((space(prog), aligned(1024), address(0x003400)))
+//#else
+//    unsigned char __attribute__((space(prog), aligned(1024), address(0x007400)))
+//#endif
+unsigned char __attribute__((__section__(".hptdc_config"), space(prog)))
     basic_setup_pm[NBR_HPTDCS][J_HPTDC_SETUPBYTES] = {
         {
             #include "HPTDC.inc"	// TDC 1
@@ -149,11 +151,12 @@ unsigned int sample_ad_converter(unsigned int chan);
  *  Bring in conditional addresses from Jo's download version
  */
 //unsigned char PM_ROW enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
-#if !defined (DOWNLOAD_CODE)
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x003800)))
-#else
-    unsigned char __attribute__((space(prog), aligned(1024), address(0x007800)))
-#endif
+//#if !defined (DOWNLOAD_CODE)
+//    unsigned char __attribute__((space(prog), aligned(1024), address(0x003800)))
+//#else
+//    unsigned char __attribute__((space(prog), aligned(1024), address(0x007800)))
+//#endif
+unsigned char __attribute__((__section__(".hptdc_ctrl"), space(prog)))
     enable_final_pm [NBR_HPTDCS][J_HPTDC_CONTROLBYTES] = {
         {
             #include "HPTDC_ctrl.inc"	// TDC 1
@@ -391,8 +394,9 @@ int main()
  --------------------------------------------------*/
     if ( (jumpers & JUMPER_1_2) == JUMPER_1_2) { // See if jumper IN 1-2
                                         // Jumper INSTALLED inhibits local osc.
-        spin(45);   // JS: Wait a little for external clock to be valid, should be at least 40
+        spin(50);   // JS: Wait a little for external clock to be valid, should be at least 50
                     // WB: Lengthened from 40 to 45 per BNL_20080809 version)
+					// JS: Lengthened to 50
         Initialize_OSC (OSCSEL_TRAY);       //  Use TRAY clock
     } else {                        // Jumper OUT (use local osc)
         Initialize_OSC (OSCSEL_BOARD);       //  Use BOARD clock
@@ -1080,7 +1084,7 @@ int main()
 						case C_WS_MAGICNUMWR:
                             if (rcvmsglen == 3) {
                             	// Copy any data from message.
-								memset(readback_buffer, 0x0, 4);
+								memset(readback_buffer, 0, 4);
                             	wpd = (unsigned char *)readback_buffer;    // point destination to buffer
                             	for (i=1; i<3; i++) {   // copy any remaining bytes
                                     *wpd++ = *wps++;        // copy byte into buffer
@@ -1193,11 +1197,9 @@ int main()
                                     SR |= 0xE0;            // Raise CPU priority to lock out interrupts
 									// be sure we are running from alternate interrupt vector
                                     INTCON2 |= 0x8000;     // This is the ALTIVT bit
-                                    jumpto();    // jump to new code
-#else
+#endif
 									__asm__ volatile ("goto 0x4000");
 
-#endif
                                 } // end if we are starting second image.
                                 __asm__ volatile ("reset");  // else we do "reset" (_resetPRI)
                             } // end if have valid reset or start new image message
@@ -1518,7 +1520,8 @@ int main()
                 SR |= 0xE0;            // Raise CPU priority to lock out interrupts
 				// be sure we are running from alternate interrupt vector
                 INTCON2 |= 0x8000;     // This is the ALTIVT bit
-                jumpto();    // jump to new code
+				__asm__ volatile ("goto 0x4000");
+                //jumpto();    // jump to new code
 			}
 		}
 #endif
@@ -1899,7 +1902,8 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
 How do these get hooked to hardware???
  ans: by magic name "C1Interrupt" and attribute
  --------------------------------------------------*/
-void __attribute__((__interrupt__))_C1Interrupt(void)
+//void __attribute__((__interrupt__))_C1Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_C1Interrupt(void)  
 {
 // WB-11W: Revised interrupt routine inserted
     if (C1INTFbits.RBOVIF) {    // If interrupt was from Overflow
@@ -1919,7 +1923,8 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
     IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
 }
 
-void __attribute__((__interrupt__))_OscillatorFail(void)
+//void __attribute__((__interrupt__))_OscillatorFail(void)
+void __attribute__((interrupt,no_auto_psv))_OscillatorFail(void)  
 {
 /* This is the Exception interrupt handler for Oscillator Clock Fail.
 ** we switch back to the FRC/PLL oscillator, clear the interrupt, and
@@ -1933,7 +1938,8 @@ void __attribute__((__interrupt__))_OscillatorFail(void)
 
 // WB-11U: Changed timer assignment to T6/T7 so T2/T3 is available for A/D converter
 // Timer 7 Interrupt Service Routine
-void _ISR _T7Interrupt(void)
+//void _ISR _T7Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_T7Interrupt(void)  
 {
     IFS3bits.T7IF = 0;      // clear interrupt status flag Timer 7
     IEC3bits.T7IE = 0;      // disable Timer 7 interrupt
@@ -2093,7 +2099,8 @@ void writeConfRegByte(unsigned char data, unsigned char cfgRegister)
 }
 
 /* WB-11U: A/D Converter support */
-void __attribute__((__interrupt__))_ADC1Interrupt(void)
+//void __attribute__((__interrupt__))_ADC1Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_ADC1Interrupt(void)  
 {
 /* This is the interrupt handler for A/D converter module 1.
 ** We get the value, prepare for the next sample, process for alert limit, and clear the done.
@@ -2197,21 +2204,6 @@ void initialize_ad_converter(void) {
 }
 
 /* WB-11U: end A/D Converter support */
-
-
-#ifndef DOWNLOAD_CODE
-void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
-jumpto(void) {
-/* this routine is really just a placeholder for the start address in the
- * MCU2 code image.  If there is no image downloaded yet, eventually the MCU
- * will just restart into the first image.
- * During compile-and-link, a warning message will be issued.  That is OK    */
-
-    for ( ; ; )
-     __asm__ volatile ("nop");
-
-}
-#endif
 
 
 //*****************************************************************************************************************//
