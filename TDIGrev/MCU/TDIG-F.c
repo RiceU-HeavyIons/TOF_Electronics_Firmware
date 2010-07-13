@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.19 2010-07-13 20:06:21 jschamba Exp $
+// $Id: TDIG-F.c,v 1.20 2010-07-13 20:46:16 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -265,6 +265,9 @@ int main()
 // We will want to run at priority 0 mostly
     SR &= 0x011F;          // Lower CPU priority to allow interrupts
     CORCONbits.IPL3=0;     // Lower CPU priority to allow user interrupts
+
+//JS: watchdog timer: turn it off for initialization
+	_SWDTEN = 0;
 
 #if defined (RC15_IO) // RC15 will be I/O (in TDIG-D-Board.h)
 	TRISC = 0x7FFF;		// make RC15 an output
