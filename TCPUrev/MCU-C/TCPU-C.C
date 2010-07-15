@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.18 2009-10-20 22:50:46 jschamba Exp $
+// $Id: TCPU-C.C,v 1.19 2010-07-15 19:22:39 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'T'   // version 2T 'T' = 0x54
+#define FIRMWARE_ID_0 'U'   // version 2U 'U' = 0x55
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -152,7 +152,7 @@ void WritePMRow(unsigned char *, unsigned long);
 
 //JS void erase_MCU_pm (unsigned long);
 // Dummy routine defined here to allow us to run the "alternate" code (downloaded)
-void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
+// void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) )) jumpto(void);
 
 unsigned char readback_buffer[2048];        // readback general buffer
 
@@ -972,7 +972,7 @@ int main()
                                         lwork = lwork2;                             // recall the start address
                                         for (i=0; i<k; i+=4) {                  // read either k= block_bytecount or 2048
                                             read_MCU_pm ((unsigned char *)&bwork, lwork); // read a word
-                                            for (j=0; j<4; j++) {       // check each word
+                                            for (j=0; j<3; j++) {       // check each word, ignoring highest byte
                                                 if (bwork[j] != readback_buffer[i+j]) retbuf[1] = C_STATUS_BADEE2;
                                             } // end loop checking 4 bytes within each word
                                             lwork += 2L;    // next write address
@@ -1041,11 +1041,10 @@ int main()
                                     SR |= 0xE0;            // Raise CPU priority to lock out interrupts
 									// be sure we are running from alternate interrupt vector
                                     INTCON2 |= 0x8000;     // This is the ALTIVT bit
-                                    jumpto();    // jump to new code
-#else
+#endif
+                                    //jumpto();    // jump to new code
 									__asm__ volatile ("goto 0x4000");
 
-#endif
                                 } // end if we are starting new code,
                                 __asm__ volatile ("reset");
                             }
@@ -1421,7 +1420,8 @@ int main()
                         SR |= 0xE0;            // Raise CPU priority to lock out interrupts
 						// be sure we are running from alternate interrupt vector
                         INTCON2 |= 0x8000;     // This is the ALTIVT bit
-                        jumpto();    // jump to new code
+                        //jumpto();    // jump to new code
+						__asm__ volatile ("goto 0x4000");
 					}
 				}
 #endif      // ifndef DOWNLOAD_CODE
@@ -2214,7 +2214,8 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
 How do these get hooked to hardware???
  ans: by magic name "C1Interrupt" and attribute
  --------------------------------------------------*/
-void __attribute__((__interrupt__))_C1Interrupt(void)
+//void __attribute__((__interrupt__))_C1Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_C1Interrupt(void)  
 {
     if (C1INTFbits.RBOVIF) {    // If interrupt was from Overflow
         can1error = C1VEC;     // Mark which one caused interrupt
@@ -2233,7 +2234,8 @@ void __attribute__((__interrupt__))_C1Interrupt(void)
     IFS2bits.C1IF = 0;        // clear interrupt flag ECAN1 Event
 }
 
-void __attribute__((__interrupt__))_C2Interrupt(void)
+//void __attribute__((__interrupt__))_C2Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_C2Interrupt(void)  
 {
     if (C2INTFbits.RBOVIF) {    // If interrupt was from Overflow
         can2error = C2VEC;     // Mark which one caused interrupt
@@ -2255,7 +2257,8 @@ void __attribute__((__interrupt__))_C2Interrupt(void)
 
 #ifndef DOWNLOAD_CODE
 // Timer 3 Interrupt Service Routine
-void _ISR _T3Interrupt(void)
+//void _ISR _T3Interrupt(void)
+void __attribute__((interrupt,no_auto_psv))_T3Interrupt(void)  
 {
 	IFS0bits.T3IF = 0;		// clear interrupt status flag Timer 3
 	IEC0bits.T3IE = 0;		// disable Timer 3 interrupt
@@ -2392,19 +2395,19 @@ void wrt_MCU_pm (void) {
 //    SR = save_SR;           // restore the saved status register
 //}
 
-#ifndef DOWNLOAD_CODE
-void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
-jumpto(void) {
-/* this routine is really just a placeholder for the start address in the
- * MCU2 code image.  If there is no image downloaded yet, eventually the MCU
- * will just restart into the first image.
- * During compile-and-link, a warning message will be issued.  That is OK    */
-
-    for ( ; ; )
-     __asm__ volatile ("nop");
-
-}
-#endif
+//#ifndef DOWNLOAD_CODE
+//void __attribute__((__noreturn__, __weak__, __noload__, address(MCU2ADDRESS) ))
+//jumpto(void) {
+///* this routine is really just a placeholder for the start address in the
+// * MCU2 code image.  If there is no image downloaded yet, eventually the MCU
+// * will just restart into the first image.
+// * During compile-and-link, a warning message will be issued.  That is OK    */
+//
+//    for ( ; ; )
+//     __asm__ volatile ("nop");
+//
+//}
+//#endif
 
 // ******************************************************************************************************
 // ************ Blue Sky Comments ***********************************************************************
