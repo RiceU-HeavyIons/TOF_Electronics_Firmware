@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.14 2009-10-20 22:49:07 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.15 2010-07-15 19:18:12 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** This header file defines the TCPU-C rev 0 board layout per schematic
@@ -141,9 +141,10 @@
 
 /* Register CONFIG3 (0xf8000E) Debug / No JTAG / Reset
 ** USE EXTREME CARE HERE OR CONTROL OF THE CHIP CAN BE LOST FOREVER! */
-#define _CONFIG3(x) __attribute__((section("__CONFIG3.sec,code"))) int _CONFIG3 = (x); //JS
+//#define _CONFIG3(x) __attribute__((section("__CONFIG3.sec,code"))) int _CONFIG3 = (x); //JS
 //    _CONFIG3 (0x42)        // set up for PGC2/PGD2 EMUC2/EMUD2
-    _CONFIG3 (0xC2)        // set up for PGC2/PGD2 EMUC2/EMUD2 //JS
+//    _CONFIG3 (0xC2)        // set up for PGC2/PGD2 EMUC2/EMUD2 //JS
+	_FICD(JTAGEN_OFF & ICS_PGD2) // defined in newer compiler version
 
 #undef CONFIG_CPU
 #endif // (CONFIG_CPU)
