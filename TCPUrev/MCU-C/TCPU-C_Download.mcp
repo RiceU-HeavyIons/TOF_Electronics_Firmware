@@ -36,7 +36,6 @@ file_008=.
 file_009=.
 file_010=.
 file_011=.
-file_012=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -50,7 +49,6 @@ file_008=no
 file_009=no
 file_010=no
 file_011=no
-file_012=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -64,21 +62,19 @@ file_008=no
 file_009=no
 file_010=no
 file_011=no
-file_012=no
 [FILE_INFO]
 file_000=TCPU-C_SPI.C
 file_001=TCPU-C_I2C.c
 file_002=TCPU-C_MCU_PLD.c
-file_003=crt0.s
-file_004=TCPU-C.C
-file_005=rtspApi.s
-file_006=TCPU-C_SPI.H
-file_007=TCPU-C_Board.h
-file_008=TCPU-C_I2C.h
-file_009=TCPU-C_MCU_PLD.h
-file_010=CAN_HLP3.h
-file_011=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ256GP610-coff.a
-file_012=download_p24HJ256GP610.gld
+file_003=TCPU-C.C
+file_004=rtspApi.s
+file_005=TCPU-C_SPI.H
+file_006=TCPU-C_Board.h
+file_007=TCPU-C_I2C.h
+file_008=TCPU-C_MCU_PLD.h
+file_009=CAN_HLP3.h
+file_010=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ256GP610-coff.a
+file_011=download_p24HJ256GP610.gld
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
 suite_state=
@@ -87,12 +83,6 @@ TS{7D9C6ECE-785D-44CB-BA22-17BF2E119622}=-g
 TS{25AC22BD-2378-4FDB-BFB6-7345A15512D3}=-g -Wall -DDOWNLOAD_CODE
 TS{7DAC9A1D-4C45-45D6-B25A-D117C74E8F5A}=-Map="$(BINDIR_)$(TARGETBASE).map" --report-mem -o"$(BINDIR_)$(TARGETBASE).$(TARGETSUFFIX)"
 TS{509E5861-1E2A-483B-8B6B-CA8DB7F2DD78}=
-TS{7D9C6ECE-785D-44CB-BA22-17BF2E119622}003=-g
-TS{25AC22BD-2378-4FDB-BFB6-7345A15512D3}003=-g -Wall
-TS{7DAC9A1D-4C45-45D6-B25A-D117C74E8F5A}003=-o"$(BINDIR_)$(TARGETBASE).$(TARGETSUFFIX)" -Map="$(BINDIR_)$(TARGETBASE).map" --report-mem
-TS{509E5861-1E2A-483B-8B6B-CA8DB7F2DD78}003=
-[ACTIVE_FILE_SETTINGS]
-TS{7D9C6ECE-785D-44CB-BA22-17BF2E119622}003_active=yes
 [INSTRUMENTED_TRACE]
 enable=0
 transport=0
