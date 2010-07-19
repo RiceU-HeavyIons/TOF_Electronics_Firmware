@@ -1,4 +1,4 @@
-// $Id: TDIG-F_Board.h,v 1.1 2010-03-22 14:35:16 jschamba Exp $
+// $Id: TDIG-F_Board.h,v 1.2 2010-07-19 15:57:39 jschamba Exp $
 
 /* TDIG-D_Board.h
 ** This header file defines the TDIG-D rev 0 board layout per schematic
@@ -184,7 +184,8 @@
 //	          Primary withOUT PLL & 2-Speed OFF & Temp Protect OFF
 //	_FOSCSEL( FNOSC_PRI & IESO_OFF & TEMP_OFF );
 //          Fast RC w/ PLL & 2-Speed OFF & Temp Protect OFF
-	_FOSCSEL( FNOSC_FRCPLL & IESO_OFF & TEMP_OFF );	// details set later initialize_OSC()
+//	_FOSCSEL( FNOSC_FRCPLL & IESO_OFF & TEMP_OFF );	// details set later initialize_OSC()
+	_FOSCSEL( FNOSC_FRCPLL & IESO_OFF );	// details set later initialize_OSC()
 
 #if defined (RC15_IO)
 //  Clock Switching and Monitor (Disabled) & OSCIO pin is I/O & Primary Disabled
@@ -218,9 +219,10 @@
 
 /* Register CONFIG3 (0xf8000E) Debug / No JTAG / Reset
 ** USE EXTREME CARE HERE OR CONTROL OF THE CHIP CAN BE LOST FOREVER! */
-#define _CONFIG3(x) __attribute__((section("__CONFIG3.sec,code"))) int _CONFIG3 = (x); //JS
+//#define _CONFIG3(x) __attribute__((section("__CONFIG3.sec,code"))) int _CONFIG3 = (x); //JS
 //    _CONFIG3 (0x42)        // set up for PGC2/PGD2 EMUC2/EMUD2
-    _CONFIG3 (0xC2)        // set up for PGC2/PGD2 EMUC2/EMUD2 //JS
+//    _CONFIG3 (0xC2)        // set up for PGC2/PGD2 EMUC2/EMUD2 //JS
+	_FICD(JTAGEN_OFF & ICS_PGD2) // defined in newer compiler version
 
 #undef CONFIG_CPU
 #endif // (CONFIG_CPU)
