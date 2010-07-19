@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.1 2010-03-22 14:35:16 jschamba Exp $
+// $Id: TDIG-F.c,v 1.2 2010-07-19 15:51:36 jschamba Exp $
 
 // TDIG-F.c
 
@@ -120,7 +120,7 @@ int main()
     SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
 
 	// set watchdog timer configuration register to:
-	// FWDTEN_OFF & WINDIS_OFF & WDTPRE_PR128 & WDTPOST_PS32768
+	// FWDTEN_OFF & WINDIS_OFF & WDTPRE_PR32 & WDTPOST_PS32768
 	writeConfRegByte(0x6F, 0x0A);
 
 	for (laddrs = 0; laddrs < 0x4000; laddrs += PAGE_ADDRESSES) {
