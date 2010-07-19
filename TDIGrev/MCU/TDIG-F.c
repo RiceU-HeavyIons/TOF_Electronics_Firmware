@@ -1,4 +1,4 @@
-// $Id: TDIG-F.c,v 1.20 2010-07-13 20:46:16 jschamba Exp $
+// $Id: TDIG-F.c,v 1.21 2010-07-19 15:47:47 jschamba Exp $
 
 // TDIG-F.c
 /*
@@ -575,17 +575,23 @@ int main()
       retbuf[0] = 0xFF;
       retbuf[1] = 0x0;
       retbuf[2] = 0x0;
+	
       if (configuredEeprom == 2) 
-	      retbuf[3] = 0x0;
+	      retbuf[3] = 0x0; // FPGA EEPROM2 was loaded
 	  else
-		  retbuf[3] = 0xff;	
+		  retbuf[3] = 0xff;	// FPGA EEPROM1 was loaded
+
+	  // if the  reset was due to Watchdog Timeout:
 	  if (_WDTO) {
 		  _WDTO = 0;
-		  retbuf[2] = 0xee;
+		  retbuf[3] &= 0xef;
       }
+
+	  // tray clock didn't configure properly:
       if (clock_status != 0x2200) {
         memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
       }
+
       send_CAN1_message (board_posn, (C_BOARD | C_ALERT), 4, (unsigned char *)&retbuf);
 
 /* Send a "Diagnostic" message to show which OSC we think we are running */
