@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.19 2010-07-15 19:22:39 jschamba Exp $
+// $Id: TCPU-C.C,v 1.20 2010-08-03 19:23:13 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -619,12 +619,15 @@ int main()
 			//JS: handle the case of a "bad" MCU address before passing on to CAN1
 			//**********************************************************************
 			//WB-2P: combine this with rebroadcast.
+			int badTARGETMCUaddress;
+			badTARGETMCUaddress = 0;
             wps = (unsigned char *)&ecan2msgBuf[2][3];  // pointer to source buffer (message data)
 			if ((*wps == C_WS_TARGETMCU) && ((ecan2msgBuf[2][0]& 0x3c) == 0x08)) { // needs to be "WRITE"
 				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
 				unsigned int tmpAddr;
 				memcpy ((unsigned char *)&tmpAddr, wps, 4);   // copy 4 address bytes from incoming message
 				if ((tmpAddr < MCU2ADDRESS) && (tmpAddr >= MCU2IVTH)) {
+					badTARGETMCUaddress = 1; //this is a bad address
             		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
 					// this message has a "bad" address, send write reply error rather than passing to CAN1
 					replylength = 2;
@@ -634,7 +637,8 @@ int main()
 			} // WB-2P: end if it was TARGETMCU,
 
 // WB-2P - Begin rebroadcast (break received broadcast message into 8 TDIG messages)
-			if (rebroadcast == 0) {			// if haven't yet started rebroadcasting, save incoming msg
+			if ((rebroadcast == 0) && (badTARGETMCUaddress == 0)) {	// if haven't yet started rebroadcasting, 
+																	// and not a bad TARGETMCU msg, save incoming msg
 	            i = 0xFFF;                      // WB-1M add timeout
     	        while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
                 for (i=0; i<8; i++) ecan1msgBuf[0][i] = ecan2msgBuf[2][i];  // copy incoming msg to outgoing buffer
