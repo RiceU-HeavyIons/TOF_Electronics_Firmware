@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.20 2010-08-03 19:23:13 jschamba Exp $
+// $Id: TCPU-C.C,v 1.21 2010-08-04 21:20:03 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
@@ -44,7 +44,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'U'   // version 2U 'U' = 0x55
+#define FIRMWARE_ID_0 'V'   // version 2V 'V' = 0x56
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -65,6 +65,7 @@
 #include "i2c.h"            // Include for I2C peripheral library
 #include "stddef.h"         // Standard definitions
 #include "string.h"         // Definitions for string functions
+#include "rtspApi.h"
 
 // Define our routine includes
 #include "TCPU-C_I2C.h"		// Include prototypes for our I2C routines
@@ -147,7 +148,6 @@ typedef union tureg32 {
 
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
-int flashPageErase(unsigned int, unsigned int);
 void WritePMRow(unsigned char *, unsigned long);
 
 //JS void erase_MCU_pm (unsigned long);
@@ -194,6 +194,16 @@ unsigned int clock_requested;   // will get requested clock ID
                                 // 00 = board, 01= PLL, 08= tray
 unsigned int baudRateJumper = 0;
 
+#define SCRIPT_BUFFER_NENTRIES 64
+#define SCRIPT_BUFFER_ENTRY_SIZE 8
+#define SCRIPT_BUFFER_SIZE (SCRIPT_BUFFER_NENTRIES * SCRIPT_BUFFER_ENTRY_SIZE *2)
+
+unsigned int __attribute__((__section__(".script_buffer"), space(prog)))
+    script_buffer_pm[SCRIPT_BUFFER_NENTRIES][SCRIPT_BUFFER_ENTRY_SIZE] = 
+	{
+            #include "script_buffer.inc"
+    };
+
 #ifndef DOWNLOAD_CODE
 unsigned int timerExpired = 0;
 #endif
@@ -234,6 +244,11 @@ int main()
 	int bSendAlarms = 1;
 	unsigned int nvmAdru, nvmAdr;
 	int tmp;
+
+	unsigned int scriptBuffer[SCRIPT_BUFFER_NENTRIES+1][SCRIPT_BUFFER_ENTRY_SIZE] = {{0}};
+	unsigned int *scriptBufferPtr;
+	unsigned int scriptEntry[SCRIPT_BUFFER_ENTRY_SIZE];
+	unsigned int scriptEntryChecksum;
 
 
 /* WB-2D - Begin significant rework in this area
@@ -380,6 +395,34 @@ int main()
 
 // Clear all interrupts
 	clearIntrflags();
+
+
+/* -------------------------------------------------------------------------------------------------------------- */
+	scriptBufferPtr = &(scriptBuffer[SCRIPT_BUFFER_NENTRIES][0]); // put pointer at the end of the buffer
+
+	// Read the script_buffer program memory page and place the data into script_buffer array
+	nvmAdru=__builtin_tblpage(script_buffer_pm);
+	nvmAdr=__builtin_tbloffset(script_buffer_pm);
+	tmp = flashPageRead(nvmAdru, nvmAdr, (int *)&scriptBuffer[0][0]);
+
+//	tmp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
+//	memcpy ((unsigned char *)&scriptBuffer[0][0], (unsigned char *)readback_buffer, SCRIPT_BUFFER_SIZE);
+
+
+//	// initialize script buffer
+//	memset((void *)scriptBuffer, 0, sizeof(scriptBuffer));
+//
+//	
+//	// now put some example commands in the first two positions
+//	scriptBuffer[0][0] = (0x7f4 << 2) | 0x1; 	// extended message; read all TDIGs (broadcast
+//	scriptBuffer[0][2] = 1; 					// length = 1
+//	scriptBuffer[0][3] = 0x00b1;				// command = R_FIRMWAREID	
+//
+//	scriptBuffer[1][0] = (0x204 << 2);		 	// standard message; read TCPU
+//	scriptBuffer[1][2] = 1; 					// length = 1
+//	scriptBuffer[1][3] = 0x00b1;				// command = R_FIRMWAREID	
+	
+/* -------------------------------------------------------------------------------------------------------------- */
 
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -625,7 +668,7 @@ int main()
 			if ((*wps == C_WS_TARGETMCU) && ((ecan2msgBuf[2][0]& 0x3c) == 0x08)) { // needs to be "WRITE"
 				retbuf[0] = *wps++;		// pre-fill reply with "subcommand" payload[0]
 				unsigned int tmpAddr;
-				memcpy ((unsigned char *)&tmpAddr, wps, 4);   // copy 4 address bytes from incoming message
+				memcpy ((void *)&tmpAddr, (void *)wps, 4);   // copy 4 address bytes from incoming message
 				if ((tmpAddr < MCU2ADDRESS) && (tmpAddr >= MCU2IVTH)) {
 					badTARGETMCUaddress = 1; //this is a bad address
             		C2RXFUL1bits.RXFUL2 = 0;        // CAN#2 Receive Buffer 2 OK to re-use
@@ -703,7 +746,35 @@ int main()
             rcvmsgtype = ecan2msgBuf[3][0];     // Save message type code
             rcvmsglen= ecan2msgBuf[3][2] & 0x000F;   // Save message length
             wps = (unsigned char *)&ecan2msgBuf[3][3];  // pointer to source buffer
+
+		} else if ((*scriptBufferPtr != 0) && (rebroadcast == 0)) {	// script buffer not empty
+																	// and no more rebroadcasting going on
+			if ((*scriptBufferPtr & 0x1) == 0x1) { // message to be passed to tray
+	            i = 0xFFF;                      // WB-1M add timeout
+    	        while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
+                for (i=0; i<8; i++) ecan1msgBuf[0][i] = *scriptBufferPtr++;  // copy script buffer msg to outgoing buffer
+                ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit, Keep address & fcn code (10 bits)
+                if ((ecan1msgBuf[0][0] & 0x1FC0) == 0x1FC0) { // is this a "Broadcast" address (0x7Fx, shifted)
+                    ecan1msgBuf[0][0] &= 0x043C;    // extended ID =0, no remote xmit, strip off all but function code
+                    rebroadcast = 0x440;        // Yes, this will mark next TDIG ID to send
+					pacecount = PACEDELAY;		// Mark delay to next rebroadcast
+				} // end setup for broadcast
+				// Now send the message
+           	    ecan1msgBuf[0][1] = 0;          // clear extended ID
+              	ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
+                C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
+
+			} else { // message for TCPU
+            	rcvmsgfrom = 2;                     // respond to "CAN#2"
+            	rcvmsgindx = 0;                     // no buffer to clear
+            	rcvmsgtype = *scriptBufferPtr;     // Save message type code
+            	rcvmsglen= *(scriptBufferPtr + 2) & 0x000F;   // Save message length
+           	 	wps = (unsigned char *)(scriptBufferPtr + 3);  // pointer to source buffer (message data)
+				scriptBufferPtr += 8;
+			}
+
         } // end checking for messages
+
 
 // Dispatch to Message Code handlers.
 // Note that Function Code symbolics are defined already shifted.
@@ -720,7 +791,7 @@ int main()
 						// NOTE that temperature alert setting in chip ignores the lower 7-bits of the value (always reads back 0).
                         case C_WS_TEMPALERTS:
                             if (rcvmsglen == TEMPALERTS_LEN) {   // check length for proper value
-                                memcpy ((unsigned char *)&mcu_hilimit, wps, 2);   // copy 2 bytes from incoming message
+                                memcpy ((void *)&mcu_hilimit, (void *)wps, 2);   // copy 2 bytes from incoming message
                                 wps += 2;
                                 temp_alert = 0;         // clear any temperature alert status
                                 // Initialize the MCP9801 temperature chip (U37) registers
@@ -744,7 +815,7 @@ int main()
                             break;  // end case C_WS_LED
 
                         case C_WS_FPGARESET:        // Issue an FPGA Reset
-                            memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
+                            memcpy ((void *)&lwork, (void *)wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length is correct and constant agrees
                             if ((rcvmsglen == FPGARESET_LEN) && (lwork == FPGARESET_CONST)) {
                                 reset_FPGA();       // do the reset if all is OK
@@ -797,8 +868,8 @@ int main()
                             if (block_status == BLOCK_INPROGRESS) {
                                 // mark end of block and send bytes and checksum
                                 block_status = BLOCK_ENDED;
-                                memcpy ((unsigned char *)&retbuf[2], (unsigned char *)&block_bytecount, 2);    // copy bytecount
-                                memcpy ((unsigned char *)&retbuf[4], (unsigned char *)&block_checksum, 4);    // copy checksum
+                                memcpy ((void *)&retbuf[2], (void *)&block_bytecount, 2);    // copy bytecount
+                                memcpy ((void *)&retbuf[4], (void *)&block_checksum, 4);    // copy checksum
                                 replylength = 8;            // Update length of reply
                             } else {        // else block was not in progress, send error reply
                                 retbuf[1] = C_STATUS_NOSTART;       // ERROR REPLY
@@ -809,7 +880,7 @@ int main()
                         case C_WS_RECONFIGEE1:              // Reconfigure FPGA using EEPROM #1
                             retbuf[1] = C_STATUS_INVALID;   // Assume ERROR REPLY
                             replylength = 2;
-                            memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
+                            memcpy ((void *)&lwork, (void *)wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length is 5 and have proper code
                             if ((rcvmsglen == RECONFIG_LEN) && (lwork == RECONFIG_CONST)) {
                                 i = retbuf[0] & 0x3;    // get which EEPROM we are doing (had been copied here)
@@ -861,7 +932,7 @@ int main()
                             if (block_status == BLOCK_ENDED) {
                                 if ((block_bytecount != 0) && (block_bytecount <= 256) ){    // WB-2G if bytecount OK
                                     // copy eeprom address
-                                    memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
+                                    memcpy ((void *)&eeprom_address, (void *)wps, 4);    // copy eeprom target address
                                     eeprom_address &= 0xFFFF00L; // mask off lowest bits (byte in page)
                                     wps += 4;
 //JS                                    MCU_CONFIG_PLD = 0; // disable FPGA configuration
@@ -911,7 +982,7 @@ int main()
                                     // lengths OK, set parameters for doing this block
                                     j = 0;          // assume start is begin of buffer
                                     k = block_bytecount;        // assume just going block
-                                    memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 address bytes from incoming message
+                                    memcpy ((void *)&laddrs, (void *)wps, 4);   // copy 4 address bytes from incoming message
                                     // WB-2F check starting address and length for OK
                                     if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) 
 										|| ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
@@ -948,7 +1019,7 @@ int main()
 										}
 
                                         // put the new data over the old[j] thru old[j+block_bytecount-1]
-                                        memcpy ((unsigned char *)&readback_buffer[j], block_buffer, block_bytecount);
+                                        memcpy ((void *)&readback_buffer[j], (void *)block_buffer, block_bytecount);
                                         save_SR = SR;           // save the Status Register
                                         SR |= 0xE0;             // Raise CPU priority to lock out  interrupts
                                         if ( ((*wps)==ERASE_NORMAL) || ((*wps)==ERASE_PRESERVE) ) {// see if need to erase
@@ -1022,11 +1093,93 @@ int main()
 
                             break;  // end case C_WS_MAGICNUMWR
 
+						case C_WS_EXESCRIPT:	// Prepare executing script buffer
+                            replylength = 2;
+							scriptBufferPtr = (unsigned int *)&(scriptBuffer[0][0]);
+							break;
+
+						case C_WS_LDSCRIPTE:	// Load a portion of a script entry
+                            replylength = 2;
+							if (rcvmsglen == 6) {
+								if (*wps == 0) { // words: address, extended, and length
+									unsigned int scriptWord;
+									// initialize entry to all 0's
+									memset ((void *)scriptEntry, 0, sizeof(scriptEntry));
+									// copy the next two words as the (standard) CANbus ID
+									wps++;
+									memcpy ((void *)&scriptWord, (void *)wps, 2);
+									// next word after that determines extended or standard ID
+									wps += 2;
+									scriptEntry[0] = ((scriptWord & 0x7ff)<<2) | (unsigned int)(*wps++ & 0x1);
+									// last word is the length
+									scriptEntry[2] = (unsigned int)(*wps & 0xf);
+								} 
+
+								else if (*wps == 1) { // data words 0 - 3 into scriptEntry[3-4]
+									wps++;
+									memcpy ((void *)&scriptEntry[3], (void *)wps, 4);   // copy 4 data bytes from incoming message
+								}
+
+								else if (*wps == 2) { // data words 4 - 7 into scriptEntry[5-6]
+									wps++;
+									memcpy ((void *)&scriptEntry[5], (void *)wps, 4);   // copy 4 data bytes from incoming message
+								}
+
+								else { // wrong code
+									retbuf[1] = C_STATUS_NOTARGET; // target not known
+								}
+								
+                            } 
+							else {  // Length is not right
+                            	retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                            }
+							break;
+
+						case C_WS_WRSCRIPTE:	// Write a script entry to program and data memory
+                            replylength = 2;
+							if (rcvmsglen == 4) {
+								// get received checksum from first 2 bytes
+								unsigned int rChecksum;
+								memcpy ((void *)&rChecksum, (void *)wps, 2);
+								wps += 2; // forward two bytes
+								// calculate checksum of script entry:
+								scriptEntryChecksum = 0;
+								for (i=0; i<8; i++) scriptEntryChecksum += scriptEntry[i];
+								if (scriptEntryChecksum != rChecksum) { // checksum doesn't match
+									replylength = 4;
+									retbuf[1] = C_STATUS_CKSUMERR;
+									// copy bad checksum to return message
+									memcpy ((void  *)&retbuf[2],(void *)&scriptEntryChecksum, 2);
+								}
+								else if (*wps > 63) { // good checksum; check entry number validity
+									retbuf[1] = C_STATUS_BADADDRS;
+								}
+								else { // everything OK
+									// copy scriptEntry to script buffer in data memory
+									memcpy((void *)&scriptBuffer[*wps][0], (void *)scriptEntry, 16);
+
+									// also copy it to program memory by reading the page first
+									nvmAdru=__builtin_tblpage(script_buffer_pm);
+									nvmAdr=__builtin_tbloffset(script_buffer_pm);
+									tmp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
+									// then replace the entry
+									memcpy ((void *)(readback_buffer + (*wps * 16)), (void *)scriptEntry, 16);
+									// then write it again 
+									tmp = flashPageErase(nvmAdru, nvmAdr);
+									tmp = flashPageWrite(nvmAdru, nvmAdr, (int *)readback_buffer);
+								} 
+							}
+
+							else {  // Length is not right
+                            	retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
+                            }
+							break;
+
                         case C_WS_MCURESTARTA:       // Restart MCU
                         case C_WS_MCURESET:        // Reset MCU
                             retbuf[1] = C_STATUS_INVALID;   // Assume ERROR REPLY
                             replylength = 2;
-                            memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
+                            memcpy ((void *)&lwork, (void *)wps, 4);   // copy 4 bytes from incoming message
                             // Confirm length is 5 and have proper code
                             if ((rcvmsglen == MCURESET_LEN) && (lwork == MCURESET_CONST)) {
                                 retbuf[1] = C_STATUS_OK;    // say we are OK
@@ -1077,7 +1230,7 @@ int main()
                         case (C_RS_STATUSB):              // READ STATUS Board
                             for (i=1; i<8; i++) retbuf[i] = 0;   // stubbed off for now
                             board_temp = Read_Temp();
-                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&board_temp, 2);
+                            memcpy ((void *)&retbuf[1], (void *)&board_temp, 2);
                             retbuf[3] = (unsigned char)Read_MCP23008(ECSR_ADDR, MCP23008_GPIO);
                             replylength = 8;
                             break;
@@ -1085,7 +1238,7 @@ int main()
 
                         case (C_RS_MCUMEM ):            // Return MCU Memory 4-bytes
                             if (rcvmsglen == 5) { // check for correct length of incoming message
-                                memcpy ((unsigned char *)&lwork, wps, 4);   // copy 4 bytes from incoming message
+                                memcpy ((void *)&lwork, (void *)wps, 4);   // copy 4 bytes from incoming message
                             } else {        // allow continued reads w/o address
                                 lwork += 2L;
                             } // end else continued reads
@@ -1097,32 +1250,32 @@ int main()
 
                         case (C_RS_MCUCKSUM ):            // Return MCU Memory checksum
                             if (rcvmsglen == 8) { // check for correct length of incoming message
-                                memcpy ((unsigned char *)&laddrs, wps, 4);   // copy 4 bytes from incoming message, address
+                                memcpy ((void *)&laddrs, (void *)wps, 4);   // copy 4 bytes from incoming message, address
                                 wps+=4;     // step to count
                                 lwork2 = 0L;         // clear checksum
                                 lwork = 0L;         // clear count
-                                memcpy ((unsigned char *)&lwork, wps, 3);   // copy 3 bytes from incoming message, length
+                                memcpy ((void *)&lwork, (void *)wps, 3);   // copy 3 bytes from incoming message, length
                                 while ((lwork != 0L) && (laddrs <= (MCU2UPLIMIT+2))) {
                                     read_MCU_pm ((unsigned char *)&lwork3, laddrs); // Read from requested location
                                     lwork2 += lwork3;
                                     laddrs += 2L;
                                     lwork--;
                                 }
-                                memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork2, 4);   // copy checksum to reply
+                                memcpy ((void *)&retbuf[1], (void *)&lwork2, 4);   // copy checksum to reply
                                 replylength = 5;
                             }
                             break; // end case C_RS_MCUCKSUM
 
                         case (C_RS_CLKSTATUS):        // Read MCU Clock Status
-                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&clock_status, 2);
-                            memcpy ((unsigned char *)&retbuf[3], (unsigned char *)&clock_failed, 1);
-                            memcpy ((unsigned char *)&retbuf[4], (unsigned char *)&clock_requested, 1);
+                            memcpy ((void *)&retbuf[1], (void *)&clock_status, 2);
+                            memcpy ((void *)&retbuf[3], (void *)&clock_failed, 1);
+                            memcpy ((void *)&retbuf[4], (void *)&clock_requested, 1);
                             replylength = 5;
                             break;  // end case C_RS_CLKSTATUS
 
                         case (C_RS_TEMPBRD):                // READ Temperature
                             board_temp = Read_Temp();
-                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&board_temp, 2);
+                            memcpy ((void *)&retbuf[1], (void *)&board_temp, 2);
                             replylength = 3;
                             break; // end case C_RS_TEMPBRD
 
@@ -1157,7 +1310,7 @@ int main()
 
                         case (C_RS_EEPROM2):
                             replylength = 8;        // fixed length reply
-                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom target address
+                            memcpy ((void *)&eeprom_address, (void *)wps, 4);    // copy eeprom target address
                             MCU_CONFIG_PLD = 0; // disable FPGA configuration
                             sel_EE2;            // select EEPROM #2
                             // Read back data (Altera .RBF was written LSbit to MSbit)  7-bytes
@@ -1188,10 +1341,10 @@ int main()
 
                         case (C_RS_EEP2CKSUM):
                             replylength = 5;        // fixed length reply
-                            memcpy ((unsigned char *)&eeprom_address, wps, 4);    // copy eeprom start address
+                            memcpy ((void *)&eeprom_address, (void *)wps, 4);    // copy eeprom start address
                             wps+=4;
                             laddrs = 0L;        // clear sector count
-                            memcpy ((unsigned char *)&laddrs, wps, 3);             // copy number of sectors to read
+                            memcpy ((void *)&laddrs, (void *)wps, 3);             // copy number of sectors to read
                             MCU_CONFIG_PLD = 0; // disable FPGA configuration
                             sel_EE2;            // select EEPROM #2
                             // Read back data (Altera .RBF was written LSbit to MSbit)
@@ -1204,7 +1357,7 @@ int main()
                                 eeprom_address += 256;      // increment the block address'
                                 laddrs--;                   // count down blocks to do
                             }   // end while have blocks to do
-                            memcpy ((unsigned char *)&retbuf[1], (unsigned char *)&lwork, 4);   // copy result to reply
+                            memcpy ((void *)&retbuf[1], (void *)&lwork, 4);   // copy result to reply
                             sel_EE1;        // de-select EEPROM #2
                             set_EENCS;      //
                             MCU_CONFIG_PLD = 1; // re-enable FPGA
@@ -2039,7 +2192,7 @@ Builds ECAN1 message ID into buffer[0] words [0..2]
     cp = (unsigned char *)&ecan1msgBuf[0][3];
     if (i > 0) {
        // message length up to 7 more
-        memcpy (cp, payload, i);          // copy the message
+        memcpy ((void *)cp, (void *)payload, i);          // copy the message
     } // end if have additional bytes in message
 /* Request the message be transmitted */
     C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
@@ -2124,7 +2277,7 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
         cp = (unsigned char *)&ecan2msgBuf[0][3];
         if (i > 0) {
        // message length up to 7 more
-            memcpy (cp, payload, i);          // copy the message
+            memcpy ((void *)cp, (void *)payload, i);          // copy the message
         } // end if have additional bytes in message
 /* Request the message be transmitted */
         C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
@@ -2170,7 +2323,7 @@ Builds ECAN2 message ID into buffer[0] words [0..2]
         if (i > 0) {
             cp = (unsigned char *)&ecan2msgBuf[0][3];
        // message length up to 7 more
-            memcpy (cp, payload, i);          // copy the message
+            memcpy ((void *)cp, (void *)payload, i);          // copy the message
         } // end if have additional bytes in message
 /* Request the message be transmitted */
         C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
