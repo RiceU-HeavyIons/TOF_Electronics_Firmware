@@ -53,6 +53,7 @@ __DMA_BASE = 0x4000;
 __DMA_END = 0x47FF;
 __CODE_BASE = 0x200;
 
+SCRIPTBUFFER_SECTION_LEN = 0x400;
 
 /*
 ** ==================== Section Map ======================
@@ -121,6 +122,11 @@ SECTIONS
         *(usercode);
   } >program
 
+  .script_buffer 0x3c00 :
+  {
+	*(.script_buffer);
+	. = SCRIPTBUFFER_SECTION_LEN;
+  } >program
 
   /*
   ** User-Defined Constants in Program Memory
