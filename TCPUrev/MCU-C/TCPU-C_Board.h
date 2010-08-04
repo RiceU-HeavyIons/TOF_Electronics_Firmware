@@ -1,13 +1,6 @@
-// $Id: TCPU-C_Board.h,v 1.15 2010-07-15 19:18:12 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.16 2010-08-04 21:09:34 jschamba Exp $
 
 /* TCPU-C_Board.h
-** This header file defines the TCPU-C rev 0 board layout per schematic
-**  dated March 20, 2007.
-**  It defines:
-**  a) overall characteristics of the MCU interface to board hardware;
-**  b) Symbolic names
-**  c) Interfaces to MCU modules used.
-**
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
 ** BNL Contract No. 79217.  For a period of 4 years after acceptance of all items delivered
 ** under this Grant, the Government, BNL and Rice agree to use these data for the following
@@ -22,48 +15,8 @@
 ** Government, BNL and Rice shall be relieved of all disclosure prohibitions and have no
 ** liability for unauthorized use of these data by third parties.
 ** This Notice shall be affixed to any reproductions of these data in whole or in part.
-**
-**
-**  Modified:
-**     12-Aug-2009, W. Burton (WB-2P)
-**          Fix TEMP_OFF, update FUID version ID to 2P
-**     27-Feb-2009, W. Burton (WB-2J)
-**          FUID bits updated to indicate version 2J
-**     17-Dec-2008, W. Burton
-**          Initialization of register 12 is now conditional on TRAY_GEOGRAPHIC symbol
-**     15-Dec-2008, W. Burton
-**          This is for version 2G
-**          Define MCP9801_CFGR_FQUEx bits for temperature alarm "Fault Queue"
-**          Define MCU_HEAT_ALERT in register F
-**          Firmware ID is now 2G
-**     29-Aug-2008, W. Burton
-**          This is for version 2F
-**          Adjusted magic number location for large-memory processor
-**     27-Aug-2008, W. Burton
-**          This is version 2E for TCPU-C
-**          Made a symbolic name for the magic number location
-**     29-Feb-2008, W. Burton
-**          Changed version to 2.A for TCPU-C
-**     28-Feb-2008, W. Burton
-**          Added more control over Clock/PLL Selection:
-**          JU2 pins 1-2 Jumper Installed =
-**          JU2 pins 3-4 Jumper Installed =
-**     27-Feb-2008, W. Burton
-**          Revised for TCPU-C board.
-**               Changed RD0 thru RD3 direction assignments and intitalizations.
-**               EN_LOCAL_OSC    =1 == U25 oscillator ON;
-**               SEL_LOCAL_CLOCK =0 == U101 selects Local Clock;
-**               SEL_BYPASS      =0 == U102 selects NON-PLL (bypass) mode.
-**     15-Oct-2007, W. Burton
-**          Add definitions for Oscillator Selections
-**          Change CPU configuration to support clock switching
-**     11-Oct-2007, W. Burton
-**          for Version 1L added initialization of PORTF to safe condition
-**
-**  Written:
-**     04-Apr-2007, W. Burton
-**         Based on TDIG-D_Board.h 19-Feb-07 and modified for board configuration.
 **  --------------------------------------------------*/
+
 
 //	#define RC15_IO 1		// Make RC15 a CLOCK/2 port
 
@@ -134,7 +87,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'T')        // 'T' = 0x54
+    _FUID0( 'V')        // 'V' = 0x56
 	_FUID1( 0x02)       // WB-2A 0x02
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
@@ -346,3 +299,52 @@
     // we will set up CAN2 on bits RG2 and RG3
     #define PORTG_dirmask 0x0C3F  // (15..12, and 9..6 == OUTPUT)
     #define PORTG_initial 0xDC3F  // (15=1, 14=1, 13=0, 12=1, 9=0, 8=0, 7=0, 6=0)
+
+/*
+** This header file defines the TCPU-C rev 0 board layout per schematic
+**  dated March 20, 2007.
+**  It defines:
+**  a) overall characteristics of the MCU interface to board hardware;
+**  b) Symbolic names
+**  c) Interfaces to MCU modules used.
+**
+**  Modified:
+**     12-Aug-2009, W. Burton (WB-2P)
+**          Fix TEMP_OFF, update FUID version ID to 2P
+**     27-Feb-2009, W. Burton (WB-2J)
+**          FUID bits updated to indicate version 2J
+**     17-Dec-2008, W. Burton
+**          Initialization of register 12 is now conditional on TRAY_GEOGRAPHIC symbol
+**     15-Dec-2008, W. Burton
+**          This is for version 2G
+**          Define MCP9801_CFGR_FQUEx bits for temperature alarm "Fault Queue"
+**          Define MCU_HEAT_ALERT in register F
+**          Firmware ID is now 2G
+**     29-Aug-2008, W. Burton
+**          This is for version 2F
+**          Adjusted magic number location for large-memory processor
+**     27-Aug-2008, W. Burton
+**          This is version 2E for TCPU-C
+**          Made a symbolic name for the magic number location
+**     29-Feb-2008, W. Burton
+**          Changed version to 2.A for TCPU-C
+**     28-Feb-2008, W. Burton
+**          Added more control over Clock/PLL Selection:
+**          JU2 pins 1-2 Jumper Installed =
+**          JU2 pins 3-4 Jumper Installed =
+**     27-Feb-2008, W. Burton
+**          Revised for TCPU-C board.
+**               Changed RD0 thru RD3 direction assignments and intitalizations.
+**               EN_LOCAL_OSC    =1 == U25 oscillator ON;
+**               SEL_LOCAL_CLOCK =0 == U101 selects Local Clock;
+**               SEL_BYPASS      =0 == U102 selects NON-PLL (bypass) mode.
+**     15-Oct-2007, W. Burton
+**          Add definitions for Oscillator Selections
+**          Change CPU configuration to support clock switching
+**     11-Oct-2007, W. Burton
+**          for Version 1L added initialization of PORTF to safe condition
+**
+**  Written:
+**     04-Apr-2007, W. Burton
+**         Based on TDIG-D_Board.h 19-Feb-07 and modified for board configuration.
+**  --------------------------------------------------*/
