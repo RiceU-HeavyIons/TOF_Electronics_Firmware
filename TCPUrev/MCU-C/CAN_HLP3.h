@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.4 2009-09-02 14:51:29 jschamba Exp $ */
+/* $Id: CAN_HLP3.h,v 1.5 2010-08-04 21:02:41 jschamba Exp $ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h
@@ -112,6 +112,9 @@
     #define C_WS_TARGETEEPROM2 0x4E     // Target is EEPROM #2
 	#define C_WS_MAGICNUMWR   0x4F      // Write magic number location
     #define C_WS_BLOCKCKSUM   0x50      // Block Data Checksum
+	#define C_WS_EXESCRIPT    0x60		// Execute script buffer
+	#define C_WS_LDSCRIPTE    0x61		// Load a section of a script entry
+	#define C_WS_WRSCRIPTE    0x62		// Write script entry to PM and data memory
     #define C_WS_RECONFIGEE1  0x89      // Reconfigure FPGA from EEPROM #1
     #define C_WS_RECONFIGEE2  0x8A      // Reconfigure FPGA from EEPROM #2
     #define C_WS_MCURESTARTA  0x8D      // MCU Restart at Address
