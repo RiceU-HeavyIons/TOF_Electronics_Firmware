@@ -77,7 +77,7 @@ file_007=TCPU-C_I2C.h
 file_008=TCPU-C_MCU_PLD.h
 file_009=CAN_HLP3.h
 file_010=rtspApi.h
-file_011=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ256GP610-coff.a
+file_011=C:\Program Files\Microchip\MPLAB C30\lib\PIC24H\libp24HJ256GP610-coff.a
 file_012=download_p24HJ256GP610.gld
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
