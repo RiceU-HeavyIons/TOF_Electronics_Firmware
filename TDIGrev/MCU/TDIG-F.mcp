@@ -97,7 +97,7 @@ file_012=TDIG-F_MCU_PLD.h
 file_013=HPTDC_ctrl.inc
 file_014=CAN_HLP3.h
 file_015=C:\Program Files\Microchip\MPLAB C30\lib\libc-coff.a
-file_016=C:\Program Files\Microchip\MPLAB C30\lib\libp24HJ64GP506-coff.a
+file_016=C:\Program Files\Microchip\MPLAB C30\lib\PIC24H\libp24HJ64GP506-coff.a
 file_017=p24HJ64GP506.gld
 [SUITE_INFO]
 suite_guid={479DDE59-4D56-455E-855E-FFF59A3DB57E}
