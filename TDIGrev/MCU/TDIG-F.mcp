@@ -5,8 +5,8 @@ device=PIC24HJ64GP506
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsProjectDir
 dir_src=
-dir_bin=
-dir_tmp=
+dir_bin=hex
+dir_tmp=obj
 dir_sin=
 dir_inc=
 dir_lib=
