@@ -5,8 +5,8 @@ device=PIC18F8680
 [PATH_INFO]
 BuildDirPolicy=BuildDirIsSourceDir
 dir_src=
-dir_bin=
-dir_tmp=
+dir_bin=hex_upper
+dir_tmp=obj_upper
 dir_sin=
 dir_inc=
 dir_lib=
