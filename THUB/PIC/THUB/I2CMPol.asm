@@ -1,4 +1,4 @@
-; $Id: I2CMPol.asm,v 1.2 2007-12-21 21:34:37 jschamba Exp $
+; $Id: I2CMPol.asm,v 1.3 2010-08-20 18:27:07 jschamba Exp $
 ;*******************************************************************************;
 ;*                                                                              ;
 ;*  This implements a generic library functionality to support I2C Master       ;
@@ -517,6 +517,8 @@ I2CMTxNotOver                                   ;
         goto    I2CMTxNotOver                   ;Indicates Bus is not Idle
                                                 ;
         return                                  ;
+                                                ;
+ 		#endif                                  ;
                                                 ;
                                                 ;
 ;***********************************************;
