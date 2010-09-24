@@ -1,4 +1,4 @@
--- $Id: serdes_rcvr.vhd,v 1.13 2010-05-10 14:02:30 jschamba Exp $
+-- $Id: serdes_rcvr.vhd,v 1.14 2010-09-24 16:40:15 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2008-01-09
--- Last update: 2010-01-25
+-- Last update: 2010-07-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -37,7 +37,8 @@ ENTITY serdes_rcvr IS
       areset_n   : IN  std_logic;       -- asynchronous reset, active low
       clk80mhz   : IN  std_logic;       -- 80MHz PLL clock
       rdreq_in   : IN  std_logic;
-      fifo_aclr  : IN  std_logic;
+      aclr       : IN  std_logic;
+      trigger    : IN  std_logic;
       ch_rclk    : IN  std_logic;
       ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
       geo_id     : IN  std_logic_vector (6 DOWNTO 0);
@@ -50,73 +51,110 @@ END serdes_rcvr;
 ARCHITECTURE a OF serdes_rcvr IS
 
 
-  SIGNAL s_fifo_wrreq   : std_logic;
-  SIGNAL s_fifo_rdreq   : std_logic;
-  SIGNAL s_fifo_empty   : std_logic;
-  SIGNAL syncfifo_empty : std_logic;
-  SIGNAL s_fifo_q       : std_logic_vector(31 DOWNTO 0);
-  SIGNAL s_geo_id       : std_logic_vector(6 DOWNTO 0);
-  SIGNAL s_ddr_inh      : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_ddr_inl      : std_logic_vector(7 DOWNTO 0);
-  SIGNAL s_latch        : std_logic;
-  SIGNAL s_valid        : std_logic;
-  SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
-  SIGNAL s_dff_q        : std_logic_vector(31 DOWNTO 0);
-  SIGNAL s_ch_rxd       : std_logic_vector (17 DOWNTO 0);
-
+  SIGNAL s_fifo_wrreq : std_logic;
+  SIGNAL s_fifo_rdreq : std_logic;
+  SIGNAL s_fifo_empty : std_logic;
+  SIGNAL s_fifo_q     : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_fifo_data  : std_logic_vector(31 DOWNTO 0);
+  SIGNAL s_geo_id     : std_logic_vector(6 DOWNTO 0);
+  SIGNAL s_shiftout   : std_logic_vector (31 DOWNTO 0);
+  SIGNAL fifo_aclr    : std_logic;
+  SIGNAL s_latch0     : std_logic;
+  SIGNAL s_latch1     : std_logic;
+  SIGNAL s_latch2     : std_logic;
+  SIGNAL s_latch3     : std_logic;
+  SIGNAL s_latch4     : std_logic;
+  SIGNAL s_latch5     : std_logic;
+  SIGNAL ctr          : std_logic_vector (1 DOWNTO 0);
 
 BEGIN
 
---  PROCESS (ch_rclk) IS
---  BEGIN  -- PROCESS
---    IF rising_edge(ch_rclk) THEN  -- rising clock edge
---      s_ch_rxd <= ch_rxd;
---    END IF;
---  END PROCESS;
-  s_ch_rxd <= ch_rxd;
+  PROCESS (clk80mhz, aclr) IS
+  BEGIN
+    IF aclr = '1' THEN                  -- asynchronous reset (active high)
+      s_shiftout <= (OTHERS => '0');
+      s_latch1   <= '0';
+      fifo_aclr  <= '1';
+      ctr        <= (OTHERS => '0');
+      
+    ELSIF rising_edge(clk80mhz) THEN
 
-  -- use a mixed width dual-clock FIFO to convert the 2x16bit
-  -- words received into 32bit words, and to synchronize between
-  -- the serdes clock and the local 80MHz PLL clock
-  -- The upper and lower 16-bits need to be exchanged due to  the
-  -- order in which they are received
-  sync_fifo : dcfifo_mixed_widths
-    GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_hint               => "MAXIMIZE_SPEED=7,",
-      lpm_numwords           => 16,
-      lpm_showahead          => "ON",
-      lpm_type               => "dcfifo",
-      lpm_width              => 16,
-      lpm_widthu             => 4,
-      lpm_widthu_r           => 3,
-      lpm_width_r            => 32,
-      overflow_checking      => "ON",
-      rdsync_delaypipe       => 5,
-      underflow_checking     => "ON",
-      use_eab                => "ON",
-      write_aclr_synch       => "OFF",
-      wrsync_delaypipe       => 5
-      )
-    PORT MAP (
-      wrclk           => ch_rclk,
-      rdreq           => '1',
-      aclr            => fifo_aclr,
-      rdclk           => clk80mhz,
-      wrreq           => s_ch_rxd(17),
-      data            => s_ch_rxd(15 DOWNTO 0),
-      rdempty         => syncfifo_empty,
-      q(31 DOWNTO 16) => s_shiftout(15 DOWNTO 0),
-      q(15 DOWNTO 0)  => s_shiftout(31 DOWNTO 16)
-      );
+      -- gray counter as workaround for a state machine
+      -- to control the number of bits used
+      CASE ctr IS
+        WHEN "00" =>
+          IF (ch_rclk = '1') AND (ch_rxd(17) = '1') THEN
+            ctr <= "01";
+          END IF;
+        WHEN "01" =>
+          IF ch_rclk = '0' THEN
+            ctr <= "11";
+          END IF;
+        WHEN "11" =>
+          IF (ch_rclk = '1') AND (ch_rxd(17) = '1') THEN
+            ctr <= "10";
+          END IF;
+        WHEN "10" =>
+          IF ch_rclk = '0' THEN
+            ctr <= "00";
+          END IF;
+
+      END CASE;
+
+      -- use the counter to latch the data (16 bit at a time)
+      -- and generate a latch
+      IF trigger = '1' THEN
+        fifo_aclr  <= '1';
+        s_latch1   <= '0';
+        s_shiftout <= (OTHERS => '0');
+      ELSIF ctr = "00" THEN
+        s_shiftout(31 DOWNTO 16) <= ch_rxd(15 DOWNTO 0);
+        s_latch1                 <= '0';
+        fifo_aclr                <= '0';
+      ELSIF ctr = "01" THEN
+        s_latch1  <= '1';
+        fifo_aclr <= '0';
+      ELSIF ctr = "11" THEN
+        s_shiftout(15 DOWNTO 0) <= ch_rxd(15 DOWNTO 0);
+        s_latch1                <= '0';
+        fifo_aclr               <= '0';
+      ELSE
+        s_latch1  <= '0';
+        fifo_aclr <= '0';
+      END IF;
+
+    END IF;
+  END PROCESS;
 
   -- in case of a geographical word, latch the correct geographical information
   WITH (s_shiftout(31 DOWNTO 16) = X"C000") SELECT
-    s_geo_id <=
+    s_fifo_data(7 DOWNTO 1) <=
     geo_id                 WHEN true,
     s_shiftout(7 DOWNTO 1) WHEN OTHERS;
 
-  s_fifo_wrreq <= NOT syncfifo_empty;  -- will be disabled when FIFO is full due to overflow checking
+  s_fifo_data(31 DOWNTO 8) <= s_shiftout(31 DOWNTO 8);
+  s_fifo_data(0)           <= s_shiftout(0);
+
+  -- delay and shorten the latch to use as a write request of the FIFO
+  PROCESS (clk80mhz, aclr) IS
+  BEGIN  -- PROCESS
+    IF aclr = '1' THEN                  -- asynchronous reset (active high)
+      s_latch2 <= '0';
+      s_latch3 <= '0';
+      s_latch4 <= '0';
+      s_latch5 <= '0';
+      
+    ELSIF rising_edge(clk80mhz) THEN    -- rising clock edge
+      s_latch2 <= s_latch1;
+      s_latch3 <= s_latch2;
+      s_latch4 <= s_latch3;
+      s_latch5 <= s_latch4;
+    END IF;
+  END PROCESS;
+
+  s_fifo_wrreq <= s_latch4 AND (NOT s_latch5);
+
+
   rxfifo : dcfifo
     GENERIC MAP (
       intended_device_family => "Cyclone II",
@@ -131,37 +169,17 @@ BEGIN
       underflow_checking     => "ON",
       wrsync_delaypipe       => 4)
     PORT MAP (
-      wrclk             => clk80mhz,
-      rdreq             => s_fifo_rdreq,
-      aclr              => fifo_aclr,
-      rdclk             => clk80mhz,
-      wrreq             => s_fifo_wrreq,
-      data(31 DOWNTO 8) => s_shiftout(31 DOWNTO 8),
-      data(7 DOWNTO 1)  => s_geo_id,
-      data(0)           => s_shiftout(0),
-      rdempty           => s_fifo_empty,
-      q                 => s_fifo_q
+      wrclk   => clk80mhz,
+      rdreq   => s_fifo_rdreq,
+      aclr    => fifo_aclr,
+      rdclk   => clk80mhz,
+      wrreq   => s_fifo_wrreq,
+      data    => s_fifo_data,
+      rdempty => s_fifo_empty,
+      q       => s_fifo_q
       );
 
-  dataout <= s_fifo_q;
-
-
---  dff_inst1 : PROCESS (clk80mhz, areset_n) IS
---  BEGIN
---    IF areset_n = '0' THEN              -- asynchronous reset (active low)
---      fifo_empty <= '1';
-      
---    ELSIF rising_edge(clk80mhz) THEN
---      -- Only put out a valid fifo_empty, when rdreq is valid
---      -- otherwise, fifo_emtpy = '1'
---      IF rdreq_in = '1' THEN
---        fifo_empty <= s_fifo_empty;
---      ELSE
---        fifo_empty <= '1';
---      END IF;
---    END IF;
---  END PROCESS dff_inst1;
-
+  dataout      <= s_fifo_q;
   fifo_empty   <= s_fifo_empty;
   s_fifo_rdreq <= rdreq_in;
 
