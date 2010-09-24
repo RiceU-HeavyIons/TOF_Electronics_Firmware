@@ -1,4 +1,4 @@
--- $Id: serdes_fpga.vhd,v 1.36 2010-05-10 14:01:53 jschamba Exp $
+-- $Id: serdes_fpga.vhd,v 1.37 2010-09-24 16:32:32 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : SERDES_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2010-02-03
+-- Last update: 2010-07-21
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -134,20 +134,20 @@ ARCHITECTURE a OF serdes_fpga IS
   COMPONENT zbt_ctrl_top
     PORT (
       clk           : IN    std_logic;
-      RESET_N       : IN    std_logic;  -- active LOW asynchronous reset
+      RESET_N       : IN    std_logic;                      -- active LOW asynchronous reset
 -- local bus interface
       ADDR          : IN    std_logic_vector(18 DOWNTO 0);
       DATA_IN       : IN    std_logic_vector(31 DOWNTO 0);
       DATA_OUT      : OUT   std_logic_vector(31 DOWNTO 0);
-      RD_WR_N       : IN    std_logic;  -- active LOW write
-      ADDR_ADV_LD_N : IN    std_logic;  -- advance/load address (active LOW load)
-      DM            : IN    std_logic_vector(3 DOWNTO 0);  -- data mask bits                   
+      RD_WR_N       : IN    std_logic;                      -- active LOW write
+      ADDR_ADV_LD_N : IN    std_logic;                      -- advance/load address (active LOW load)
+      DM            : IN    std_logic_vector(3 DOWNTO 0);   -- data mask bits                   
 -- SRAM interface
       SA            : OUT   std_logic_vector(18 DOWNTO 0);  -- address bus to RAM   
       DQ            : INOUT std_logic_vector(31 DOWNTO 0);  -- data to/from RAM
-      RW_N          : OUT   std_logic;  -- active LOW write
-      ADV_LD_N      : OUT   std_logic;  -- active LOW load
-      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)  -- active LOW byte enables
+      RW_N          : OUT   std_logic;                      -- active LOW write
+      ADV_LD_N      : OUT   std_logic;                      -- active LOW load
+      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)    -- active LOW byte enables
       );
   END COMPONENT;
 
@@ -170,7 +170,8 @@ ARCHITECTURE a OF serdes_fpga IS
       areset_n   : IN  std_logic;
       clk80mhz   : IN  std_logic;
       rdreq_in   : IN  std_logic;
-      fifo_aclr  : IN  std_logic;
+      aclr       : IN  std_logic;
+      trigger    : IN  std_logic;
       ch_rclk    : IN  std_logic;
       ch_rxd     : IN  std_logic_vector (17 DOWNTO 0);
       geo_id     : IN  std_logic_vector (6 DOWNTO 0);
@@ -191,6 +192,7 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL pll_20mhz         : std_logic;
   SIGNAL pll_80mhz         : std_logic;
   SIGNAL s_pll_80mhz       : std_logic;
+  SIGNAL s_derived80mhz    : std_logic;
   SIGNAL s_pll_160mhz      : std_logic;
   SIGNAL pll_160mhz        : std_logic;  -- PLL 4x output
   SIGNAL pll_160mhz_p      : std_logic;  -- PLL 4x output with phase shift
@@ -247,19 +249,19 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_smif_trigger    : std_logic;
 
   SIGNAL s_ch0fifo_rdreq : std_logic;
-  SIGNAL s_ch0fifo_aclr  : std_logic;
+  SIGNAL s_ch0_aclr      : std_logic;
   SIGNAL s_ch0fifo_empty : std_logic;
   SIGNAL s_ch0fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch1fifo_rdreq : std_logic;
-  SIGNAL s_ch1fifo_aclr  : std_logic;
+  SIGNAL s_ch1_aclr      : std_logic;
   SIGNAL s_ch1fifo_empty : std_logic;
   SIGNAL s_ch1fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch2fifo_rdreq : std_logic;
-  SIGNAL s_ch2fifo_aclr  : std_logic;
+  SIGNAL s_ch2_aclr      : std_logic;
   SIGNAL s_ch2fifo_empty : std_logic;
   SIGNAL s_ch2fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch3fifo_rdreq : std_logic;
-  SIGNAL s_ch3fifo_aclr  : std_logic;
+  SIGNAL s_ch3_aclr      : std_logic;
   SIGNAL s_ch3fifo_empty : std_logic;
   SIGNAL s_ch3fifo_q     : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ch0_rclk      : std_logic;
@@ -274,12 +276,21 @@ ARCHITECTURE a OF serdes_fpga IS
   SIGNAL s_ch1_rclkin    : std_logic;
   SIGNAL s_ch2_rclkin    : std_logic;
   SIGNAL s_ch3_rclkin    : std_logic;
-  
+
   SIGNAL s_ddr_inh      : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_ddr_inl      : std_logic_vector(7 DOWNTO 0);
   SIGNAL s_rxfifo_out   : std_logic_vector(31 DOWNTO 0);
   SIGNAL s_ddio_in      : std_logic_vector(15 DOWNTO 0);
+  SIGNAL s_ddio_store   : std_logic_vector(15 DOWNTO 0);
   SIGNAL do_latchsignal : std_logic;
+  SIGNAL s_latch1       : std_logic;
+  SIGNAL s_latch2       : std_logic;
+  SIGNAL s_latch3       : std_logic;
+  SIGNAL s_latch4       : std_logic;
+  SIGNAL s_latch5       : std_logic;
+  SIGNAL s_latch6       : std_logic;
+
+  SIGNAL s_latcher_rst : std_logic;
 
   SIGNAL s_geo_id_ch0 : std_logic_vector(6 DOWNTO 0);
   SIGNAL s_geo_id_ch1 : std_logic_vector(6 DOWNTO 0);
@@ -289,8 +300,11 @@ ARCHITECTURE a OF serdes_fpga IS
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE LState_type IS (S0a, S0b, S1, S2, S3, S4);
+  TYPE LState_type IS (S0a, S0b, S1, S2);
   SIGNAL lstate : LState_type;
+
+  TYPE CSState_type IS (Sync1, Sync2, Sync3);
+  SIGNAL syncState : CSState_type;
 
   TYPE Geo_state_type IS (g_data, g_geo);
   SIGNAL geoState0 : Geo_state_type;
@@ -329,32 +343,38 @@ BEGIN
 
 
   -- delay the receiver clock to align the data properly
-  ch0_shift : serdes_rcvrclkshift PORT MAP (
-    aclr    => NOT pll_locked,
-    clock   => pll_160mhz,
-    shiftin => ch0_rclk,
-    q       => s_ch0_rclkdelay);
-  ch1_shift : serdes_rcvrclkshift PORT MAP (
-    aclr    => NOT pll_locked,
-    clock   => pll_160mhz,
-    shiftin => ch1_rclk,
-    q       => s_ch1_rclkdelay);
-  ch2_shift : serdes_rcvrclkshift PORT MAP (
-    aclr    => NOT pll_locked,
-    clock   => pll_160mhz,
-    shiftin => ch2_rclk,
-    q       => s_ch2_rclkdelay);
-  ch3_shift : serdes_rcvrclkshift PORT MAP (
-    aclr    => NOT pll_locked,
-    clock   => pll_160mhz,
-    shiftin => ch3_rclk,
-    q       => s_ch3_rclkdelay);
+--  ch0_shift : serdes_rcvrclkshift PORT MAP (
+--    aclr    => NOT pll_locked,
+--    clock   => pll_160mhz,
+--    shiftin => ch0_rclk,
+--    q       => s_ch0_rclkdelay);
+--  ch1_shift : serdes_rcvrclkshift PORT MAP (
+--    aclr    => NOT pll_locked,
+--    clock   => pll_160mhz,
+--    shiftin => ch1_rclk,
+--    q       => s_ch1_rclkdelay);
+--  ch2_shift : serdes_rcvrclkshift PORT MAP (
+--    aclr    => NOT pll_locked,
+--    clock   => pll_160mhz,
+--    shiftin => ch2_rclk,
+--    q       => s_ch2_rclkdelay);
+--  ch3_shift : serdes_rcvrclkshift PORT MAP (
+--    aclr    => NOT pll_locked,
+--    clock   => pll_160mhz,
+--    shiftin => ch3_rclk,
+--    q       => s_ch3_rclkdelay);
 
-  s_ch0_rclkin <= s_ch0_rclkdelay(7);
-  s_ch1_rclkin <= s_ch1_rclkdelay(7);
-  s_ch2_rclkin <= s_ch2_rclkdelay(7);
-  s_ch3_rclkin <= s_ch3_rclkdelay(7);
-  
+--  s_ch0_rclkin <= s_ch0_rclkdelay(4);
+--  s_ch1_rclkin <= s_ch1_rclkdelay(4);
+--  s_ch2_rclkin <= s_ch2_rclkdelay(4);
+--  s_ch3_rclkin <= s_ch3_rclkdelay(4);
+
+  -- don't delay; use receiver clocks directly
+  s_ch0_rclkin <= ch0_rclk;
+  s_ch1_rclkin <= ch1_rclk;
+  s_ch2_rclkin <= ch2_rclk;
+  s_ch3_rclkin <= ch3_rclk;
+
   ch0_clk_buffer : global PORT MAP (a_in => s_ch0_rclkin, a_out => s_ch0_rclk);
   ch1_clk_buffer : global PORT MAP (a_in => s_ch1_rclkin, a_out => s_ch1_rclk);
   ch2_clk_buffer : global PORT MAP (a_in => s_ch2_rclkin, a_out => s_ch2_rclk);
@@ -388,7 +408,7 @@ BEGIN
   mt_clk <= '0';
 
   -----------------------------------------------------------------------------
-  -- SERDES-MAIN FPGA interface
+  -- SERDES-MAIN FPGA interface (SMIF)
   -----------------------------------------------------------------------------
   -- Serdes <-> Master Interface is implemented as 36 lines that are assigned
   -- as follows:
@@ -417,10 +437,10 @@ BEGIN
 --  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
 
   -- SERDES (S) to MASTER (M) interface
-  maO(15 DOWNTO 0) <= s_smif_dataout;   -- 16bit data from S to M
+  maO(15 DOWNTO 0) <= s_smif_dataout;     -- 16bit data from S to M
   maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
   s_smif_select    <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
-  s_smif_rdenable  <= maI(19);          -- read enable from M to S for FIFO
+  s_smif_rdenable  <= maI(19);            -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
   s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
@@ -491,7 +511,7 @@ BEGIN
 
   -- MUX for serdes TX
   WITH s_serdes_reg(4) SELECT
-    serdes_data <=  -- goes to poweron sm first to be muxed with poweron data
+    serdes_data <=                      -- goes to poweron sm first to be muxed with poweron data
     serdes_tst_data WHEN '0',           -- test data
     s_serdes_out    WHEN OTHERS;        -- "real" data
 
@@ -509,14 +529,15 @@ BEGIN
       areset_n   => s_ch0_locked,
       clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch0fifo_rdreq,
-      fifo_aclr  => s_ch0fifo_aclr,
+      aclr       => s_ch0_aclr,
+      trigger    => s_smif_trigger,
       ch_rclk    => s_ch0_rclk,
       ch_rxd     => ch0_rxd,
       geo_id     => s_geo_id_ch0,
       dataout    => s_ch0fifo_q,
       fifo_empty => s_ch0fifo_empty);
 
-  s_ch0fifo_aclr <= NOT s_ch0_locked OR m_all(0) OR s_smif_trigger;
+  s_ch0_aclr <= (NOT s_ch0_locked) OR m_all(0);
 
   -- Channel 1 ----------------------------------------------------------------
   ch1rcvr : serdes_rcvr
@@ -524,14 +545,15 @@ BEGIN
       areset_n   => s_ch1_locked,
       clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch1fifo_rdreq,
-      fifo_aclr  => s_ch1fifo_aclr,
+      aclr       => s_ch1_aclr,
+      trigger    => s_smif_trigger,
       ch_rclk    => s_ch1_rclk,
       ch_rxd     => ch1_rxd,
       geo_id     => s_geo_id_ch1,
       dataout    => s_ch1fifo_q,
       fifo_empty => s_ch1fifo_empty);
 
-  s_ch1fifo_aclr <= NOT s_ch1_locked OR m_all(0) OR s_smif_trigger;
+  s_ch1_aclr <= (NOT s_ch1_locked) OR m_all(0);
 
   -- Channel 2 ----------------------------------------------------------------
   ch2rcvr : serdes_rcvr
@@ -539,14 +561,15 @@ BEGIN
       areset_n   => s_ch2_locked,
       clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch2fifo_rdreq,
-      fifo_aclr  => s_ch2fifo_aclr,
+      aclr       => s_ch2_aclr,
+      trigger    => s_smif_trigger,
       ch_rclk    => s_ch2_rclk,
       ch_rxd     => ch2_rxd,
       geo_id     => s_geo_id_ch2,
       dataout    => s_ch2fifo_q,
       fifo_empty => s_ch2fifo_empty);
 
-  s_ch2fifo_aclr <= NOT s_ch2_locked OR m_all(0) OR s_smif_trigger;
+  s_ch2_aclr <= (NOT s_ch2_locked) OR m_all(0);
 
   -- Channel 3 ----------------------------------------------------------------
   ch3rcvr : serdes_rcvr
@@ -554,14 +577,15 @@ BEGIN
       areset_n   => s_ch3_locked,
       clk80mhz   => pll_80mhz,
       rdreq_in   => s_ch3fifo_rdreq,
-      fifo_aclr  => s_ch3fifo_aclr,
+      aclr       => s_ch3_aclr,
+      trigger    => s_smif_trigger,
       ch_rclk    => s_ch3_rclk,
       ch_rxd     => ch3_rxd,
       geo_id     => s_geo_id_ch3,
       dataout    => s_ch3fifo_q,
       fifo_empty => s_ch3fifo_empty);
 
-  s_ch3fifo_aclr <= NOT s_ch3_locked OR m_all(0) OR s_smif_trigger;
+  s_ch3_aclr <= (NOT s_ch3_locked) OR m_all(0);
 
   -- FIFO output decoded to Master FPGA lines -----------------
   -- select which FIFO to send read enable to
@@ -581,6 +605,7 @@ BEGIN
     s_ch0fifo_q WHEN "10",
     s_ch1fifo_q WHEN OTHERS;
 
+
   WITH s_smif_select SELECT
     s_smif_fifo_empty <=
     s_ch2fifo_empty WHEN "00",
@@ -588,112 +613,106 @@ BEGIN
     s_ch0fifo_empty WHEN "10",
     s_ch1fifo_empty WHEN OTHERS;
 
-  -- alternately, put upper and lower 16 bytes of RXfifo
-  -- on ddio
-  -- with lower 16bit data also raise the latch SIGNAL
-  -- on smif_dataout(8)
-  latcher : PROCESS (pll_160mhz, pll_locked) IS
-    VARIABLE delayCtr : integer RANGE 0 TO 3 := 0;
+
+  s_latcher_rst <= pll_locked;          -- reset while PLL is locking
+  latcher : PROCESS (pll_80mhz, s_latcher_rst) IS
   BEGIN
-    IF pll_locked = '0' THEN
-      s_smif_dataout(8 DOWNTO 0) <= (OTHERS => '0');
-      s_ddio_in                  <= (OTHERS => '0');
-      s_synced_rdenable          <= '0';
-      do_latchsignal             <= '0';
-      delayCtr                   := 0;
-      lstate                     <= S0a;
-      
-    ELSIF rising_edge(pll_160mhz) THEN
+    IF s_latcher_rst = '0' THEN
+      s_ddio_in         <= (OTHERS => '0');
+      s_ddio_store      <= (OTHERS => '0');
       s_synced_rdenable <= '0';
+      s_latch1          <= '0';
+      s_latch2          <= '0';
+      s_latch3          <= '0';
+      s_latch4          <= '0';
+      s_latch5          <= '0';
+      s_latch6          <= '0';
+      lstate            <= S0a;
+
+    ELSIF rising_edge(pll_80mhz) THEN
+      -- generate delayed latch signal to output on smif
+      s_latch2 <= s_latch1;
+      s_latch3 <= s_latch2;
+      s_latch4 <= s_latch3;
+      s_latch5 <= s_latch4;
+      s_latch6 <= s_latch5;
 
       CASE lstate IS
-        WHEN S0a =>
-          s_smif_dataout(15) <= '1';
+
+        WHEN S0a =>                     -- wait for smif read enable
+          s_synced_rdenable <= '0';
+          s_ddio_in         <= (OTHERS => '0');
+          s_latch1          <= '0';
+
           IF s_smif_rdenable = '1' THEN
-            delayCtr := delayCtr + 1;
+            lstate <= S0b;
           ELSE
-            delayCtr := 0;
           END IF;
 
-          s_smif_dataout(8 DOWNTO 0) <= (OTHERS => '0');
-          s_smif_dataout(8)          <= '0';
-          lstate                     <= S0b;
+        WHEN S0b =>                     -- delay one clock
+          s_ddio_in         <= (OTHERS => '0');
 
-        WHEN S0b =>
-          s_smif_dataout(15) <= '0';
-          do_latchsignal     <= '0';
-          IF delayCtr = 3 THEN
-            lstate <= S1;
-          ELSE
+          s_synced_rdenable <= '0';
+          s_latch1          <= '0';
+
+          lstate <= S1;
+
+          -- now start latching out the data in 4 nibbles
+          -- via ddio
+        WHEN S1 =>
+          s_synced_rdenable <= '0';
+
+          -- upper 16 bits out to smif via ddio (two 8bit values per 80MHz)
+          s_ddio_in    <= s_rxfifo_out(31 DOWNTO 16);
+          -- latch the lower 16 bits from FIFO for later
+          s_ddio_store <= s_rxfifo_out(15 DOWNTO 0);
+          s_latch1     <= '0';
+
+          IF s_smif_rdenable = '1' THEN  -- continue
+            lstate <= S2;
+          ELSE                          -- else: done
             lstate <= S0a;
           END IF;
-
-        WHEN S1 =>
-          s_smif_dataout(15)         <= '1';
-          s_ddio_in                  <= s_rxfifo_out(15 DOWNTO 0);
-          s_smif_dataout(7 DOWNTO 0) <= s_rxfifo_out(31 DOWNTO 24);
-          s_smif_dataout(8)          <= '0';
-          delayCtr                   := 0;
-          lstate                     <= S2;
 
         WHEN S2 =>
-          s_smif_dataout(15)         <= '0';
-          s_smif_dataout(7 DOWNTO 0) <= s_rxfifo_out(23 DOWNTO 16);
-          IF s_smif_rdenable = '1' THEN
-            lstate <= S3;
+          -- previously latched lower 16 bits out to smif via ddio
+          s_ddio_in <= s_ddio_store;
+          
+          IF s_smif_fifo_empty = '0' THEN  -- next FIFO value
+            s_latch1          <= '1';   -- create latch signal for smif
+            s_synced_rdenable <= '1';
           ELSE
+            s_latch1          <= '0';
+            s_synced_rdenable <= '0';
+          END IF;
+
+          IF s_smif_rdenable = '1' THEN  -- continue
+            lstate <= S1;
+          ELSE                          -- else: done
             lstate <= S0a;
           END IF;
-
-        WHEN S3 =>
-          s_smif_dataout(15)         <= '1';
-          s_smif_dataout(7 DOWNTO 0) <= s_ddio_in(15 DOWNTO 8);
-
-          IF s_smif_rdenable = '1' THEN
-            s_synced_rdenable <= '1';
-          END IF;
-
-          IF s_smif_fifo_empty = '0' THEN
-            do_latchsignal <= '1';
-          ELSE
-            do_latchsignal <= '0';
-          END IF;
-
-          IF do_latchsignal = '1' THEN
-            s_smif_dataout(8) <= '1';
-          ELSE
-            s_smif_dataout(8) <= '0';
-          END IF;
-          lstate <= S4;
-
-        WHEN S4 =>
-          s_smif_dataout(15)         <= '0';
-          s_smif_dataout(7 DOWNTO 0) <= s_ddio_in(7 DOWNTO 0);
-
-          IF s_smif_rdenable = '1' THEN
-            s_synced_rdenable <= '1';
-            lstate            <= S1;
-          ELSE
-            lstate <= S0a;
-          END IF;
+          
       END CASE;
     END IF;
   END PROCESS latcher;
 
-  -- output 8bit data on each clock edge of the 80MHz clock
---  ddio_out_inst : ddio_out PORT MAP (
---    datain_h => s_ddio_in(15 DOWNTO 8),
---    datain_l => s_ddio_in(7 DOWNTO 0),
---    outclock => pll_80mhz,
---    dataout  => s_smif_dataout(7 DOWNTO 0));
 
+  -- output 8bit data on each clock edge of the 80MHz clock
+  ddio_out_inst : ddio_out PORT MAP (
+    datain_h => s_ddio_in(15 DOWNTO 8),
+    datain_l => s_ddio_in(7 DOWNTO 0),
+    outclock => pll_80mhz,
+    dataout  => s_smif_dataout(7 DOWNTO 0));
+
+
+  s_smif_dataout(8)  <= s_latch6;
   s_smif_dataout(9)  <= '0';
   s_smif_dataout(10) <= s_ch2_locked;
   s_smif_dataout(11) <= s_ch3_locked;
   s_smif_dataout(12) <= s_ch0_locked;
   s_smif_dataout(13) <= s_ch1_locked;
   s_smif_dataout(14) <= '0';
---  s_smif_dataout(15) <= pll_80mhz;
+  s_smif_dataout(15) <= pll_80mhz;
 
   -----------------------------------------------------------------------------
   -- SERDES power on procedures
@@ -711,7 +730,6 @@ BEGIN
     serdes_data => serdes_data,
     txd         => s_ch0_txd,
     areset_n    => s_serdes_reg(2));
-
 
   poweron_ch1 : serdes_poweron PORT MAP (
     clk         => globalclk,
