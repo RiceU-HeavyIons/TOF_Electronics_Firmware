@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: my_utilities.vhd,v 1.2 2008-04-18 19:08:36 jschamba Exp $
+-- $Id: my_utilities.vhd,v 1.3 2011-02-08 19:55:00 jschamba Exp $
 --******************************************************************************
 --*
 --* Package         : MY_UTILITIES
@@ -12,56 +12,56 @@
 --*
 --******************************************************************************
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-package my_utilities is
-  function "+" (l : std_logic_vector; r : std_logic_vector) return std_logic_vector;
-  function "-" (l : std_logic_vector; r : std_logic_vector) return std_logic_vector;
-  function "+" (l : std_logic_vector; r : integer) return std_logic_vector;
-  function "-" (l : std_logic_vector; r : integer) return std_logic_vector;
-  function inc (v : std_logic_vector) return std_logic_vector;
-  function dec (v : std_logic_vector) return std_logic_vector;
-  function parity (a: std_logic_vector) return std_logic;
-end my_utilities;
+PACKAGE my_utilities IS
+  FUNCTION "+" (l    : std_logic_vector; r : std_logic_vector) RETURN std_logic_vector;
+  FUNCTION "-" (l    : std_logic_vector; r : std_logic_vector) RETURN std_logic_vector;
+  FUNCTION "+" (l    : std_logic_vector; r : integer) RETURN std_logic_vector;
+  FUNCTION "-" (l    : std_logic_vector; r : integer) RETURN std_logic_vector;
+  FUNCTION inc (v    : std_logic_vector) RETURN std_logic_vector;
+  FUNCTION dec (v    : std_logic_vector) RETURN std_logic_vector;
+  FUNCTION parity (a : std_logic_vector) RETURN std_logic;
+END my_utilities;
 
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use work.my_conversions.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_arith.ALL;
+USE work.my_conversions.ALL;
 
-package body my_utilities is
-  function "+" (l : std_logic_vector; r : std_logic_vector) return std_logic_vector is
-  begin
-    return unsigned(l) + unsigned(r);
-  end;
-  function "-" (l : std_logic_vector; r : std_logic_vector) return std_logic_vector is
-  begin
-    return unsigned(l) - unsigned(r);
-  end;
-  function "+" (l : std_logic_vector; r : integer) return std_logic_vector is
-  begin
-    return unsigned(l) + unsigned(int2slv(r, 32)(l'length-1 downto 0));
-  end;
-  function "-" (l : std_logic_vector; r : integer) return std_logic_vector is
-  begin
-    return unsigned(l) - unsigned(int2slv(r, 32)(l'length-1 downto 0));
-  end;
-  function inc (v : std_logic_vector) return std_logic_vector is
-  begin
-    return unsigned(v) + unsigned'("1");
-  end;
-  function dec (v : std_logic_vector) return std_logic_vector is
-  begin
-    return unsigned(v) - unsigned'("1");
-  end;
-  function parity (a: std_logic_vector) return std_logic is
-    variable y : std_logic := '0';
-  begin
-    for i in a'RANGE loop
-      y := y xor a(i);
-    end loop;
-    return y;
-  end;
+PACKAGE BODY my_utilities IS
+  FUNCTION "+" (l : std_logic_vector; r : std_logic_vector) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(l) + unsigned(r);
+  END;
+  FUNCTION "-" (l : std_logic_vector; r : std_logic_vector) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(l) - unsigned(r);
+  END;
+  FUNCTION "+" (l : std_logic_vector; r : integer) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(l) + unsigned(int2slv(r, 32)(l'length-1 DOWNTO 0));
+  END;
+  FUNCTION "-" (l : std_logic_vector; r : integer) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(l) - unsigned(int2slv(r, 32)(l'length-1 DOWNTO 0));
+  END;
+  FUNCTION inc (v : std_logic_vector) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(v) + unsigned'("1");
+  END;
+  FUNCTION dec (v : std_logic_vector) RETURN std_logic_vector IS
+  BEGIN
+    RETURN unsigned(v) - unsigned'("1");
+  END;
+  FUNCTION parity (a : std_logic_vector) RETURN std_logic IS
+    VARIABLE y : std_logic := '0';
+  BEGIN
+    FOR i IN a'range LOOP
+      y := y XOR a(i);
+    END LOOP;
+    RETURN y;
+  END;
 
-end my_utilities;
+END my_utilities;
