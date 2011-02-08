@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_internal_memory.vhd,v 1.2 2006-12-06 21:47:14 jschamba Exp $
+-- $Id: ddl_internal_memory.vhd,v 1.3 2011-02-08 19:56:03 jschamba Exp $
 --******************************************************************************
 --*  DDL_INTERNAL_MEMORY.VHD
 --*
@@ -14,8 +14,8 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
-LIBRARY altera_mf;
-USE altera_mf.altera_mf_components.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
 
 ENTITY ddl_internal_memory IS
   PORT (
@@ -32,14 +32,6 @@ ENTITY ddl_internal_memory IS
     );
 END ddl_internal_memory;
 
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-
-LIBRARY lpm;
-USE lpm.lpm_components.ALL;
-
-USE work.my_conversions.ALL;
-USE work.my_utilities.ALL;
 
 ARCHITECTURE SYN OF ddl_internal_memory IS
 
