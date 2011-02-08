@@ -1,4 +1,4 @@
--- $Id: ddl_top.vhd,v 1.3 2009-04-14 16:16:20 jschamba Exp $
+-- $Id: ddl_top.vhd,v 1.4 2011-02-08 19:56:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : DDL
 -- Project    : TOF
@@ -7,21 +7,15 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2004-12-09
--- Last update: 2009-04-10
+-- Last update: 2011-02-08
 -- Platform   : 
 -------------------------------------------------------------------------------
 -- Description: Top Level Component for the DDL interface
 -------------------------------------------------------------------------------
 
-LIBRARY altera;
-USE altera.maxplus2.ALL;
-
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
 USE ieee.std_logic_arith.ALL;
-
-LIBRARY lpm;
-USE lpm.lpm_components.ALL;
 
 --  Entity Declaration
 ENTITY ddl IS
