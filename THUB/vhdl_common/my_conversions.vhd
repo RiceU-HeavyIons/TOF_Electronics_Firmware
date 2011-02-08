@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: my_conversions.vhd,v 1.1 2007-04-27 19:26:37 jschamba Exp $
+-- $Id: my_conversions.vhd,v 1.2 2011-02-08 19:19:25 jschamba Exp $
 --******************************************************************************
 --*
 --* Package         : MY_CONVERSIONS
@@ -12,99 +12,99 @@
 --*
 --******************************************************************************
 
-library ieee;
-use ieee.std_logic_1164.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
 
-package my_conversions is
-  function bool2sl (b : boolean) return std_logic;
-  function int2slv (int : integer; w : natural) return std_logic_vector;
-  function slv2int (slv : std_logic_vector) return integer;
-  function sl2int  (sl : std_logic) return integer;
-  function slv2hstr (slv : std_logic_vector) return string;
-  function rotate  (slv : std_logic_vector) return std_logic_vector;
-end my_conversions;
+PACKAGE my_conversions IS
+  FUNCTION bool2sl (b    : boolean) RETURN std_logic;
+  FUNCTION int2slv (int  : integer; w : natural) RETURN std_logic_vector;
+  FUNCTION slv2int (slv  : std_logic_vector) RETURN integer;
+  FUNCTION sl2int (sl    : std_logic) RETURN integer;
+  FUNCTION slv2hstr (slv : std_logic_vector) RETURN string;
+  FUNCTION rotate (slv   : std_logic_vector) RETURN std_logic_vector;
+END my_conversions;
 
-library ieee;
-use ieee.std_logic_1164.all;
-use ieee.std_logic_arith.all;
-use ieee.numeric_std.all;
+LIBRARY ieee;
+USE ieee.std_logic_1164.ALL;
+USE ieee.std_logic_arith.ALL;
+USE ieee.numeric_std.ALL;
 
-package body my_conversions is
+PACKAGE BODY my_conversions IS
 
-  function bool2sl (b : boolean) return std_logic is
-  begin
-    if b then
-      return '1';
-    else
-      return '0';
-    end if;
-  end bool2sl;
+  FUNCTION bool2sl (b : boolean) RETURN std_logic IS
+  BEGIN
+    IF b THEN
+      RETURN '1';
+    ELSE
+      RETURN '0';
+    END IF;
+  END bool2sl;
 
-  function int2slv (int : integer; w : natural) return std_logic_vector is
-  begin
-    return std_logic_vector(to_unsigned(int,w));
-  end int2slv;
+  FUNCTION int2slv (int : integer; w : natural) RETURN std_logic_vector IS
+  BEGIN
+    RETURN std_logic_vector(to_unsigned(int, w));
+  END int2slv;
 
-  function sl2int (sl : std_logic) return integer is
-  begin  -- sl2int
-    if sl = '0' then
-      return 0;
-    else
-      return 1;
-    end if;
-  end sl2int;
+  FUNCTION sl2int (sl : std_logic) RETURN integer IS
+  BEGIN  -- sl2int
+    IF sl = '0' THEN
+      RETURN 0;
+    ELSE
+      RETURN 1;
+    END IF;
+  END sl2int;
 
-  function slv2int (slv : std_logic_vector) return integer is
-    variable result : integer;
-  begin
+  FUNCTION slv2int (slv : std_logic_vector) RETURN integer IS
+    VARIABLE result : integer;
+  BEGIN
 -- pragma synthesis_off
-    assert (slv'length < 33) report "Too long vector";
+    ASSERT (slv'length < 33) REPORT "Too long vector";
 -- pragma synthesis_on
     result := 0;
-    for i in slv'range loop
-      if (slv(i) = '1') then
+    FOR i IN slv'range LOOP
+      IF (slv(i) = '1') THEN
         result := result + 2**i;
-      end if;
-    end loop;
-    return result;
-  end slv2int;
+      END IF;
+    END LOOP;
+    RETURN result;
+  END slv2int;
 
-    function slv2hstr (slv : std_logic_vector) return string is
-      variable slv32 : std_logic_vector (31 downto 0);
-      variable nib_slv : std_logic_vector (3 downto 0);
-      variable nib_int : integer;
-      variable result : string (10 downto 1) := "0x00000000";
-    begin  -- slv2str
+  FUNCTION slv2hstr (slv : std_logic_vector) RETURN string IS
+    VARIABLE slv32   : std_logic_vector (31 DOWNTO 0);
+    VARIABLE nib_slv : std_logic_vector (3 DOWNTO 0);
+    VARIABLE nib_int : integer;
+    VARIABLE result  : string (10 DOWNTO 1) := "0x00000000";
+  BEGIN  -- slv2str
     -- pragma synthesis_off
-      assert (slv'length < 33) report "Too long vector";
+    ASSERT (slv'length < 33) REPORT "Too long vector";
     -- pragma synthesis_on
-      if slv'length < 32 then
-        slv32 := int2slv(slv2int(slv), 32);
-      else
-        slv32 := slv;
-      end if;
-      for i in 7 downto 0 loop
-        nib_slv := slv32(i*4+3 downto i*4);
-        nib_int := slv2int(nib_slv);
-        if nib_int < 10 then
-          result(i+1) := character'val(character'pos('0')+nib_int);
-        else
-          result(i+1) := character'val(character'pos('A')+nib_int-10);
-        end if;
-      end loop;  -- i
-      return result;
-    end slv2hstr;
+    IF slv'length < 32 THEN
+      slv32 := int2slv(slv2int(slv), 32);
+    ELSE
+      slv32 := slv;
+    END IF;
+    FOR i IN 7 DOWNTO 0 LOOP
+      nib_slv := slv32(i*4+3 DOWNTO i*4);
+      nib_int := slv2int(nib_slv);
+      IF nib_int < 10 THEN
+        result(i+1) := character'val(character'pos('0')+nib_int);
+      ELSE
+        result(i+1) := character'val(character'pos('A')+nib_int-10);
+      END IF;
+    END LOOP;  -- i
+    RETURN result;
+  END slv2hstr;
 
-  function rotate (slv : std_logic_vector) return std_logic_vector is
-    variable result : std_logic_vector (slv'range);
-  begin
-    for i in slv'range loop
+  FUNCTION rotate (slv : std_logic_vector) RETURN std_logic_vector IS
+    VARIABLE result : std_logic_vector (slv'range);
+  BEGIN
+    FOR i IN slv'range LOOP
       result(slv'length - 1 - i) := slv(i);
-    end loop;
-    return result;
-  end;
+    END LOOP;
+    RETURN result;
+  END;
 
-end my_conversions;
+END my_conversions;
 
 
 
