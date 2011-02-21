@@ -39,7 +39,6 @@ file_011=.
 file_012=.
 file_013=.
 file_014=.
-file_015=.
 [GENERATED_FILES]
 file_000=no
 file_001=no
@@ -56,7 +55,6 @@ file_011=no
 file_012=no
 file_013=no
 file_014=no
-file_015=no
 [OTHER_FILES]
 file_000=no
 file_001=no
@@ -70,10 +68,9 @@ file_008=no
 file_009=no
 file_010=no
 file_011=no
-file_012=no
+file_012=yes
 file_013=yes
 file_014=yes
-file_015=yes
 [FILE_INFO]
 file_000=main.asm
 file_001=SRunner.asm
@@ -85,12 +82,11 @@ file_006=SRunner.inc
 file_007=CANHLP.inc
 file_008=THUB_uc.inc
 file_009=FirmwareID.inc
-file_010=C:\Program Files\Microchip\MPASM Suite\P18F8680.INC
-file_011=I2CMPol.inc
-file_012=upper_linkerscript.lkr
-file_013=THUB.def
-file_014=CANHLP.def
-file_015=I2CMPol.Def
+file_010=I2CMPol.inc
+file_011=upper_linkerscript.lkr
+file_012=THUB.def
+file_013=CANHLP.def
+file_014=I2CMPol.Def
 [SUITE_INFO]
 suite_guid={6B3DAA78-59C1-46DD-B6AA-DBDAE4E06484}
 suite_state=
