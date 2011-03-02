@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_trigger_generator.vhd,v 1.1 2006-11-30 15:50:40 jschamba Exp $
+-- $Id: ddl_trigger_generator.vhd,v 1.2 2011-03-02 18:05:06 jschamba Exp $
 --******************************************************************************
 --*  ddl_trigger_generator.vhd
 --*
@@ -38,7 +38,6 @@ ARCHITECTURE SYN OF ddl_trigger_generator IS
 BEGIN
 
   main : PROCESS (clock, arstn)
-
     VARIABLE tr_timer     : std_logic_vector (22 DOWNTO 0);
     VARIABLE tr_timer_in  : std_logic_vector (22 DOWNTO 0);
     VARIABLE tr_timer_to  : std_logic;
@@ -49,11 +48,8 @@ BEGIN
     VARIABLE ext_tr_reg1  : std_logic;
     VARIABLE ext_tr_reg2  : std_logic;
     VARIABLE ext_tr_edge  : std_logic;
-
   BEGIN
-
     IF (arstn = '0') THEN
-
       trigger      <= '0';
       tr_timer     := (OTHERS => '0');
       tr_timer_in  := "01001100010010110100000";
@@ -66,8 +62,7 @@ BEGIN
       ext_tr_reg2  := '0';
       ext_tr_edge  := '0';
 
-    ELSIF (clock'event AND clock = '1') THEN
-
+    ELSIF rising_edge(clock) THEN
       tr_timer_to := tr_timer(22);
       IF (tr_timer(22) = '1') THEN
         tr_timer := tr_timer_in;
