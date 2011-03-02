@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_internal_memory.vhd,v 1.3 2011-02-08 19:56:03 jschamba Exp $
+-- $Id: ddl_internal_memory.vhd,v 1.4 2011-03-02 17:59:47 jschamba Exp $
 --******************************************************************************
 --*  DDL_INTERNAL_MEMORY.VHD
 --*
@@ -66,7 +66,7 @@ BEGIN
       write_next    := WRSTOP;
       read_present  := RDSTOP;
       read_next     := RDSTOP;
-    ELSIF (clock'event AND clock = '1') THEN
+    ELSIF rising_edge(clock) THEN
 
       CASE write_present IS
         WHEN WRSTOP =>

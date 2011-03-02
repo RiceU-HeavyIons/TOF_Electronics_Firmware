@@ -1,4 +1,4 @@
--- $Id: ddl_pattern_generator.vhd,v 1.3 2009-04-29 15:13:07 jschamba Exp $
+-- $Id: ddl_pattern_generator.vhd,v 1.4 2011-03-02 18:00:33 jschamba Exp $
 --*************************************************************************
 --*  ddl_pattern_generator.vhd : Pattern generator module.
 --*
@@ -126,8 +126,7 @@ BEGIN
       block_counter  := (0      => '1', OTHERS => '0');
       block_end      := '0';
 
-    ELSIF (clock'event AND clock = '1') THEN
-
+    ELSIF rising_edge(clock) THEN
       
       IF (is_fifo_out) THEN
         block_end := bool2sl( fifo_q(31 DOWNTO 24) = X"EA");
