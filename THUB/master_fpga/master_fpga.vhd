@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.47 2010-05-10 14:17:46 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.48 2011-03-02 18:13:01 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2010-04-29
+-- Last update: 2011-02-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -716,7 +716,7 @@ BEGIN
     ser_status          => s_serStatus,
     fifo_empty          => smif_fifo_empty,
     outfifo_almost_full => ddlfifo_almost_full,
-    evt_trg             => s_evt_trg,
+    evt_trg             => s_smif_trigger,      -- s_evt_trg,
     triggerWord         => s_triggerword,
     trgFifo_empty       => s_ddltrgFifo_empty,
     trgFifo_q           => s_ddltrgFifo_q,
@@ -870,7 +870,7 @@ BEGIN
     foCTRL_N   => s_l2foCTRL_N,
     fiTEN_N    => s_l2fiTEN_N,
     foTEN_N    => s_l2foTEN_N,
-    ext_trg    => '0',                  -- external trigger (for testing)
+    ext_trg    => s_evt_trg,            -- external trigger (for testing)
     run_reset  => s_l2runReset,         -- external logic reset at run start
     special_wr => s_l2special_wr,       -- indicates FECTRL with parameter "0xabc0"
     event_read => s_l2event_read,       -- indicates run in progress
@@ -950,7 +950,7 @@ BEGIN
     foCTRL_N   => s_foCTRL_N,
     fiTEN_N    => s_fiTEN_N,
     foTEN_N    => s_foTEN_N,
-    ext_trg    => '0',                  -- external trigger (for testing)
+    ext_trg    => s_evt_trg,            -- external trigger (for testing)
     run_reset  => s_runReset,           -- external logic reset at run start
     special_wr => s_special_wr,         -- use this for CANbus alert message
     event_read => s_event_read,         -- indicates run in progress
