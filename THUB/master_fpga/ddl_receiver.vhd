@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_receiver.vhd,v 1.3 2009-04-14 16:15:21 jschamba Exp $
+-- $Id: ddl_receiver.vhd,v 1.4 2011-03-02 18:01:43 jschamba Exp $
 --******************************************************************************
 --*  ddl_receiver.vhd
 --*
@@ -14,6 +14,9 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
+
 
 ENTITY ddl_receiver IS
   PORT (
@@ -41,11 +44,6 @@ ENTITY ddl_receiver IS
     foBSY_N     : OUT std_logic
     );
 END ddl_receiver;
-
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-USE work.my_conversions.ALL;
-USE work.my_utilities.ALL;
 
 ARCHITECTURE SYN OF ddl_receiver IS
 
@@ -80,7 +78,6 @@ BEGIN
   foBSY_N <= '1';
 
   main : PROCESS (clock, arstn)
-
     VARIABLE input_present  : input_state;
     VARIABLE input_next     : input_state;
     VARIABLE feebus_present : feebus_state;
@@ -91,9 +88,7 @@ BEGIN
     VARIABLE command_code   : std_logic_vector (7 DOWNTO 0);
     VARIABLE command_tid    : std_logic_vector (3 DOWNTO 0);
     VARIABLE command_param  : std_logic_vector (18 DOWNTO 0);
-
   BEGIN
-
     IF (arstn = '0') THEN
       block_read     <= '0';
       block_write    <= '0';
@@ -117,8 +112,8 @@ BEGIN
       command_code   := (OTHERS => '0');
       command_tid    := (OTHERS => '0');
       command_param  := (OTHERS => '0');
-    ELSIF (clock'event AND clock = '1') THEN
 
+    ELSIF rising_edge(clock) THEN
       b_rxany := (fiDIR = '0') AND (fiTEN_N = '0');
 
       b_rxdat := b_rxany AND (fiCTRL_N = '1');

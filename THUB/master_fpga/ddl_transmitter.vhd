@@ -1,5 +1,5 @@
 --345678901234567890123456789012345678901234567890123456789012345678901234567890
--- $Id: ddl_transmitter.vhd,v 1.1 2006-11-30 15:50:40 jschamba Exp $
+-- $Id: ddl_transmitter.vhd,v 1.2 2011-03-02 18:02:25 jschamba Exp $
 --******************************************************************************
 --*  ddl_transmitter.vhd
 --*
@@ -13,6 +13,8 @@
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;
+USE work.my_conversions.ALL;
+USE work.my_utilities.ALL;
 
 ENTITY ddl_transmitter IS
   PORT (
@@ -46,11 +48,6 @@ ENTITY ddl_transmitter IS
     );
 END ddl_transmitter;
 
-LIBRARY ieee;
-USE ieee.std_logic_1164.ALL;
-USE work.my_conversions.ALL;
-USE work.my_utilities.ALL;
-
 ARCHITECTURE SYN OF ddl_transmitter IS
 
   CONSTANT FESTW : std_logic_vector := "01000100";
@@ -74,7 +71,6 @@ ARCHITECTURE SYN OF ddl_transmitter IS
 BEGIN
 
   main : PROCESS (clock, arstn)
-
     VARIABLE datao          : std_logic_vector (32 DOWNTO 0);
     VARIABLE datao_valid    : std_logic;
     VARIABLE st_dout        : std_logic_vector (32 DOWNTO 0);
@@ -84,10 +80,8 @@ BEGIN
     VARIABLE output_next    : output_state;
     VARIABLE feebus_present : feebus_state;
     VARIABLE feebus_next    : feebus_state;
-
   BEGIN
     IF (arstn = '0') THEN
-
       gap_active <= '0';
       pg_enable  <= '0';
       im_enable  <= '0';
@@ -105,7 +99,7 @@ BEGIN
       feebus_present := FB_INPUT;
       feebus_next    := FB_INPUT;
 
-    ELSIF (clock'event AND clock = '1') THEN
+    ELSIF rising_edge(clock) THEN
 
       IF (output_present = OS_TXSTATUS) THEN
         datao       := st_dout;
