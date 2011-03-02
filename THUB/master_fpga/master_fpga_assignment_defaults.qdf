@@ -197,7 +197,6 @@ set_global_assignment -name ADV_NETLIST_OPT_METASTABLE_REGS 2
 set_global_assignment -name OPTIMIZE_POWER_DURING_SYNTHESIS "Normal compilation"
 set_global_assignment -name HDL_MESSAGE_LEVEL Level2
 set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT Off
-set_global_assignment -name INCREMENTAL_COMPILATION Off
 set_global_assignment -name AUTO_QIC_EXPORT Off
 set_global_assignment -name QIC_EXPORT_NETLIST_TYPE POST_FIT
 set_global_assignment -name ROUTER_TIMING_OPTIMIZATION_LEVEL Normal
