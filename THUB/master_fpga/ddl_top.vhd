@@ -1,4 +1,4 @@
--- $Id: ddl_top.vhd,v 1.4 2011-02-08 19:56:50 jschamba Exp $
+-- $Id: ddl_top.vhd,v 1.5 2011-03-02 17:54:25 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : DDL
 -- Project    : TOF
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2004-12-09
--- Last update: 2011-02-08
+-- Last update: 2011-02-23
 -- Platform   : 
 -------------------------------------------------------------------------------
 -- Description: Top Level Component for the DDL interface
@@ -212,7 +212,7 @@ BEGIN
     VARIABLE fidir_d1 : std_logic := '0';
     VARIABLE fidir_d2 : std_logic := '0';
   BEGIN  -- process
-    IF (s_clock'event AND (s_clock = '1')) THEN
+    IF rising_edge(s_clock) THEN
       IF ((fidir_d2 = '1') AND (fidir_d1 = '0') AND (fiBEN_N = '0')) THEN
         s_arstn <= '0';
       ELSE
