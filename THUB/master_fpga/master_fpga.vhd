@@ -1,4 +1,4 @@
--- $Id: master_fpga.vhd,v 1.48 2011-03-02 18:13:01 jschamba Exp $
+-- $Id: master_fpga.vhd,v 1.49 2012-05-31 14:01:30 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : MASTER_FPGA
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-22
--- Last update: 2011-02-24
+-- Last update: 2011-10-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -513,7 +513,10 @@ BEGIN
 
   -- Other defaults
 
-  tcd_busy_p <= s_tcd_busy_n AND filf_n AND l2_filf_n;  -- active "low"
+  ------------------- NO L2 AT THIS POINT ------------------------------
+--  tcd_busy_p <= s_tcd_busy_n AND filf_n AND l2_filf_n;  -- active "low"
+  tcd_busy_p <= s_tcd_busy_n AND filf_n;  -- active "low"
+
 --  tcd_busy_p <= s_tcd_busy_n;           -- active "low"
   -- tcd_busy_p <= '1';                    -- active "low"
   -- rstout     <= '0';
@@ -880,38 +883,43 @@ BEGIN
     fifo_rdreq => rd_l2ddl_fifo         -- "rdreq" for external FIFO
     );
 
+  ------------------------- NO L2 AT THIS POINT --------------------------
+  l2ddl_data      <= (OTHERS => '0');
+  l2ddlfifo_empty <= '1';
+  l2fifo_usedw    <= (OTHERS => '0');
+
   -- FIFO to store the L2 data.
   -- This FIFO is then read by the L2 DDL state machines to transfer 
   -- over the L2 DDL fibers
-  l2fifo : dcfifo
-    GENERIC MAP (
-      intended_device_family => "Cyclone II",
-      lpm_hint               => "MAXIMIZE_SPEED=7,",
-      lpm_numwords           => 2048,
-      lpm_showahead          => "OFF",
-      lpm_type               => "dcfifo",
-      lpm_width              => 32,
-      lpm_widthu             => 11,
-      overflow_checking      => "ON",
-      rdsync_delaypipe       => 5,
-      underflow_checking     => "ON",
-      use_eab                => "ON",
-      wrsync_delaypipe       => 5
-      )
-    PORT MAP (
-      wrclk   => clk_80mhz,
-      wrreq   => (l2_wrreq_out AND s_l2event_read),  -- only write when L2 fiber is connnected
-      rdclk   => NOT globalclk,
-      rdreq   => rd_l2ddl_fifo,
-      data    => l2_outdata,
-      aclr    => l2fifo_aclr,
-      rdempty => l2ddlfifo_empty,
-      wrusedw => l2fifo_usedw,
-      q       => l2ddl_data
-      );
+--  l2fifo : dcfifo
+--    GENERIC MAP (
+--      intended_device_family => "Cyclone II",
+--      lpm_hint               => "MAXIMIZE_SPEED=7,",
+--      lpm_numwords           => 2048,
+--      lpm_showahead          => "OFF",
+--      lpm_type               => "dcfifo",
+--      lpm_width              => 32,
+--      lpm_widthu             => 11,
+--      overflow_checking      => "ON",
+--      rdsync_delaypipe       => 5,
+--      underflow_checking     => "ON",
+--      use_eab                => "ON",
+--      wrsync_delaypipe       => 5
+--      )
+--    PORT MAP (
+--      wrclk   => clk_80mhz,
+--      wrreq   => (l2_wrreq_out AND s_l2event_read),  -- only write when L2 fiber is connnected
+--      rdclk   => NOT globalclk,
+--      rdreq   => rd_l2ddl_fifo,
+--      data    => l2_outdata,
+--      aclr    => l2fifo_aclr,
+--      rdempty => l2ddlfifo_empty,
+--      wrusedw => l2fifo_usedw,
+--      q       => l2ddl_data
+--      );
 
-  l2fifo_aclr <= s_runReset OR s_l2runReset;  -- clear at Begin Run
-                                              -- or any time L2 sends ready to receive
+--  l2fifo_aclr <= s_runReset OR s_l2runReset;  -- clear at Begin Run
+--                                              -- or any time L2 sends ready to receive
 
   -- ********************************************************************************
   -- DAQ DDL Interface
