@@ -1,4 +1,4 @@
--- $Id: serdes_reader.vhd,v 1.22 2010-01-28 22:09:26 jschamba Exp $
+-- $Id: serdes_reader.vhd,v 1.23 2012-05-31 14:05:50 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : Serdes Reader
 -- Project    : 
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2009-12-15
+-- Last update: 2012-05-30
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -64,14 +64,14 @@ END ENTITY serdes_reader;
 
 ARCHITECTURE a OF serdes_reader IS
 
-  COMPONENT l2bitmap IS
-    PORT (
-      areset_n : IN  std_logic;
-      clk      : IN  std_logic;                         -- 80MHz  clock
-      rdreq_in : IN  std_logic;
-      data_in  : IN  std_logic_vector (31 DOWNTO 0);    -- serdes data
-      bm_out   : OUT std_logic_vector (191 DOWNTO 0));  -- generated bitmap
-  END COMPONENT l2bitmap;
+--  COMPONENT l2bitmap IS
+--    PORT (
+--      areset_n : IN  std_logic;
+--      clk      : IN  std_logic;                         -- 80MHz  clock
+--      rdreq_in : IN  std_logic;
+--      data_in  : IN  std_logic_vector (31 DOWNTO 0);    -- serdes data
+--      bm_out   : OUT std_logic_vector (191 DOWNTO 0));  -- generated bitmap
+--  END COMPONENT l2bitmap;
 
   SIGNAL s_outdata   : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_wrreq_out : std_logic;
@@ -81,12 +81,12 @@ ARCHITECTURE a OF serdes_reader IS
   SIGNAL s_slatch       : std_logic;
   SIGNAL s_prelatch     : std_logic;
   SIGNAL s_shiftout     : std_logic_vector (31 DOWNTO 0);
-  SIGNAL s_serdesData   : std_logic_vector (31 DOWNTO 0);
+--  SIGNAL s_serdesData   : std_logic_vector (31 DOWNTO 0);
   SIGNAL ser_selector   : std_logic_vector (4 DOWNTO 0);
   SIGNAL l0_trgword     : std_logic_vector(19 DOWNTO 0);
   SIGNAL s_bm_out       : std_logic_vector (191 DOWNTO 0);
-  SIGNAL l2areset_n     : std_logic;
-  SIGNAL l2_rdreq_in    : std_logic;
+--  SIGNAL l2areset_n     : std_logic;
+--  SIGNAL l2_rdreq_in    : std_logic;
 
   SIGNAL timeout     : std_logic_vector (10 DOWNTO 0);
   SIGNAL timeout_clr : std_logic;
@@ -100,7 +100,7 @@ ARCHITECTURE a OF serdes_reader IS
     SFifoChk,
     SChkChannel,
     SRdSerA,
-    SOutputL2,
+--    SOutputL2,
     SChgChannel,
     SRdTrg,
     SEnd,
@@ -123,34 +123,38 @@ BEGIN  -- ARCHITECTURE a
   serSel    <= ser_selector(4 DOWNTO 2);  -- upper 3 bits = Serdes Number
 
   -- L2 stuff:
---   s_serdesData <= sync_q WHEN sfifo_empty = '0' ELSE (OTHERS => '0');
-  s_serdesData <= sync_q;
+--   -- s_serdesData <= sync_q WHEN sfifo_empty = '0' ELSE (OTHERS => '0');
+--  s_serdesData <= sync_q;
   
-  l2bitmap_inst : l2bitmap PORT MAP (
-    areset_n => l2areset_n,
-    clk      => clk80mhz,
-    rdreq_in => l2_rdreq_in,
-    data_in  => s_serdesData,
-    bm_out   => s_bm_out);
+--  l2bitmap_inst : l2bitmap PORT MAP (
+--    areset_n => l2areset_n,
+--    clk      => clk80mhz,
+--    rdreq_in => l2_rdreq_in,
+--    data_in  => s_serdesData,
+--    bm_out   => s_bm_out);
 
+  l2_outdata     <= (OTHERS => '0');
+  l2_wrreq_out   <= '0';
+ 
 
   -- use a state machine to control the Serdes read process
   rdoutControl : PROCESS (clk80mhz, areset_n) IS
     VARIABLE delayCtr     : integer RANGE 0 TO 2047 := 0;
     VARIABLE chCtr        : integer RANGE 0 TO 3    := 0;
     VARIABLE serCtr       : integer RANGE 0 TO 31   := 0;
-    VARIABLE l2Ctr        : integer RANGE 0 TO 6    := 0;
+--    VARIABLE l2Ctr        : integer RANGE 0 TO 6    := 0;
     VARIABLE timeout_r1   : std_logic;
     VARIABLE timeout_r2   : std_logic;
     VARIABLE timeout_edge : std_logic;
   BEGIN
     IF areset_n = '0' THEN              -- asynchronous reset (active low)
-      l2areset_n     <= '0';            -- reset active low
-      l2_rdreq_in    <= '0';
+--      l2areset_n     <= '0';            -- reset active low
+--      l2_rdreq_in    <= '0';
+--      l2_outdata     <= (OTHERS => '0');
+--      l2_wrreq_out   <= '0';
+--      l2Ctr          := 0;
       s_outdata      <= (OTHERS => '0');
-      l2_outdata     <= (OTHERS => '0');
       s_wrreq_out    <= '0';
-      l2_wrreq_out   <= '0';
       rdreq_out      <= '0';
       block_end      <= false;
       TState         <= SWaitTrig;
@@ -161,15 +165,14 @@ BEGIN  -- ARCHITECTURE a
       chCtr          := 0;
       serCtr         := 0;
       delayCtr       := 0;
-      l2Ctr          := 0;
       timeout_clr    <= '1';
       is_serdes_data <= false;
       
     ELSIF rising_edge(clk80mhz) THEN
-      l2areset_n     <= '0';            -- default: reset (active low)
-      l2_rdreq_in    <= '0';            -- default: not reading L2 bitmap
+--      l2areset_n     <= '0';            -- default: reset (active low)
+--      l2_rdreq_in    <= '0';            -- default: not reading L2 bitmap
+--      l2_wrreq_out   <= '0';
       s_wrreq_out    <= '0';
-      l2_wrreq_out   <= '0';
       rdreq_out      <= '0';
       busy_n         <= '0';            -- default is "busy"
       trgFifo_rdreq  <= '0';
@@ -216,9 +219,9 @@ BEGIN  -- ARCHITECTURE a
           s_outdata(19 DOWNTO 0)  <= l0_trgword;
           s_wrreq_out             <= '1';
 
-          l2_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
-          l2_outdata(19 DOWNTO 0)  <= l0_trgword;
-          l2_wrreq_out             <= '1';
+--          l2_outdata(31 DOWNTO 20) <= X"A00";  -- trigger word
+--          l2_outdata(19 DOWNTO 0)  <= l0_trgword;
+--          l2_wrreq_out             <= '1';
 
           TState <= STagWrd;
 
@@ -227,8 +230,8 @@ BEGIN  -- ARCHITECTURE a
           s_outdata   <= X"DEADFACE";
           s_wrreq_out <= '1';
 
-          l2_outdata   <= X"DEADFACE";
-          l2_wrreq_out <= '1';
+--          l2_outdata   <= X"DEADFACE";
+--          l2_wrreq_out <= '1';
 
           TState <= SFifoChk;
 
@@ -240,10 +243,11 @@ BEGIN  -- ARCHITECTURE a
 
           -- check if channel is "locked"
         WHEN SChkChannel =>
-          l2Ctr := 0;
+--          l2Ctr := 0;
 
           IF ser_status(chCtr) = '0' THEN  -- if NOT locked
-            TState <= SOutputL2;
+            TState <= SChgChannel;
+--            TState <= SOutputL2;
           ELSE
             TState <= SRdSerA;
           END IF;
@@ -257,7 +261,7 @@ BEGIN  -- ARCHITECTURE a
         WHEN SRdSerA =>
           rdreq_out   <= '1';           -- start reading
           timeout_clr <= s_slatch;      -- clear timeout on latch
-          l2areset_n  <= '1';           -- release reset for L2 bitmap
+--          l2areset_n  <= '1';           -- release reset for L2 bitmap
 
           IF s_slatch = '1' THEN
             delayCtr := 0;              -- clear delayCtr on latch
@@ -278,42 +282,45 @@ BEGIN  -- ARCHITECTURE a
 --          IF (block_end AND (s_slatch = '1')) OR (timeout(10) = '1') THEN
           IF block_end OR (delayCtr = 4) THEN
             block_end <= false;
-            TState    <= SOutputL2;
+
+            ------- currently, don't do L2 ------------------
+--            TState    <= SOutputL2; 
+            TState    <= SChgChannel;
           END IF;
 
           -- now latch out the 6 L2 words
-        WHEN SOutputL2 =>
-          l2areset_n <= '1';            -- release reset for L2 bitmap
-          IF serCtr < 30 THEN
-            l2Ctr := l2Ctr + 1;
-            CASE l2Ctr IS
-              WHEN 1      => l2_outdata <= s_bm_out(31 DOWNTO 0);
-              WHEN 2      => l2_outdata <= s_bm_out(63 DOWNTO 32);
-              WHEN 3      => l2_outdata <= s_bm_out(95 DOWNTO 64);
-              WHEN 4      => l2_outdata <= s_bm_out(127 DOWNTO 96);
-              WHEN 5      => l2_outdata <= s_bm_out(159 DOWNTO 128);
-              WHEN OTHERS => l2_outdata <= s_bm_out(191 DOWNTO 160);
-            END CASE;
---            l2_outdata(31 DOWNTO 20) <= X"EEE";  -- DEBUG word
---            l2_outdata(19 DOWNTO 0)  <= (OTHERS => '0');
-            l2_wrreq_out <= '1';
-            l2_rdreq_in  <= '1';        -- reading L2 bitmap
+--        WHEN SOutputL2 =>
+--          l2areset_n <= '1';            -- release reset for L2 bitmap
+--          IF serCtr < 30 THEN
+--            l2Ctr := l2Ctr + 1;
+--            CASE l2Ctr IS
+--              WHEN 1      => l2_outdata <= s_bm_out(31 DOWNTO 0);
+--              WHEN 2      => l2_outdata <= s_bm_out(63 DOWNTO 32);
+--              WHEN 3      => l2_outdata <= s_bm_out(95 DOWNTO 64);
+--              WHEN 4      => l2_outdata <= s_bm_out(127 DOWNTO 96);
+--              WHEN 5      => l2_outdata <= s_bm_out(159 DOWNTO 128);
+--              WHEN OTHERS => l2_outdata <= s_bm_out(191 DOWNTO 160);
+--            END CASE;
+----            l2_outdata(31 DOWNTO 20) <= X"EEE";  -- DEBUG word
+----            l2_outdata(19 DOWNTO 0)  <= (OTHERS => '0');
+--            l2_wrreq_out <= '1';
+--            l2_rdreq_in  <= '1';        -- reading L2 bitmap
 
-          ELSIF serCtr = 30 THEN
-            -- L2 is finished here
-            l2_outdata(31 DOWNTO 24) <= X"EA";
-            l2_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
-            l2_wrreq_out             <= '1';
+--          ELSIF serCtr = 30 THEN
+--            -- L2 is finished here
+--            l2_outdata(31 DOWNTO 24) <= X"EA";
+--            l2_outdata(23 DOWNTO 0)  <= (OTHERS => '0');
+--            l2_wrreq_out             <= '1';
 
-            l2Ctr := 6;
-          ELSE
-            -- serCtr = 31
-            l2Ctr := 6;
-          END IF;
+--            l2Ctr := 6;
+--          ELSE
+--            -- serCtr = 31
+--            l2Ctr := 6;
+--          END IF;
 
-          IF l2Ctr = 6 THEN
-            TState <= SChgChannel;
-          END IF;
+--          IF l2Ctr = 6 THEN
+--            TState <= SChgChannel;
+--          END IF;
 
           -- move on to next channel from same Serdes FPGA
         WHEN SChgChannel =>
