@@ -41,33 +41,8 @@
 # ========================
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:56:07  DECEMBER 14, 2005"
-set_global_assignment -name LAST_QUARTUS_VERSION "10.1 SP1"
+set_global_assignment -name LAST_QUARTUS_VERSION "11.1 SP2"
 set_global_assignment -name MISC_FILE master_fpga.dpf
-set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
-set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
-set_global_assignment -name VHDL_FILE l2bitmap.vhd
-set_global_assignment -name VHDL_FILE ddio_in.vhd
-set_global_assignment -name VHDL_FILE synchronizer.vhd
-set_global_assignment -name VHDL_FILE serdesRdDecoder.vhd
-set_global_assignment -name VHDL_FILE serdes_reader.vhd
-set_global_assignment -name VHDL_FILE pll.vhd
-set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
-set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
-set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
-set_global_assignment -name VHDL_FILE ddl_receiver.vhd
-set_global_assignment -name VHDL_FILE ddl_registers.vhd
-set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
-set_global_assignment -name VHDL_FILE ddl_top.vhd
-set_global_assignment -name VHDL_FILE tcd_interface.vhd
-set_global_assignment -name VHDL_FILE smif.vhd
-set_global_assignment -name VHDL_FILE master_fpga.vhd
-set_global_assignment -name VHDL_FILE control_registers.vhd
-set_global_assignment -name VHDL_FILE serdes_registers.vhd
-set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
-set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
-set_global_assignment -name QIP_FILE pll.qip
-set_global_assignment -name QIP_FILE ddio_in.qip
-set_global_assignment -name SDC_FILE master_fpga.sdc
 
 # Pin & Location Assignments
 # ==========================
@@ -510,7 +485,6 @@ set_location_assignment PIN_J7 -to uc_fpga_hi[10]
 # ==========================
 set_global_assignment -name ENABLE_CLOCK_LATENCY ON
 set_global_assignment -name ANALYZE_LATCHES_AS_SYNCHRONOUS_ELEMENTS ON
-set_global_assignment -name USE_TIMEQUEST_TIMING_ANALYZER ON
 
 # Analysis & Synthesis Assignments
 # ================================
@@ -542,7 +516,7 @@ set_global_assignment -name RESERVE_ALL_UNUSED_PINS_NO_OUTPUT_GND "AS INPUT TRI-
 # SignalTap II Assignments
 # ========================
 set_global_assignment -name ENABLE_SIGNALTAP OFF
-set_global_assignment -name USE_SIGNALTAP_FILE synchronizer.stp
+set_global_assignment -name USE_SIGNALTAP_FILE signaltap/trigger.stp
 
 # start EDA_TOOL_SETTINGS(eda_simulation)
 # ---------------------------------------
@@ -689,4 +663,28 @@ set_global_assignment -name LL_MEMBER_STATE LOCKED -section_id "Root Region"
 set_global_assignment -name PARTITION_NETLIST_TYPE SOURCE -section_id Top
 set_global_assignment -name PARTITION_FITTER_PRESERVATION_LEVEL PLACEMENT_AND_ROUTING -section_id Top
 set_global_assignment -name PARTITION_COLOR 16764057 -section_id Top
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "D:\\Users\\Jo\\Documents\\TOF\\THUB\\master_fpga\\outputs"
+set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
+set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
+set_global_assignment -name VHDL_FILE ddio_in.vhd
+set_global_assignment -name VHDL_FILE synchronizer.vhd
+set_global_assignment -name VHDL_FILE serdesRdDecoder.vhd
+set_global_assignment -name VHDL_FILE serdes_reader.vhd
+set_global_assignment -name VHDL_FILE ddl_trigger_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_internal_memory.vhd
+set_global_assignment -name VHDL_FILE ddl_pattern_generator.vhd
+set_global_assignment -name VHDL_FILE ddl_receiver.vhd
+set_global_assignment -name VHDL_FILE ddl_registers.vhd
+set_global_assignment -name VHDL_FILE ddl_transmitter.vhd
+set_global_assignment -name VHDL_FILE ddl_top.vhd
+set_global_assignment -name VHDL_FILE tcd_interface.vhd
+set_global_assignment -name VHDL_FILE smif.vhd
+set_global_assignment -name VHDL_FILE master_fpga.vhd
+set_global_assignment -name VHDL_FILE control_registers.vhd
+set_global_assignment -name VHDL_FILE serdes_registers.vhd
+set_global_assignment -name VHDL_FILE uc_fpga_interface.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE master_fpga.vwf
+set_global_assignment -name QIP_FILE pll.qip
+set_global_assignment -name QIP_FILE ddio_in.qip
+set_global_assignment -name SDC_FILE master_fpga.sdc
 set_instance_assignment -name PARTITION_HIERARCHY root_partition -to | -section_id Top
