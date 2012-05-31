@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.13 2010-05-10 14:20:42 jschamba Exp $
+-- $Id: tcd_interface.vhd,v 1.14 2012-05-31 14:18:15 jschamba Exp $
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB
@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2010-04-28
+-- Last update: 2012-05-24
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -43,7 +43,7 @@ ENTITY tcd IS
     trgword     : OUT std_logic_vector (19 DOWNTO 0);  -- captured 20bit word
     master_rst  : OUT std_logic;        -- indicates master reset command
     trigger     : OUT std_logic;        -- strobe signal sync'd to clock
-    evt_trg     : OUT std_logic         -- this signal indicates an event
+    evt_trg     : OUT std_logic   -- this signal indicates an event to read
     );
 
 END ENTITY tcd;
@@ -64,13 +64,17 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_reg3           : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg4           : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg5           : std_logic_vector (3 DOWNTO 0);
-  SIGNAL s_reg20_1        : std_logic_vector (19 DOWNTO 0);
-  SIGNAL s_reg20_2        : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_reg20          : std_logic_vector (19 DOWNTO 0);
+  SIGNAL s_trgwrd         : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_trg_unsync     : std_logic;
   SIGNAL s_trg_short      : std_logic;
-  SIGNAL s_stage1         : std_logic;
-  SIGNAL s_stage2         : std_logic;
-  SIGNAL s_stage3         : std_logic;
+  SIGNAL s_l0l_short      : std_logic;
+  SIGNAL s_tstage1        : std_logic;
+  SIGNAL s_tstage2        : std_logic;
+  SIGNAL s_tstage3        : std_logic;
+  SIGNAL s_lstage1        : std_logic;
+  SIGNAL s_lstage2        : std_logic;
+  SIGNAL s_lstage3        : std_logic;
   SIGNAL s_mstage1        : std_logic;
   SIGNAL s_mstage2        : std_logic;
   SIGNAL s_mstage3        : std_logic;
@@ -90,36 +94,57 @@ BEGIN  -- ARCHITECTURE a
 
   -- capture the trigger data in a cascade of 5 4-bit registers
   -- with the tcd data clock on trailing clock edge.
-  latchTrig : PROCESS (data_strobe, s_reset_n) IS
+  Main : PROCESS (data_strobe, s_reset_n, s_reg20) IS
   BEGIN
     IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
-      s_reg1    <= (OTHERS => '0');
-      s_reg2    <= (OTHERS => '0');
-      s_reg3    <= (OTHERS => '0');
-      s_reg4    <= (OTHERS => '0');
-      s_reg5    <= (OTHERS => '0');
-      s_reg20_1 <= (OTHERS => '0');
-      working   <= '0';                 -- doesn't work
-      rsState   <= R0l;
+      s_reg1   <= (OTHERS => '0');
+      s_reg2   <= (OTHERS => '0');
+      s_reg3   <= (OTHERS => '0');
+      s_reg4   <= (OTHERS => '0');
+      s_reg5   <= (OTHERS => '0');
+      s_reg20  <= (OTHERS => '0');
+      s_trgwrd <= (OTHERS => '0');
+      working  <= '0';                  -- trigger doesn't work (yet)
+
+      s_trg_unsync <= '0';
+      s_l0like     <= '0';
+      s_mstr_rst   <= '0';
+
+      rsState <= R0l;
       
     ELSIF falling_edge(data_strobe) THEN
       working <= '1';                   -- default: "it works"
+
+      s_trg_short <= '0';
+      s_l0l_short <= '0';
+
       CASE rsState IS
         WHEN R0l =>
-          working   <= '0';             -- not "working right" (yet)
-          s_reg1    <= (OTHERS => '0');
-          s_reg2    <= (OTHERS => '0');
-          s_reg3    <= (OTHERS => '0');
-          s_reg4    <= (OTHERS => '0');
-          s_reg5    <= (OTHERS => '0');
-          s_reg20_1 <= (OTHERS => '0');
+          working <= '0';               -- not "working right" (yet)
+
+          -- Reset everything
+          s_trgwrd <= (OTHERS => '0');
+          s_reg20  <= (OTHERS => '0');
+
+          s_reg1 <= (OTHERS => '0');
+          s_reg2 <= (OTHERS => '0');
+          s_reg3 <= (OTHERS => '0');
+          s_reg4 <= (OTHERS => '0');
+          s_reg5 <= (OTHERS => '0');
+
           -- wait for RHICstrobe to be low
           IF rhic_strobe = '0' THEN
             rsState <= R0h;
           END IF;
+
         WHEN R0h =>
           working <= '0';               -- not "working right" (yet)
-          s_reg1  <= data;              -- latch current nibble
+
+          s_trgwrd <= s_trgwrd;
+          s_reg20  <= s_reg20;
+
+          s_reg1 <= data;               -- latch current nibble as 1st nibble
+
           -- wait for RHICstrobe to go hi
           IF rhic_strobe = '1' THEN
             rsState <= R2;
@@ -127,136 +152,115 @@ BEGIN  -- ARCHITECTURE a
 
           -- now the state machine should be aligned to the RHICstrobe
         WHEN R1 =>
+          s_trgwrd <= s_trgwrd;
 
           -- make sure we see RHICstrobe being high during this nibble
           IF rhic_strobe = '1' THEN
             -- latch current nibbles into 20bit register
-            s_reg20_1 (19 DOWNTO 16) <= s_reg1;
-            s_reg20_1 (15 DOWNTO 12) <= s_reg2;
-            s_reg20_1 (11 DOWNTO 8)  <= s_reg3;
-            s_reg20_1 (7 DOWNTO 4)   <= s_reg4;
-            s_reg20_1 (3 DOWNTO 0)   <= s_reg5;
+            s_reg20(19 DOWNTO 16) <= s_reg1;
+            s_reg20(15 DOWNTO 12) <= s_reg2;
+            s_reg20(11 DOWNTO 8)  <= s_reg3;
+            s_reg20(7 DOWNTO 4)   <= s_reg4;
+            s_reg20(3 DOWNTO 0)   <= s_reg5;
 
-            s_reg1 <= data;
+            s_reg1 <= data;             -- 1st nibble
 
             rsState <= R2;
+            
           ELSE
-            s_reg20_1 <= (OTHERS => '0');
+            s_reg20 <= (OTHERS => '0');
             -- try new sync, if not
-            rsState   <= R0l;
+            rsState <= R0l;
           END IF;
+          
         WHEN R2 =>
-          trgWord <= s_reg20_1;
-          s_reg2  <= data;
+          s_trgwrd <= s_trgwrd;
+          s_reg20  <= s_reg20;
+
+          s_reg2  <= data;              -- 2nd nibble
           rsState <= R3;
+          
         WHEN R3 =>
-          s_reg3  <= data;
+          s_trgwrd <= s_reg20;          -- latch current 20bits for output
+          s_reg20  <= s_reg20;
+
+          -- shorten s_trg_unsync & l0like to 2 data strobe clock cycles
+          s_trg_short <= s_trg_unsync;
+          s_l0l_short <= s_l0like;
+
+          s_reg3  <= data;              -- 3rd nibble
           rsState <= R4;
+          
         WHEN R4 =>
-          s_reg4  <= data;
+          s_trgwrd <= s_trgwrd;
+          s_reg20  <= s_reg20;
+
+          -- shorten s_trg_unsync & l0like to 2 data strobe clock cycles
+          s_trg_short <= s_trg_unsync;
+          s_l0l_short <= s_l0like;
+
+          s_reg4  <= data;              -- 4th nibble
           rsState <= R5;
+          
         WHEN R5 =>
-          s_reg5  <= data;
+          s_trgwrd <= s_trgwrd;
+          s_reg20  <= s_reg20;
+
+          s_reg5  <= data;              -- 5th nibble
           rsState <= R1;
-
       END CASE;
-      
     END IF;
-  END PROCESS latchTrig;
 
+    -- check what kind of trigger
+    CASE s_reg20(19 DOWNTO 16) IS
+      WHEN "0100" =>                    -- "4" (trigger0)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "0101" =>                    -- "5" (trigger1)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "0110" =>                    -- "6" (trigger2)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "0111" =>                    -- "7" (trigger3)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1000" =>                    -- "8" (pulser0)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1001" =>                    -- "9" (pulser1)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1010" =>                    -- "10" (pulser2)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1011" =>                    -- "11" (pulser3)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1100" =>                    -- "12" (config)
+        s_trg_unsync <= '1';
+        s_l0like     <= '1';
+      WHEN "1101" =>                    -- "13" (abort)
+        s_trg_unsync <= '1';
+        s_l0like     <= '0';
+      WHEN "1110" =>                    -- "14" (L1accept)
+        s_trg_unsync <= '1';
+        s_l0like     <= '0';
+      WHEN "1111" =>                    -- "15" (L2accept)
+        s_trg_unsync <= '1';
+        s_l0like     <= '0';
+      WHEN OTHERS =>
+        s_trg_unsync <= '0';
+        s_l0like     <= '0';
+    END CASE;
 
-  -- now check if there is a valid trigger command:
-  trg : PROCESS (data_strobe, s_reset_n) IS
-  BEGIN
-    IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
-      s_trg_unsync <= '0';
-      s_l0like     <= '0';
-      s_mstr_rst   <= '0';
-
-    ELSIF rising_edge(data_strobe) THEN  -- only on rising edge of data strobe
-      CASE s_reg20_1(19 DOWNTO 16) IS
-        WHEN "0100" =>                   -- "4" (trigger0)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "0101" =>                   -- "5" (trigger1)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "0110" =>                   -- "6" (trigger2)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "0111" =>                   -- "7" (trigger3)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1000" =>                   -- "8" (pulser0)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1001" =>                   -- "9" (pulser1)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1010" =>                   -- "10" (pulser2)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1011" =>                   -- "11" (pulser3)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1100" =>                   -- "12" (config)
-          s_trg_unsync <= '1';
-          s_l0like     <= '1';
-        WHEN "1101" =>                   -- "13" (abort)
-          s_trg_unsync <= '1';
-          s_l0like     <= '0';
-        WHEN "1110" =>                   -- "14" (L1accept)
-          s_trg_unsync <= '1';
-          s_l0like     <= '0';
-        WHEN "1111" =>                   -- "15" (L2accept)
-          s_trg_unsync <= '1';
-          s_l0like     <= '0';
-        WHEN OTHERS =>
-          s_trg_unsync <= '0';
-          s_l0like     <= '0';
-      END CASE;
-
-      -- master reset command
-      IF s_reg20_1(19 DOWNTO 16) = "0010" THEN
-        s_mstr_rst <= '1';
-      ELSE
-        s_mstr_rst <= '0';
-      END IF;
+    IF s_reg20(19 DOWNTO 16) = "0010" THEN  -- "2" (Master Reset)
+      s_mstr_rst <= '1';
+    ELSE
+      s_mstr_rst <= '0';
     END IF;
-  END PROCESS trg;
 
-  -- shorten s_trg_unsync to 2 data strobe clock cycles
-  -- so two consecutive triggers are distinguished
-  shorten : PROCESS (data_strobe, s_reset_n) IS
-  BEGIN
-    IF s_reset_n = '0' THEN             -- asynchronous reset (active low)
-      s_trg_short <= '0';
-      sreg        <= S1;
-    ELSIF falling_edge(data_strobe) THEN
-      s_trg_short <= '0';
-
-      CASE sreg IS
-        WHEN S1 =>
-          s_trg_short <= s_trg_unsync;
-          IF s_trg_unsync = '1' THEN
-            sreg <= S2;
-          END IF;
-        WHEN S2 =>
-          s_trg_short <= s_trg_unsync;
-          sreg        <= S3;
-        WHEN S3 =>
-          sreg <= S4;
-        WHEN S4 =>
-          sreg <= S5;
-        WHEN S5 =>
-          sreg <= S1;
-        WHEN OTHERS =>
-          sreg <= S1;
-      END CASE;
-      
-    END IF;
-  END PROCESS shorten;
-
+  END PROCESS Main;
 
   -- when a valid trigger command is found, synchronize the resulting trigger
   -- to the 40MHz clock with a 3 stage DFF cascade and make the signal
@@ -264,9 +268,13 @@ BEGIN  -- ARCHITECTURE a
   syncit : PROCESS (clock) IS
   BEGIN
     IF rising_edge(clock) THEN
-      s_stage1 <= s_trg_short;
-      s_stage2 <= s_stage1;
-      s_stage3 <= s_stage2;
+      s_tstage1 <= s_trg_short;
+      s_tstage2 <= s_tstage1;
+      s_tstage3 <= s_tstage2;
+
+      s_lstage1 <= s_l0l_short;
+      s_lstage2 <= s_lstage1;
+      s_lstage3 <= s_lstage2;
 
       s_mstage1 <= s_mstr_rst;
       s_mstage2 <= s_mstage1;
@@ -274,13 +282,12 @@ BEGIN  -- ARCHITECTURE a
     END IF;
   END PROCESS syncit;
 
-  s_trigger <= s_stage2 AND (NOT s_stage3);
-
-  trigger <= s_trigger;
-  evt_trg <= s_trigger AND s_l0like;
-
+  s_trigger  <= s_tstage2 AND (NOT s_tstage3);
+  evt_trg    <= s_lstage2 AND (NOT s_lstage3);
   master_rst <= s_mstage2 AND (NOT s_mstage3);
 
+  trigger <= s_trigger;
+  trgWord <= s_trgwrd;
 
 -------------------------------------------------------------------------------
 -- Attempt to discover a missing RHICstrobe
@@ -308,7 +315,7 @@ BEGIN  -- ARCHITECTURE a
       
     ELSIF rising_edge(clock) THEN
       CASE resetState IS
-          
+
         -- first start looking for one down edge and one up edge
         WHEN rss1 =>                    -- look for rhic_strobe lo
           missing_strobe_n <= '0';
@@ -316,7 +323,7 @@ BEGIN  -- ARCHITECTURE a
             resetState <= rss2;
           END IF;
         WHEN rss2 =>                    -- look for rhic_strobe hi
-          counter <= 0;
+          counter          <= 0;
           missing_strobe_n <= '0';
           IF s_rhic_strobe = '1' THEN
             resetState <= rss3;
@@ -330,7 +337,7 @@ BEGIN  -- ARCHITECTURE a
           missing_strobe_n <= '1';
           IF s_rhic_strobe = '0' THEN
             resetState <= rss4;
-          ELSIF counter = 32 THEN        -- at least one strobe should have been seen
+          ELSIF counter = 32 THEN  -- at least one strobe should have been seen
             resetState <= rss1;
           ELSE
             counter <= counter + 1;
@@ -338,15 +345,15 @@ BEGIN  -- ARCHITECTURE a
         WHEN rss4 =>                    -- look for rhic_strobe hi
           missing_strobe_n <= '1';
           IF s_rhic_strobe = '1' THEN
-            counter <= 0;
+            counter    <= 0;
             resetState <= rss3;
-          ELSIF counter = 32 THEN        -- at least one strobe should have been seen
+          ELSIF counter = 32 THEN  -- at least one strobe should have been seen
             resetState <= rss1;
           ELSE
             counter <= counter + 1;
           END IF;
-       
-       END CASE;
+          
+      END CASE;
       
     END IF;
   END PROCESS;
