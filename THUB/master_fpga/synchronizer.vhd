@@ -1,4 +1,4 @@
--- $Id: synchronizer.vhd,v 1.4 2010-05-10 14:19:53 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : Serdes Syncrhonizer
 -- Project    : 

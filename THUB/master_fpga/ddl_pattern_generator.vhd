@@ -1,4 +1,4 @@
--- $Id: ddl_pattern_generator.vhd,v 1.4 2011-03-02 18:00:33 jschamba Exp $
+-- $Id$
 --*************************************************************************
 --*  ddl_pattern_generator.vhd : Pattern generator module.
 --*

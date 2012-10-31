@@ -1,4 +1,4 @@
--- $Id: control_registers.vhd,v 1.2 2009-01-09 16:03:13 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : control registers
 -- Project    : 

@@ -1,4 +1,4 @@
--- $Id: serdesRdDecoder.vhd,v 1.1 2008-01-24 20:50:19 jschamba Exp $
+-- $Id$
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

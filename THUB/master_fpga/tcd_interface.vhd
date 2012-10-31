@@ -1,4 +1,4 @@
--- $Id: tcd_interface.vhd,v 1.14 2012-05-31 14:18:15 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : TCD Interface
 -- Project    : THUB

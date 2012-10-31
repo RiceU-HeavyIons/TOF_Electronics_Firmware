@@ -1,4 +1,4 @@
--- $Id: uc_fpga_interface.vhd,v 1.9 2009-04-03 20:11:19 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : Micro-FPGA Interface
 -- Project    : 

@@ -1,4 +1,4 @@
--- $Id: serdes_registers.vhd,v 1.1 2007-06-20 19:27:40 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : serdes registers
 -- Project    : 
