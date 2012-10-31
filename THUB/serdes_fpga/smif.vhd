@@ -1,4 +1,4 @@
--- $Id: smif.vhd,v 1.6 2009-03-13 18:56:27 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : serdes-master-if
 -- Project    : SERDES_FPGA

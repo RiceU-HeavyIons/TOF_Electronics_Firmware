@@ -1,4 +1,4 @@
--- $Id: decoder.vhd,v 1.1 2007-11-12 19:56:28 jschamba Exp $
+-- $Id$
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

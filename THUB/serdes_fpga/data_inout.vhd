@@ -1,4 +1,4 @@
--- $Id: data_inout.vhd,v 1.1 2007-06-02 19:33:05 jschamba Exp $
+-- $Id$
 --                                               
 --  LOGIC CORE:          ZBT Controller Data Input/Output Module
 --  MODULE NAME:         data_inout()

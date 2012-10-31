@@ -1,4 +1,4 @@
--- $Id: addr_ctrl_out.vhd,v 1.1 2007-06-02 19:31:50 jschamba Exp $
+-- $Id$
 --                                               
 --  LOGIC CORE:          ZBT Controller Address and Control Output Module
 --  MODULE NAME:         addr_ctrl_out()

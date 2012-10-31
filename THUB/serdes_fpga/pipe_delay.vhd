@@ -1,4 +1,4 @@
--- $Id: pipe_delay.vhd,v 1.1 2007-06-02 19:35:47 jschamba Exp $
+-- $Id$
 --                                               
 --  LOGIC CORE:          ZBT Controller Pipeline delay Module
 --  MODULE NAME:         pipe_delay()
