@@ -1,4 +1,4 @@
--- $Id: ser_rdo.vhd,v 1.7 2008-03-03 21:27:35 jschamba Exp $
+-- $Id$
 
 LIBRARY ieee;
 USE ieee.std_logic_1164.ALL;

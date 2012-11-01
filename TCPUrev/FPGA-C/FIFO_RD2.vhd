@@ -1,4 +1,4 @@
--- $Id: FIFO_RD2.vhd,v 1.1 2007-11-06 18:59:58 jschamba Exp $
+-- $Id$
 --  C:\1_STAR_TOF\PICOTOF 2006\TCPU-B JAN 2007\TCPU-B FPGA\FIFO_RD2.vhd
 --  VHDL code created by Xilinx's StateCAD 6.2i
 --  Mon May 14 14:59:47 2007

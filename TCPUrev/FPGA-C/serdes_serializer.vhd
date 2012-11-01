@@ -1,4 +1,4 @@
--- $Id: serdes_serializer.vhd,v 1.1 2007-12-03 21:47:33 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : Serdes Serializer
 -- Project    : 
