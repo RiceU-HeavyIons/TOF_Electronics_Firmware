@@ -1,4 +1,4 @@
-; $Id: THUB_uc.inc,v 1.2 2007-12-07 19:33:51 jschamba Exp $
+; $Id$
 
 ; ***** This one for the THUB Prototype ****
 ;;	#include <P18F4680.INC>

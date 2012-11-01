@@ -1,4 +1,4 @@
-; $Id: THUB.def,v 1.13 2008-05-14 18:57:12 jschamba Exp $
+; $Id$
 
 ;;;; Define this, if compiling for the "upper" memory region
 ;	#define THUB_is_upper

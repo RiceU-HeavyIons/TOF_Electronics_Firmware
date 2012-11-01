@@ -1,4 +1,4 @@
-// $Id: upper_linkerscript.lkr,v 1.2 2009-03-09 17:14:13 jschamba Exp $
+// $Id$
 // File: 18f4680i.lkr
 // Sample ICD2 linker script for the PIC18F4680 processor
 

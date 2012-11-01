@@ -1,4 +1,4 @@
-; $Id: main.asm,v 1.30 2009-04-10 14:40:00 jschamba Exp $
+; $Id$
 ;******************************************************************************
 ;   This file is a basic template for assembly code for a PIC18F2525. Copy    *
 ;   this file into your project directory and modify or add to it as needed.  *

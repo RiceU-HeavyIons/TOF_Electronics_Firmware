@@ -1,4 +1,4 @@
-; $Id: I2CMPol.inc,v 1.2 2007-12-21 21:33:58 jschamba Exp $
+; $Id$
 ;*******************************************************************************;
 ;*                                                                              ;
 ;*  This implements a generic library functionality to support I2C Master       ;
