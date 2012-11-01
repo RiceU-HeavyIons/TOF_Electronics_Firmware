@@ -1,4 +1,4 @@
--- $Id: serdes_poweron.vhd,v 1.8 2009-04-07 22:27:44 jschamba Exp $
+-- $Id$
 -------------------------------------------------------------------------------
 -- Title      : SERDES Poweron for TCPU
 -- Project    : TCPU_B_TOP
