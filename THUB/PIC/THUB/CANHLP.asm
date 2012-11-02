@@ -536,6 +536,36 @@ HLPeeloop1:
     decfsz  hlpCtr2
     bra     HLPeeloop2
 
+	;;;; Now configure the Serdes registers with the
+	;;;; next 8 bytes from EEPROM.
+
+	; reset register address to first Serdes register 
+   	movlw   0x91            
+    movwf   TXB0D0          ; "mis-use" TXB0D0 to hold the FPGA register address
+
+    movlw   8               ; loop over 8 Serdes FPGAs
+    movwf   hlpCtr2
+
+HLPeeloop3:
+    movff   TXB0D0, uc_fpga_DATA    ; register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+    
+    bsf     EECON1, RD      ; Read EEPROM
+
+    movff   EEDATA, uc_fpga_DATA ; register data on DATA PORT
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+
+    incf    EEADR,F         ; increase EEPROM address
+
+    incf    TXB0D0, F       ; next Serdes FPGA
+    decfsz  hlpCtr2
+    bra     HLPeeloop3
+	; finished with Serdes register configurations
+
     setf    uc_fpga_DATADIR ; DATA PORT as input
     bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
 

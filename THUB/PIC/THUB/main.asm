@@ -132,6 +132,7 @@ temp_2          RES     1
 ;; the SerDes FPGAs
 #ifndef THUB_is_upper
 DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
+		; These are the geographical words loaded in the  Serdes channels
 		DE	0x66,0x67,0x68,0x69     ; FPGA A
         DE  0x6a,0x6b,0x6c,0x6d     ; FPGA B
 		DE	0x00,0x01,0x02,0x03     ; FPGA C
@@ -140,6 +141,9 @@ DATA_EEPROM	CODE	0xf00000 ; this address gets mapped to EEPROM address 0x0
         DE  0x0C,0x0D,0x0E,0x0F     ; FPGA F
         DE  0x10,0x11,0x12,0x13     ; FPGA G
         DE  0x14,0x15,0x16,0x17     ; FPGA H 
+		; These are the SerDes register configurations
+		DE	0x1f,0x1f,0x1f,0x1f		; FPGAs A,B,C,D
+		DE	0x00,0x00,0x00,0x00		; FPGAs E,F,G,H
 #endif
 
 #ifdef THUB_is_upper
@@ -321,6 +325,36 @@ eeloop1:
     incf    TXB0D0, F       ; next Serdes FPGA
     decfsz  temp_2
     bra     eeloop2
+
+	;;;; Now configure the Serdes registers with the
+	;;;; next 8 bytes from EEPROM.
+
+	; reset register address to first Serdes register 
+   	movlw   0x91            
+    movwf   TXB0D0          ; "mis-use" TXB0D0 to hold the FPGA register address
+
+    movlw   8               ; loop over 8 Serdes FPGAs
+    movwf   temp_2
+
+eeloop3:
+    movff   TXB0D0, uc_fpga_DATA    ; register address on DATA PORT
+    bsf     uc_fpga_CTL     ; put CTL hi
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+    bcf     uc_fpga_CTL     ; CTL back low
+    
+    bsf     EECON1, RD      ; Read EEPROM
+
+    movff   EEDATA, uc_fpga_DATA ; register data on DATA PORT
+    bsf     uc_fpga_DS      ; put DS hi
+    bcf     uc_fpga_DS      ; DS back low
+
+    incf    EEADR,F         ; increase EEPROM address
+
+    incf    TXB0D0, F       ; next Serdes FPGA
+    decfsz  temp_2
+    bra     eeloop3
+	; finished with Serdes register configuration
 
     setf    uc_fpga_DATADIR ; DATA PORT as input
     bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
