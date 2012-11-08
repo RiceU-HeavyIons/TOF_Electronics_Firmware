@@ -1,4 +1,4 @@
-// $Id: TCPU-C_Board.h,v 1.16 2010-08-04 21:09:34 jschamba Exp $
+// $Id: TCPU-C_Board.h,v 1.16 2010/08/04 21:09:34 jschamba Exp $
 
 /* TCPU-C_Board.h
 ** These SBIR data are furnished with SBIR/STTR rights under Grant No. DE-FG03-02ER83373 and
@@ -28,16 +28,17 @@
 // Define some characteristics
 // Base address of second code image (for download)
     #define MCU2ADDRESS 0x4000          // second image lower limit
+	#define MCUSCRIPTADDRESS 0x3C00		// script buffer address
     #define MCU2IVTL    0x100           // Interrupt Vector table Lower Limit
     #define MCU2IVTH    0x200           // Interrupt Vector table Upper limit
     #define MCU2CODEL   0x4000          // Second-image Code space start
 //    #if defined (__24HJ256GP610_H)      // IF using 256K processor
-//        #define MCU2UPLIMIT 0x2ABFD     // Second-image Code space upper end of physical memory not including magic
-//        #define MAGICADDRESS 0x2ABFE    // Jo's Magic Number Location
+//    #define MCU2UPLIMIT 0x2ABFD     // Second-image Code space upper end of physical memory not including magic
+//    #define MAGICADDRESS 0x2ABFE    // Jo's Magic Number Location
 //    #else
 	#define MCU2UPLIMIT 0xABFD      // Second-image Code space upper end
     #define MAGICADDRESS 0xABFE     // Jo's Magic Number Location
-//    #endif
+//////    #endif
 
 // External oscillator frequency
 	#define SYSCLK          40000000
@@ -87,7 +88,7 @@
 //  Power-On Reset 2msec
 	_FPOR( FPWRT_PWR2 )
 //  User IDs
-    _FUID0( 'V')        // 'V' = 0x56
+    _FUID0( 'W')        // 'W' = 0x57
 	_FUID1( 0x02)       // WB-2A 0x02
 	_FUID2( 0xFF)
 	_FUID3( 0xFF)
