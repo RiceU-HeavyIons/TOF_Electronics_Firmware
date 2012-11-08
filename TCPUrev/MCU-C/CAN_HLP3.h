@@ -1,4 +1,4 @@
-/* $Id: CAN_HLP3.h,v 1.5 2010-08-04 21:02:41 jschamba Exp $ */
+/* $Id$ */
 /* CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
 ** THIS FILE IS A CONSOLIDATION of TDIG-F_CAN_HLP3.h and TCPU-C_CAN_HLP3.h

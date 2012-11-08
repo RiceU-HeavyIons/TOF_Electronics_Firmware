@@ -1,5 +1,5 @@
 /**********************************************************************
-*$Id: rtspApi.s,v 1.1 2009-08-26 21:55:45 jschamba Exp $
+*$Id$
 *
 * ********************* original header from Micrchip: ****************
 * © 2005 Microchip Technology Inc.

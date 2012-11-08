@@ -1,4 +1,4 @@
-// $Id: TCPU-C_SPI.C,v 1.3 2009-03-06 16:20:05 jschamba Exp $
+// $Id$
 /* TCPU-C_SPI.c
 ** Version for build TCPU-C_2A
 ** This file defines routines for SPI access to EEPROM #2

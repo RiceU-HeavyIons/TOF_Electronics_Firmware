@@ -1,4 +1,4 @@
-// $Id: TCPU-C_SPI.H,v 1.1 2008-03-05 19:36:40 jschamba Exp $
+// $Id$
 
 /* TCPU-C_SPI.h
 ** This header file defines the TDIG-D macros and interfaces for SPI interface to EEPROM #2.

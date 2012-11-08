@@ -1,4 +1,4 @@
-// $Id: TCPU-C_MCU_PLD.h,v 1.2 2008-06-21 21:32:38 jschamba Exp $
+// $Id$
 
 /* TDIG-D_MCU_PLD.h
 ** Version for build TCPU-C_2A

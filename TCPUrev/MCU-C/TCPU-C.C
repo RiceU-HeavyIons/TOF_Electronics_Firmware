@@ -1,4 +1,4 @@
-// $Id: TCPU-C.C,v 1.21 2010/08/04 21:20:03 jschamba Exp $
+// $Id$
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board

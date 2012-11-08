@@ -1,4 +1,4 @@
-// $Id: TCPU-C_CAN_HLP3.h,v 1.2 2008-06-19 17:11:01 jschamba Exp $
+// $Id$
 
 /* TCPU-C_CAN_HLP3.h
 ** DEFINE the HLP_version_3 Packet IDs and constants
