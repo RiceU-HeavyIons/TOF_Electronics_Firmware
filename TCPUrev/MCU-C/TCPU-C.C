@@ -1,18 +1,9 @@
-// $Id: TCPU-C.C,v 1.21 2010-08-04 21:20:03 jschamba Exp $
+// $Id: TCPU-C.C,v 1.21 2010/08/04 21:20:03 jschamba Exp $
 
 // TCPU-C.C
 // main program for PIC24HJ256GP610 as used on TCPU-C rev 0 and 1 board
 //
-/* WB-2P
-**	12-Aug-thru-13-Aug-2009, W. Burton
-**		Update version to 'P'
-**		Uses non-FIFO'd CANBus#1 (Tray) message receive
-**		Some rework of C_WS_TARGETMCU2 filtering: combine with rebroadcast
-**		Expands "Broadcast" Extended-ID message from CANBus #2 into eight (8) individual TDIG
-**			messages and paces sending them until timeout.
-**		Receipt of a reply to a rebroadcast restarts the timeout (to allow the multiple-reply
-**          messages to work).
-*/
+
 /* WB-2D
  * Comments moved to end of file
  */
@@ -44,7 +35,7 @@
 //    #define DOWNLOAD_CODE
 
 // Define the FIRMWARE ID
-#define FIRMWARE_ID_0 'V'   // version 2V 'V' = 0x56
+#define FIRMWARE_ID_0 'W'   // version 2W ('W' = 0x57)
 // WB-1L make downloaded version have different ID
 #if defined (DOWNLOAD_CODE)
     #define FIRMWARE_ID_1 0x92  // WB version 2 download
@@ -82,6 +73,9 @@
 
 // Special Test Configurations
 #define DODATATEST 1        // ONE cycle thru data transmit before checking messages, switches, etc.
+
+extern int exeScript(unsigned int);
+
 
 /* ECAN1 stuff (TCPU <--> TDIG "Tray level" CANbus) */
 #define NBR_ECAN1_BUFFERS 4
@@ -144,8 +138,6 @@ typedef union tureg32 {
     unsigned char Val[4];            // array of chars
 } UReg32;
 
-//UReg32 temp;
-
 void read_MCU_pm (unsigned char *, unsigned long);
 void write_MCU_pm (unsigned char *, unsigned long);
 void WritePMRow(unsigned char *, unsigned long);
@@ -164,8 +156,10 @@ unsigned int block_status;
 unsigned long int block_checksum;
 unsigned long int eeprom_address;
 
+#if defined (DAC_ADDR)	// if address defined, it exists
 // Current DAC setting
-// unsigned int current_dac;
+unsigned int current_dac;
+#endif // defined (DAC_ADDR)
 
 // WB-2G: - Temperature alert limits
 unsigned int mcu_hilimit=0;   // gets upper limit setting for MCU temperature
@@ -193,16 +187,6 @@ unsigned int clock_failed = 0;      // will get set by clock fail interrupt
 unsigned int clock_requested;   // will get requested clock ID
                                 // 00 = board, 01= PLL, 08= tray
 unsigned int baudRateJumper = 0;
-
-#define SCRIPT_BUFFER_NENTRIES 64
-#define SCRIPT_BUFFER_ENTRY_SIZE 8
-#define SCRIPT_BUFFER_SIZE (SCRIPT_BUFFER_NENTRIES * SCRIPT_BUFFER_ENTRY_SIZE *2)
-
-unsigned int __attribute__((__section__(".script_buffer"), space(prog)))
-    script_buffer_pm[SCRIPT_BUFFER_NENTRIES][SCRIPT_BUFFER_ENTRY_SIZE] = 
-	{
-            #include "script_buffer.inc"
-    };
 
 #ifndef DOWNLOAD_CODE
 unsigned int timerExpired = 0;
@@ -243,12 +227,8 @@ int main()
 	int isConfiguring = 0;
 	int bSendAlarms = 1;
 	unsigned int nvmAdru, nvmAdr;
+	unsigned int whichEEPROM;
 	int tmp;
-
-	unsigned int scriptBuffer[SCRIPT_BUFFER_NENTRIES+1][SCRIPT_BUFFER_ENTRY_SIZE] = {{0}};
-	unsigned int *scriptBufferPtr;
-	unsigned int scriptEntry[SCRIPT_BUFFER_ENTRY_SIZE];
-	unsigned int scriptEntryChecksum;
 
 
 /* WB-2D - Begin significant rework in this area
@@ -357,15 +337,15 @@ int main()
     Initialize_LEDS();
 
 // Initialize and Read Temperature Monitor
-	#if defined (TMPR_ADDR)
-        Initialize_Temp (MCP9801_CFGR_RES12|MCP9801_CFGR_FQUE4);   // WB-2G: configure 12 bit res. fault queue=4
-		board_temp = Read_Temp ();
-		j = board_temp ^ 0xFFFF;		// flip bits for LED
-    	Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (j&0xFF)); // display LSByte
-		spin(SPINLIMIT);
-    	Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ((j>>8)&0xFF));
-		spin(SPINLIMIT);
-	#endif // defined (TMPR_ADDR)
+#if defined (TMPR_ADDR)
+    Initialize_Temp (MCP9801_CFGR_RES12|MCP9801_CFGR_FQUE4);   // WB-2G: configure 12 bit res. fault queue=4
+	board_temp = Read_Temp ();
+	j = board_temp ^ 0xFFFF;		// flip bits for LED
+   	Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, (j&0xFF)); // display LSByte
+	spin(SPINLIMIT);
+   	Write_device_I2C1 (LED_ADDR, MCP23008_OLAT, ((j>>8)&0xFF));
+	spin(SPINLIMIT);
+#endif // defined (TMPR_ADDR)
 
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -395,34 +375,6 @@ int main()
 
 // Clear all interrupts
 	clearIntrflags();
-
-
-/* -------------------------------------------------------------------------------------------------------------- */
-	scriptBufferPtr = &(scriptBuffer[SCRIPT_BUFFER_NENTRIES][0]); // put pointer at the end of the buffer
-
-	// Read the script_buffer program memory page and place the data into script_buffer array
-	nvmAdru=__builtin_tblpage(script_buffer_pm);
-	nvmAdr=__builtin_tbloffset(script_buffer_pm);
-	tmp = flashPageRead(nvmAdru, nvmAdr, (int *)&scriptBuffer[0][0]);
-
-//	tmp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
-//	memcpy ((unsigned char *)&scriptBuffer[0][0], (unsigned char *)readback_buffer, SCRIPT_BUFFER_SIZE);
-
-
-//	// initialize script buffer
-//	memset((void *)scriptBuffer, 0, sizeof(scriptBuffer));
-//
-//	
-//	// now put some example commands in the first two positions
-//	scriptBuffer[0][0] = (0x7f4 << 2) | 0x1; 	// extended message; read all TDIGs (broadcast
-//	scriptBuffer[0][2] = 1; 					// length = 1
-//	scriptBuffer[0][3] = 0x00b1;				// command = R_FIRMWAREID	
-//
-//	scriptBuffer[1][0] = (0x204 << 2);		 	// standard message; read TCPU
-//	scriptBuffer[1][2] = 1; 					// length = 1
-//	scriptBuffer[1][3] = 0x00b1;				// command = R_FIRMWAREID	
-	
-/* -------------------------------------------------------------------------------------------------------------- */
 
 
 /* -------------------------------------------------------------------------------------------------------------- */
@@ -505,8 +457,14 @@ int main()
 /* -------------------------------------------------------------------------------------------------------------- */
     jumpers = Read_MCP23008(ECSR_ADDR, MCP23008_GPIO) & JUMPER_MASK;
 
-	//JS:  try to initialize FPGA from EEPROM 2
-    i = 2;
+	//JS:  try to initialize FPGA from EEPROM 2, if magic address contains 0xXX12
+	read_MCU_pm ((unsigned char *)readback_buffer, MAGICADDRESS);
+	if (((*((unsigned int *)readback_buffer))&0xFF) == 0x12) 
+		whichEEPROM = 2;
+	else
+		whichEEPROM = 1;
+
+	i = whichEEPROM;
 	// loop here if it failed the first time
     do {
     	MCU_CONFIG_PLD = 0; // disable FPGA configuration
@@ -529,13 +487,11 @@ int main()
     init_regs_FPGA(board_posn);
 
 /* Send an "Alert" message to both CANBus to say we are on-line */
-// WB-2J: previous WB-2J changes in this area are removed.  Only 1 type of sign-on is
-// issued regardless of code-space-1 or -2 running.
 	//JS: if configuration from EEPROM 2 failed, send different ALERT message
 	if (i == 2)
 	    lwork = C_ALERT_ONLINE;     // on-line message
 	else
-		lwork = 0xFF0000FF;			//JS: different alert message when config failed
+		lwork = 0x010000FF;			//JS: different alert message when FPGA config from EEPROM1
     send_CAN_alerts (board_posn, C_ALERT_ONLINE_LEN, (unsigned char *)&lwork);
 
 /* WB-2J start: We might have had errors marked while starting up and changing clocks. */
@@ -600,7 +556,7 @@ int main()
     do {                            // Do Forever
         rcvmsgfrom = 0;
 
-//JS: this is the new "FIFO" code
+//JS: this is the new "FIFO" code, which don't seem to work due to errata in chip
 //        if ( C1RXFUL2 != 0) {           // if any "full" bit is set in the buffer[16..31] group
 //                                            // yes,
 //            j = C_LOOP_LIMIT;               // Limit time spent in loop
@@ -649,6 +605,7 @@ int main()
             	ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_posn)<<10);   // extended ID<5..0> gets TCPU board_posn
             	C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
 // JS: end old code
+
 // WB-2P: Begin: Adjust pacing if message is a reply to a rebroadcast message
 				if ( (rebroadcast != 0) &&
 			    	( (ecan2msgBuf[0][0]&0x1FC0) == (rebroadcast-0x040) ) ) {	// see if the message was a reply to rebroadcast
@@ -747,33 +704,7 @@ int main()
             rcvmsglen= ecan2msgBuf[3][2] & 0x000F;   // Save message length
             wps = (unsigned char *)&ecan2msgBuf[3][3];  // pointer to source buffer
 
-		} else if ((*scriptBufferPtr != 0) && (rebroadcast == 0)) {	// script buffer not empty
-																	// and no more rebroadcasting going on
-			if ((*scriptBufferPtr & 0x1) == 0x1) { // message to be passed to tray
-	            i = 0xFFF;                      // WB-1M add timeout
-    	        while ((C1TR01CONbits.TXREQ0==1)&&(i!=0)) {--i;};     // wait for transmit CAN#1 to complete or time out
-                for (i=0; i<8; i++) ecan1msgBuf[0][i] = *scriptBufferPtr++;  // copy script buffer msg to outgoing buffer
-                ecan1msgBuf[0][0] &= 0x1FFC;    // extended ID =0, no remote xmit, Keep address & fcn code (10 bits)
-                if ((ecan1msgBuf[0][0] & 0x1FC0) == 0x1FC0) { // is this a "Broadcast" address (0x7Fx, shifted)
-                    ecan1msgBuf[0][0] &= 0x043C;    // extended ID =0, no remote xmit, strip off all but function code
-                    rebroadcast = 0x440;        // Yes, this will mark next TDIG ID to send
-					pacecount = PACEDELAY;		// Mark delay to next rebroadcast
-				} // end setup for broadcast
-				// Now send the message
-           	    ecan1msgBuf[0][1] = 0;          // clear extended ID
-              	ecan1msgBuf[0][2] &= 0x000F;    // clear all but length
-                C1TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit
-
-			} else { // message for TCPU
-            	rcvmsgfrom = 2;                     // respond to "CAN#2"
-            	rcvmsgindx = 0;                     // no buffer to clear
-            	rcvmsgtype = *scriptBufferPtr;     // Save message type code
-            	rcvmsglen= *(scriptBufferPtr + 2) & 0x000F;   // Save message length
-           	 	wps = (unsigned char *)(scriptBufferPtr + 3);  // pointer to source buffer (message data)
-				scriptBufferPtr += 8;
-			}
-
-        } // end checking for messages
+		} // end checking for messages
 
 
 // Dispatch to Message Code handlers.
@@ -984,7 +915,8 @@ int main()
                                     k = block_bytecount;        // assume just going block
                                     memcpy ((void *)&laddrs, (void *)wps, 4);   // copy 4 address bytes from incoming message
                                     // WB-2F check starting address and length for OK
-                                    if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) 
+                                    //if ( ((laddrs >= MCU2ADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) 
+                                    if ( ((laddrs >= MCUSCRIPTADDRESS)&&(laddrs+(k>>2))<= MCU2UPLIMIT) 
 										|| ((laddrs >= MCU2IVTL) && ((laddrs+(k>>2)) <= MCU2IVTH)) ) {
 										int numRows = 1; //JS
 
@@ -1087,7 +1019,8 @@ int main()
                                 write_MCU_pm ((unsigned char *)readback_buffer, laddrs); // Write a word
                                 SR = save_SR;           // restore the saved status register
 
-                            } else {        // else block was not ended, send error reply
+                            } 
+							else {        // else block was not ended, send error reply
                                 retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
                             } // end else block was not in progress
 
@@ -1095,84 +1028,31 @@ int main()
 
 						case C_WS_EXESCRIPT:	// Prepare executing script buffer
                             replylength = 2;
-							scriptBufferPtr = (unsigned int *)&(scriptBuffer[0][0]);
-							break;
+							retbuf[1] = 0;
 
-						case C_WS_LDSCRIPTE:	// Load a portion of a script entry
-                            replylength = 2;
-							if (rcvmsglen == 6) {
-								if (*wps == 0) { // words: address, extended, and length
-									unsigned int scriptWord;
-									// initialize entry to all 0's
-									memset ((void *)scriptEntry, 0, sizeof(scriptEntry));
-									// copy the next two words as the (standard) CANbus ID
-									wps++;
-									memcpy ((void *)&scriptWord, (void *)wps, 2);
-									// next word after that determines extended or standard ID
-									wps += 2;
-									scriptEntry[0] = ((scriptWord & 0x7ff)<<2) | (unsigned int)(*wps++ & 0x1);
-									// last word is the length
-									scriptEntry[2] = (unsigned int)(*wps & 0xf);
-								} 
+							// first reboot FPGA
+							i = whichEEPROM;
+ 	                        do {
+                            	MCU_CONFIG_PLD = 0; // disable FPGA configuration
+                                if (i==2) {
+                                	sel_EE2;        // select EEPROM #2
+                                } else {
+                                	sel_EE1;        // else it was #1
+                                } // end if select EEPROM #
+                                set_EENCS;      //
+                                MCU_CONFIG_PLD = 1; // re-enable FPGA
+                                j = waitfor_FPGA();     // wait for FPGA to reconfigure
+                                if (j != 0) {
+                                	retbuf[1] = C_STATUS_TMOFPGA;   // report an FPGA configuration timeout
+                                    i--;        // try again from #1
+                                }
+							} while ((i != 0) && (j != 0));       // try til either both were used or no error
+                            reset_FPGA();       // reset FPGA
+                            init_regs_FPGA(board_posn);   // initialize FPGA
+                            fpga_crc = 0;
 
-								else if (*wps == 1) { // data words 0 - 3 into scriptEntry[3-4]
-									wps++;
-									memcpy ((void *)&scriptEntry[3], (void *)wps, 4);   // copy 4 data bytes from incoming message
-								}
-
-								else if (*wps == 2) { // data words 4 - 7 into scriptEntry[5-6]
-									wps++;
-									memcpy ((void *)&scriptEntry[5], (void *)wps, 4);   // copy 4 data bytes from incoming message
-								}
-
-								else { // wrong code
-									retbuf[1] = C_STATUS_NOTARGET; // target not known
-								}
-								
-                            } 
-							else {  // Length is not right
-                            	retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
-                            }
-							break;
-
-						case C_WS_WRSCRIPTE:	// Write a script entry to program and data memory
-                            replylength = 2;
-							if (rcvmsglen == 4) {
-								// get received checksum from first 2 bytes
-								unsigned int rChecksum;
-								memcpy ((void *)&rChecksum, (void *)wps, 2);
-								wps += 2; // forward two bytes
-								// calculate checksum of script entry:
-								scriptEntryChecksum = 0;
-								for (i=0; i<8; i++) scriptEntryChecksum += scriptEntry[i];
-								if (scriptEntryChecksum != rChecksum) { // checksum doesn't match
-									replylength = 4;
-									retbuf[1] = C_STATUS_CKSUMERR;
-									// copy bad checksum to return message
-									memcpy ((void  *)&retbuf[2],(void *)&scriptEntryChecksum, 2);
-								}
-								else if (*wps > 63) { // good checksum; check entry number validity
-									retbuf[1] = C_STATUS_BADADDRS;
-								}
-								else { // everything OK
-									// copy scriptEntry to script buffer in data memory
-									memcpy((void *)&scriptBuffer[*wps][0], (void *)scriptEntry, 16);
-
-									// also copy it to program memory by reading the page first
-									nvmAdru=__builtin_tblpage(script_buffer_pm);
-									nvmAdr=__builtin_tbloffset(script_buffer_pm);
-									tmp = flashPageRead(nvmAdru, nvmAdr, (int *)readback_buffer);
-									// then replace the entry
-									memcpy ((void *)(readback_buffer + (*wps * 16)), (void *)scriptEntry, 16);
-									// then write it again 
-									tmp = flashPageErase(nvmAdru, nvmAdr);
-									tmp = flashPageWrite(nvmAdru, nvmAdr, (int *)readback_buffer);
-								} 
-							}
-
-							else {  // Length is not right
-                            	retbuf[1] = C_STATUS_LTHERR;     // SET ERROR REPLY
-                            }
+							// now execute script buffer function
+							retbuf[1] |= exeScript(board_posn);
 							break;
 
                         case C_WS_MCURESTARTA:       // Restart MCU
@@ -1579,6 +1459,12 @@ int main()
                         INTCON2 |= 0x8000;     // This is the ALTIVT bit
                         //jumpto();    // jump to new code
 						__asm__ volatile ("goto 0x4000");
+					}
+					else {
+					// execute the script buffer at the power on timeout and send result:
+						lwork = exeScript(board_posn);
+    					send_CAN_alerts (board_posn, C_ALERT_ONLINE_LEN, (unsigned char *)&lwork);
+
 					}
 				}
 #endif      // ifndef DOWNLOAD_CODE
@@ -2569,6 +2455,16 @@ void wrt_MCU_pm (void) {
 // ******************************************************************************************************
 // ************ Blue Sky Comments ***********************************************************************
 //*******************************************************************************************************
+// Version 2P (WB-2P)
+//		12-Aug-thru-13-Aug-2009, W. Burton
+//			Update version to 'P'
+//			Uses non-FIFO'd CANBus#1 (Tray) message receive
+//			Some rework of C_WS_TARGETMCU2 filtering: combine with rebroadcast
+//			Expands "Broadcast" Extended-ID message from CANBus #2 into eight (8) individual TDIG
+//			messages and paces sending them until timeout.
+//			Receipt of a reply to a rebroadcast restarts the timeout (to allow the multiple-reply
+//          messages to work).
+//
 // Version 2J - BETA Version
 //      26-thru 27-Feb-2009, W. Burton (WB-2J)
 //          Add timeout to SEND_CAN1_message() so an isolated TCPU on CAN2 only will work.
