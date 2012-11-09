@@ -1,6 +1,6 @@
 // $Id$
 
-// exeScript.c
+// exeScript.c for 8 TDIGs
 
 #define TCPU 1              // We are building TCPU
 #include "TCPU-C_Board.h"
@@ -31,7 +31,8 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 {
     unsigned int j=0xFFF;
 	unsigned long msg_id;
-	unsigned int i,k, numRcvd;
+	unsigned int i, numRcvd;
+	//unsigned int k;
 	unsigned int val, addr;
 
 	// ***************************************************
@@ -71,16 +72,19 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		j = 0x5fff;	do {--j;} while (j != 0); // idle a little to pace the messages
 		// check if we already got a response
 		if (C1RXFUL1bits.RXFUL2==1) {
-	    	for (k=0; k<8; k++) ecan2msgBuf[0][k] = ecan1msgBuf[2][k];
-    	    C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
+			// send received message as extended message on CAN2
+	    	//for (k=0; k<8; k++) ecan2msgBuf[0][k] = ecan1msgBuf[2][k];
+
+    	    C1RXFUL1bits.RXFUL2 = 0;        // mark CAN1 Receive-Buffer 2 OK to re-use
 			numRcvd++;
-        	ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
-        	ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
-        	ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_id)<<10);   // extended ID<5..0> gets TCPU board_posn
-			j = 0xfff;
-	    	do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
-			if (j == 0) return -1; // timed out, don't continue
-        	C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN#2
+
+        	//ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+        	//ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+        	//ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_id)<<10);   // extended ID<5..0> gets TCPU board_posn
+			//j = 0xfff;
+	    	//do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
+			//if (j == 0) return -1; // timed out, don't continue
+        	//C2TR01CONbits.TXREQ0=1;             // Mark message buffer ready-for-transmit on CAN2
 		}
 	}
 
@@ -93,18 +97,22 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		j = 0xffff;
 	    do {--j;} while ((C1RXFUL1bits.RXFUL2==0) && (j != 0));
 		if (j != 0) {
+			// send received message as extended message on CAN2
+	    	//for (k=0; k<8; k++) ecan2msgBuf[0][k] = ecan1msgBuf[2][k];
+
+    	    C1RXFUL1bits.RXFUL2 = 0;        // mark CAN1 Receive-Buffer 2 OK to re-use
 			numRcvd++;
-	    	for (k=0; k<8; k++) ecan2msgBuf[0][k] = ecan1msgBuf[2][k];
-    	    C1RXFUL1bits.RXFUL2 = 0;        // CAN#1 Receive Buffer 2 OK to re-use
-        	ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
-        	ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
-        	ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_id)<<10);   // extended ID<5..0> gets TCPU board_posn
-			j = 0xffff;
-	    	do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
-			if (j != 0)
-	        	C2TR01CONbits.TXREQ0=1; // Mark message buffer ready-for-transmit on CAN#2
+
+        	//ecan2msgBuf[0][0] |= C_EXT_ID_BIT;    // extended ID =1, no remote xmit
+        	//ecan2msgBuf[0][1]  = 0;             // WB-1L this will need to change if C_BOARD is redefined
+        	//ecan2msgBuf[0][2] |= (((C_BOARD>>6)|board_id)<<10);   // extended ID<5..0> gets TCPU board_posn
+			//j = 0xffff;
+	    	//do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
+			//if (j != 0)
+	        //	C2TR01CONbits.TXREQ0=1; // Mark message buffer ready-for-transmit on CAN#2
 		}
 		else {
+			// no message received within timeout, send alert on CAN2
 			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
@@ -114,7 +122,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 			j = 0xffff;
 	    	do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
 			if (j != 0)
-        		C2TR01CONbits.TXREQ0=1; // Mark message buffer ready-for-transmit on CAN#2
+        		C2TR01CONbits.TXREQ0=1; // Mark message buffer ready-for-transmit on CAN2
 		}
 	}
 
@@ -138,5 +146,5 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 	// ****************************************************
 	// Done!
 	// ****************************************************
-	return 0;
+	return numRcvd;
 }
