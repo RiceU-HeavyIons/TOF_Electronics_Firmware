@@ -133,15 +133,15 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 	}
 
 	// ****************************************************************
-	// 2) set threshold on each TDIG to 500mV
-	// threshold = 1500.0;
-	// val = (unsigned int)((threshold * 4095.0 / 3300.0 + 0.5) = 0x26D
+	// 2) set threshold on each TDIG to 1200mV
+	// threshold = 1200.0;
+	// val = (unsigned int)((threshold * 4095.0 / 3300.0 + 0.5) = 0x5D2
 	// set threshold command: m s 0xXX2 3 0x08 val&0xff (val>>8)&0xff
 	// ****************************************************************
     ecan1msgBuf[0][1] = 0;
     ecan1msgBuf[0][2] = 3; // length
-	ecan1msgBuf[0][3] = 0x6D08; // data[1,0]
-	ecan1msgBuf[0][4] = 0x0002; // data[3,2]
+	ecan1msgBuf[0][3] = 0xD208; // data[1,0]
+	ecan1msgBuf[0][4] = 0x0005; // data[3,2]
 
 	numRcvd = 0; // keep track of number of responses
 	for (i=0x10; i<0x18; i++) { 

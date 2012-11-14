@@ -128,7 +128,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 
 	// ****************************************************************
 	// 2) set threshold on each TDIG to 1200mV
-	// threshold = 1500.0;
+	// threshold = 1200.0;
 	// val = (unsigned int)((threshold * 4095.0 / 3300.0 + 0.5) = 0x5D2
 	// set threshold command: m s 0xXX2 3 0x08 val&0xff (val>>8)&0xff
 	// ****************************************************************
