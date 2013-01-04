@@ -244,7 +244,8 @@ Main:
 	call InitMicro  	;  Initialize all features / IO ports
     mAsSelect 0         ;  Set FPGA progamming lines to FPGA M (0)
     clrf QuietFlag,0    ;  Initially don't send any PLD TCD data (QuietFlag = 0)
-    setf checkAlertFlag,0    ;  Initially don't send any PLD Alert data (checkAlertFlag = 0xff)
+;    setf checkAlertFlag,0    ;  Initially don't send any PLD Alert data (checkAlertFlag = 0xff)
+    clrf checkAlertFlag,0    ;  Initially send any PLD Alert data (checkAlertFlag = 0)
     clrf CANTestDelay,0 ;  Initially don't send CAN test messages (CANTestDelay = 0)
 
 ;; calibrate the PLL:
@@ -416,19 +417,19 @@ MicroLoop:
 
     ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
     ;; send PLD data in register 0x88 as ALERT message, if there are any
-	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
-	bra		$ - 2
-
+;	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+;	bra		$ - 2
+;
     ; setup address pointer to CAN payload
-    lfsr    FSR0, TXB0D0
-    ; fill Txbuffer with default data
-    movlw   0xFF
-    movwf   POSTINC0
-    movlw   0x00
-    movwf   POSTINC0
-    movwf   POSTINC0
-    movwf   POSTINC0
-
+;    lfsr    FSR0, TXB0D0
+;    ; fill Txbuffer with default data
+;    movlw   0xFF
+;    movwf   POSTINC0
+;    movlw   0x00
+;    movwf   POSTINC0
+;    movwf   POSTINC0
+;    movwf   POSTINC0
+;
     ; read register 0x88, 
     ; contains PLD data to send or 0x0 if nothing to send
     banksel uc_fpga_DATA
@@ -444,20 +445,26 @@ MicroLoop:
     setf    uc_fpga_DATADIR ; set DATA PORT as input
     bsf     uc_fpga_DIR     ; DIR hi: FPGA -> uc
     bsf     uc_fpga_DS      ; DS hi
-    movff   uc_fpga_DATA, TXB0D1 ; move DATA PORT data to CAN TX buffer
+    ;movff   uc_fpga_DATA, TXB0D1 ; move DATA PORT data to CAN TX buffer
+    movff   uc_fpga_DATA, temp_1 ; move DATA PORT data to temporary buffer
     bcf     uc_fpga_DS      ; DS lo
 
     ; test if PLD data not zero:
-    tstfsz  TXB0D1,1      	; if (TXB0D2 == 0), use BSR
+    ;tstfsz  TXB0D1,1      	; if (TXB0D2 == 0), use BSR
+    tstfsz  temp_1,0      	; if (temp_1 == 0), use access bank
     bra     sendMsg         ; true: valid PLD Data read, send alert message
     bra     QuietLoop       ; false: continue checking for received messages
 
 sendMsg:
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
     ; Fill in transmit buffer and send alert message
     lfsr    FSR0, TXB0D0
     movlw   0xFF
-    movwf   INDF0
-    lfsr    FSR0, TXB0D2
+;    movwf   INDF0
+;    lfsr    FSR0, TXB0D2
+    movwf   POSTINC0
+	movff	temp_1, POSTINC0
     movlw   0x00
     movwf   POSTINC0
     movwf   POSTINC0
