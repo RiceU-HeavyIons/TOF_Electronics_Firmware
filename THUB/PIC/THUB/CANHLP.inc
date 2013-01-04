@@ -14,7 +14,7 @@
 #define __CANHLP_INC
 
 #ifndef  HLP_PRIOR_SOURCE
-    EXTERN  TofHandleWrite, TofHandleRead, initCAN
+    EXTERN  TofHandleWrite, TofHandleRead, initCAN,SendBroadcastReconfigure
 #endif
 
 #define     _CAN_HLP_COMMANDID_DATA         (0x1 << 5)

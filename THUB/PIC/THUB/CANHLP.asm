@@ -43,6 +43,9 @@
 
 #define		_CAN_TXB0SIDH	(HLP_CAN_NODEID & 0x7F) << 1	; SIDH for TX ID
 
+#define     _CAN_HLP_COMMANDID_WRITE   	(0x2 << 5)
+#define		_CAN_BROADCAST_TXB0SIDH		(0x7f << 1)
+
     EXTERN  RxData, RxFlag, RxDtLngth, QuietFlag, CANTestDelay, checkAlertFlag
 
     EXTERN  jtGetIDCode, jtGetUserCode
@@ -132,6 +135,45 @@ HLPSendWriteResponseOK:
     movlw    0x00
     movwf   TXB0D1                  ; second byte = 0
     mCANSendWrResponse   2
+
+    return
+
+;**************************************************************
+;* Send a broadcast to TCPUs to reconfigure
+;* 
+;**************************************************************
+SendBroadcastReconfigure:
+	GLOBAL SendBroadcastReconfigure
+
+	banksel	TXB0CON
+	; first check that no transmission is in progress
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+	; fill in broadcast write ID
+	movlw	_CAN_BROADCAST_TXB0SIDH	; Setg TX SIDH
+	movwf	TXB0SIDH
+	movlw	_CAN_HLP_COMMANDID_WRITE
+	movwf	TXB0SIDL
+
+	; data length = 1:
+	movlw	1
+	movwf	TXB0DLC
+
+	; Payload: command = 0x60
+    movlw   0x60
+    movwf   TXB0D0                  ; first byte = 0x60
+
+	; send it
+	bsf		TXB0CON, TXREQ			; Start the transmission
+	
+	; wait for transmission to finish
+	btfsc	TXB0CON,TXREQ			; Wait for the buffer to empty
+	bra		$ - 2
+
+	; reset nodeID
+	movlw	_CAN_TXB0SIDH			; Setg TX SIDH
+	movwf	TXB0SIDH
 
     return
 
