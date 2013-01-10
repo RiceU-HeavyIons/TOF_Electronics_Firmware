@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-20
--- Last update: 2012-10-31
+-- Last update: 2012-12-20
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -248,6 +248,7 @@ ARCHITECTURE a OF TCPU_C_TOP IS
       ch_ready   : OUT std_logic;
       pll_locked : IN  std_logic;
       trigger    : OUT std_logic;
+      po_state   : OUT std_logic_vector(2 DOWNTO 0);
       bunch_rst  : OUT std_logic
       );
   END COMPONENT serdes_if;
@@ -411,6 +412,8 @@ ARCHITECTURE a OF TCPU_C_TOP IS
   SIGNAL serdesFifo_q     : std_logic_vector (31 DOWNTO 0);
   SIGNAL s_serdes_data    : std_logic_vector(17 DOWNTO 0);
 
+  SIGNAL s_po_state : std_logic_vector(2 DOWNTO 0);
+  
 -- ******************** multiplicity signals
   SIGNAL s_rhic_clk   : std_logic;
   SIGNAL s_c1_trigger : std_logic;
@@ -515,6 +518,7 @@ BEGIN
     ch_ready   => serdes_ready,
     pll_locked => pll_locked,
     trigger    => serdes_trigger,
+    po_state   => s_po_state,
     bunch_rst  => serdes_b_rst
     );
 
@@ -711,7 +715,8 @@ BEGIN
   mcu_fifo_status(5)          <= mcu_fifo_parity;
   mcu_fifo_status(4 DOWNTO 0) <= mcu_fifo_level(4 DOWNTO 0);
 
-  status_data <= config3_data(7 DOWNTO 2) & serdes_ready & th_lockb;
+  -- status_data <= config3_data(7 DOWNTO 2) & serdes_ready & th_lockb;
+  status_data <= '0' & s_po_state & "00" & serdes_ready & th_lockb;
   WITH mcu_addr SELECT
     mcu_output_data <=
     config0_data             WHEN x"0",
@@ -719,6 +724,7 @@ BEGIN
     config2_data             WHEN x"2",
     status_data              WHEN x"3",
     TCPU_VERSION             WHEN x"7",
+    config8_data             WHEN x"8",
     config9_data             WHEN x"9",
     mcu_fifo_q(7 DOWNTO 0)   WHEN x"b",
     mcu_fifo_q(15 DOWNTO 8)  WHEN x"c",

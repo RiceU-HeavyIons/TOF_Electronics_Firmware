@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2007-11-14
--- Last update: 2009-04-07
+-- Last update: 2012-11-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -42,6 +42,7 @@ ENTITY serdes_if IS
       ch_ready   : OUT std_logic;
       pll_locked : IN  std_logic;
       trigger    : OUT std_logic;
+      po_state   : OUT std_logic_vector(2 DOWNTO 0);
       bunch_rst  : OUT std_logic
 
       );
@@ -62,6 +63,7 @@ ARCHITECTURE a OF serdes_if IS
       rxd         : IN  std_logic_vector (17 DOWNTO 0);
       serdes_data : IN  std_logic_vector (17 DOWNTO 0);
       txd         : OUT std_logic_vector (17 DOWNTO 0);
+      po_state    : OUT std_logic_vector(2 DOWNTO 0);
       areset_n    : IN  std_logic);
   END COMPONENT serdes_poweron;
 
@@ -117,6 +119,7 @@ BEGIN
     rxd         => rxd,
     serdes_data => serdata_in,
     txd         => s_txd,
+    po_state    => po_state,
     areset_n    => areset_n);
 
   ff1_aresetn  <= s_ch_ready;
