@@ -166,7 +166,7 @@ BEGIN
 		clk2_divide_by => 1,
 		clk2_duty_cycle => 50,
 		clk2_multiply_by => 2,
-		clk2_phase_shift => "521",
+		clk2_phase_shift => "0",
 		compensate_clock => "CLK0",
 		gate_lock_counter => 1048575,
 		gate_lock_signal => "YES",
@@ -302,7 +302,7 @@ END SYN;
 -- Retrieval info: PRIVATE: PHASE_RECONFIG_INPUTS_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PHASE_SHIFT0 STRING "0.00000000"
 -- Retrieval info: PRIVATE: PHASE_SHIFT1 STRING "15.00000000"
--- Retrieval info: PRIVATE: PHASE_SHIFT2 STRING "15.00000000"
+-- Retrieval info: PRIVATE: PHASE_SHIFT2 STRING "0.00000000"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_STEP_ENABLED_CHECK STRING "0"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT0 STRING "deg"
 -- Retrieval info: PRIVATE: PHASE_SHIFT_UNIT1 STRING "deg"
@@ -355,7 +355,7 @@ END SYN;
 -- Retrieval info: CONSTANT: CLK2_DIVIDE_BY NUMERIC "1"
 -- Retrieval info: CONSTANT: CLK2_DUTY_CYCLE NUMERIC "50"
 -- Retrieval info: CONSTANT: CLK2_MULTIPLY_BY NUMERIC "2"
--- Retrieval info: CONSTANT: CLK2_PHASE_SHIFT STRING "521"
+-- Retrieval info: CONSTANT: CLK2_PHASE_SHIFT STRING "0"
 -- Retrieval info: CONSTANT: COMPENSATE_CLOCK STRING "CLK0"
 -- Retrieval info: CONSTANT: GATE_LOCK_COUNTER NUMERIC "1048575"
 -- Retrieval info: CONSTANT: GATE_LOCK_SIGNAL STRING "YES"
