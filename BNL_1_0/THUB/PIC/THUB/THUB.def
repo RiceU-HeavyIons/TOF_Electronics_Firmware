@@ -1,0 +1,40 @@
+; $Id: THUB.def,v 1.11 2007-12-07 19:34:13 jschamba Exp $
+
+;;;; Define this, if compiling for the "upper" memory region
+;	#define THUB_is_upper
+
+; uc <-> FPGA bus definitions
+	#define uc_fpga_DIR			LATF,2
+	#define uc_fpga_CTL			LATF,1
+	#define uc_fpga_DS			LATF,0
+	#define uc_fpga_DATA		PORTH
+	#define uc_fpga_DATADIR		TRISH
+
+; PLL lines definitions
+	#define PLL_CAL				LATE,5
+	#define PLL_LOL				PORTE,1
+
+; uc <-> CPLD bus definitions
+	#define asPORT				PORTD
+	#define as_ASenable			LATD,6
+	#define as_NCONFIG			LATD,5
+	#define as_NCE				LATD,4
+	#define as_NCS				LATD,3
+	#define as_ASDI				LATD,2
+	#define as_DCLK				LATD,1
+	#define as_DATA				LATD,0
+
+	#define asRst				LATJ,1
+	#define asClk				LATJ,0
+
+; JTAG definitions for uc <-> CPLD bus
+	#define fp_TDO				PORTD
+	#define fp_TMS				PORTD,3
+	#define fp_TDI				PORTD,2
+	#define fp_TCK				PORTD,1
+
+#ifndef THUB_is_upper
+	#define	NEW_RESET_VECT		0x4000
+	#define	NEW_HI_INT_VECT		0x4008
+	#define	NEW_LOW_INT_VECT	0x4018
+#endif

@@ -1,0 +1,21 @@
+; $Id: I2CMPol.Def,v 1.1 2007-12-14 00:29:08 jschamba Exp $
+;*******************************************************;
+; Definitions for the I2CPol code                       ;
+; Originally from Maestro                               ;
+;*******************************************************;
+;                                                       ;
+#ifndef _I2CMPol_DEF                                    ;
+#define _I2CMPol_DEF                                    ;
+#ifndef CLOCK_FREQ                                      ;
+#define CLOCK_FREQ  .20000000                           ;
+#endif                                                  ;
+#define I2CM_SPEED_400K                                 ;
+#define I2CM_BLOCKING_FUNCTION                          ;
+#define I2CM_SINGLE_MASTER                              ;
+                                                        ;
+; Higher level definitions:                             ;
+#define LM73_ADDR131 0x9C                               ;
+#define LM73_ADDR132 0x9A                               ;
+#endif                                                  ;
+;                                                       ;
+;*******************************************************;
