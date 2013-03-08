@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2007-11-21
--- Last update: 2012-05-30
+-- Last update: 2013-03-06
 -- Platform   : 
 -- Standard   : VHDL'93/02
 -------------------------------------------------------------------------------
@@ -40,7 +40,7 @@ ENTITY serdes_reader IS
     clk80mhz            : IN  std_logic;
     areset_n            : IN  std_logic;
     sync_q              : IN  std_logic_vector(31 DOWNTO 0);
-    sfifo_empty         : IN  std_logic;
+    sync_latch          : IN  std_logic;
     ser_status          : IN  std_logic_vector (3 DOWNTO 0);
     fifo_empty          : IN  std_logic;
     outfifo_almost_full : IN  std_logic;
@@ -114,7 +114,8 @@ ARCHITECTURE a OF serdes_reader IS
 BEGIN  -- ARCHITECTURE a
 
   s_shiftout <= sync_q;
-  s_slatch   <= NOT sfifo_empty;
+--  s_slatch   <= NOT sfifo_empty;
+  s_slatch   <= sync_latch;
 
   wrreq_out <= s_slatch   WHEN is_serdes_data ELSE s_wrreq_out;
   outdata   <= s_shiftout WHEN is_serdes_data ELSE s_outdata;
@@ -125,7 +126,7 @@ BEGIN  -- ARCHITECTURE a
   -- L2 stuff:
 --   -- s_serdesData <= sync_q WHEN sfifo_empty = '0' ELSE (OTHERS => '0');
 --  s_serdesData <= sync_q;
-  
+
 --  l2bitmap_inst : l2bitmap PORT MAP (
 --    areset_n => l2areset_n,
 --    clk      => clk80mhz,
@@ -133,9 +134,9 @@ BEGIN  -- ARCHITECTURE a
 --    data_in  => s_serdesData,
 --    bm_out   => s_bm_out);
 
-  l2_outdata     <= (OTHERS => '0');
-  l2_wrreq_out   <= '0';
- 
+  l2_outdata   <= (OTHERS => '0');
+  l2_wrreq_out <= '0';
+
 
   -- use a state machine to control the Serdes read process
   rdoutControl : PROCESS (clk80mhz, areset_n) IS
@@ -285,21 +286,21 @@ BEGIN  -- ARCHITECTURE a
 
             ------- currently, don't do L2 ------------------
 --            TState    <= SOutputL2; 
-            TState    <= SChgChannel;
+            TState <= SChgChannel;
           END IF;
 
           -- now latch out the 6 L2 words
---        WHEN SOutputL2 =>
+-- WHEN SOutputL2 =>
 --          l2areset_n <= '1';            -- release reset for L2 bitmap
 --          IF serCtr < 30 THEN
 --            l2Ctr := l2Ctr + 1;
 --            CASE l2Ctr IS
---              WHEN 1      => l2_outdata <= s_bm_out(31 DOWNTO 0);
---              WHEN 2      => l2_outdata <= s_bm_out(63 DOWNTO 32);
---              WHEN 3      => l2_outdata <= s_bm_out(95 DOWNTO 64);
---              WHEN 4      => l2_outdata <= s_bm_out(127 DOWNTO 96);
---              WHEN 5      => l2_outdata <= s_bm_out(159 DOWNTO 128);
---              WHEN OTHERS => l2_outdata <= s_bm_out(191 DOWNTO 160);
+-- WHEN 1      => l2_outdata <= s_bm_out(31 DOWNTO 0);
+-- WHEN 2      => l2_outdata <= s_bm_out(63 DOWNTO 32);
+-- WHEN 3      => l2_outdata <= s_bm_out(95 DOWNTO 64);
+-- WHEN 4      => l2_outdata <= s_bm_out(127 DOWNTO 96);
+-- WHEN 5      => l2_outdata <= s_bm_out(159 DOWNTO 128);
+-- WHEN OTHERS => l2_outdata <= s_bm_out(191 DOWNTO 160);
 --            END CASE;
 ----            l2_outdata(31 DOWNTO 20) <= X"EEE";  -- DEBUG word
 ----            l2_outdata(19 DOWNTO 0)  <= (OTHERS => '0');
