@@ -1,0 +1,384 @@
+# Copyright (C) 1991-2005 Altera Corporation
+# Any  megafunction  design,  and related netlist (encrypted  or  decrypted),
+# support information,  device programming or simulation file,  and any other
+# associated  documentation or information  provided by  Altera  or a partner
+# under  Altera's   Megafunction   Partnership   Program  may  be  used  only
+# to program  PLD  devices (but not masked  PLD  devices) from  Altera.   Any
+# other  use  of such  megafunction  design,  netlist,  support  information,
+# device programming or simulation file,  or any other  related documentation
+# or information  is prohibited  for  any  other purpose,  including, but not
+# limited to  modification,  reverse engineering,  de-compiling, or use  with
+# any other  silicon devices,  unless such use is  explicitly  licensed under
+# a separate agreement with  Altera  or a megafunction partner.  Title to the
+# intellectual property,  including patents,  copyrights,  trademarks,  trade
+# secrets,  or maskworks,  embodied in any such megafunction design, netlist,
+# support  information,  device programming or simulation file,  or any other
+# related documentation or information provided by  Altera  or a megafunction
+# partner, remains with Altera, the megafunction partner, or their respective
+# licensors. No other licenses, including any licenses needed under any third
+# party's intellectual property, are provided herein.
+
+
+# The default values for assignments are stored in the file
+#		largepld1_assignment_defaults.qdf
+# If this file doesn't exist, and for assignments not listed, see file
+#		assignment_defaults.qdf
+
+# Altera recommends that you do not modify this file. This
+# file is updated automatically by the Quartus II software
+# and any changes you make may be lost or overwritten.
+
+
+# Project-Wide Assignments
+# ========================
+set_global_assignment -name ORIGINAL_QUARTUS_VERSION 4.1
+set_global_assignment -name PROJECT_CREATION_TIME_DATE "16:18:38  AUGUST 15, 2004"
+set_global_assignment -name LAST_QUARTUS_VERSION "4.2 SP1"
+set_global_assignment -name VHDL_FILE my_conversions.vhd
+set_global_assignment -name VHDL_FILE my_utilities.vhd
+set_global_assignment -name VHDL_FILE receiver.vhd
+set_global_assignment -name VHDL_FILE control_registers.vhd
+set_global_assignment -name VHDL_FILE ddl.vhd
+set_global_assignment -name VHDL_FILE ALWREAD.vhd
+set_global_assignment -name VHDL_FILE tcpu_package.vhd
+set_global_assignment -name VHDL_FILE CTL4TO32.vhd
+set_global_assignment -name VHDL_FILE bus_tristate_32.vhd
+set_global_assignment -name VHDL_FILE input_fifo_64x32.vhd
+set_global_assignment -name VHDL_FILE input_fifo_256x32.vhd
+set_global_assignment -name VHDL_FILE mux_4x32.vhd
+set_global_assignment -name VHDL_FILE mux_2x32_registered.vhd
+set_global_assignment -name VHDL_FILE mux_5x32_registered.vhd
+set_global_assignment -name VHDL_FILE mux_32_to_4.vhd
+set_global_assignment -name VHDL_FILE mux_3_by_32.vhd
+set_global_assignment -name VHDL_FILE output_fifo_256x32.vhd
+set_global_assignment -name VHDL_FILE output_fifo_2048x32.vhd
+set_global_assignment -name VHDL_FILE reg4_en.vhd
+set_global_assignment -name VHDL_FILE reg20_en.vhd
+set_global_assignment -name VHDL_FILE reg32_en.vhd
+set_global_assignment -name VHDL_FILE DFF_sclr_sset.vhd
+set_global_assignment -name VHDL_FILE data_sel_ctr.vhd
+set_global_assignment -name VHDL_FILE timeout.vhd
+set_global_assignment -name VHDL_FILE DFF_sclr.vhd
+set_global_assignment -name VHDL_FILE trigger_interface.vhd
+set_global_assignment -name VHDL_FILE ser_4bit_to_par.vhd
+set_global_assignment -name VHDL_FILE largepld1.vhd
+set_global_assignment -name VHDL_FILE pushbutton_pulse.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE pushbutton_pulse_sim.vwf
+set_global_assignment -name VHDL_FILE pattern_gen.vhd
+set_global_assignment -name VECTOR_WAVEFORM_FILE pattern_gen_sim.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim1.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE ser_4bit_to_par_sim2.vwf
+set_global_assignment -name VECTOR_WAVEFORM_FILE trigger_interface_sim1.vwf
+set_global_assignment -name VHDL_FILE mux_8_by_8bit.vhd
+set_global_assignment -name VHDL_FILE count127.vhd
+set_global_assignment -name VHDL_FILE decode_3to5_en.vhd
+set_global_assignment -name VHDL_FILE decoder_3_to_8.vhd
+set_global_assignment -name VHDL_FILE dff_generic.vhd
+set_global_assignment -name VHDL_FILE input_fifo64dx20w.vhd
+set_global_assignment -name VHDL_FILE internal_memory.vhd
+set_global_assignment -name VHDL_FILE mux_2to1_1bit.vhd
+set_global_assignment -name VHDL_FILE mux_2x32.vhd
+set_global_assignment -name VHDL_FILE mux_5_to_1.vhd
+set_global_assignment -name VHDL_FILE mux_5x32_unreg.vhd
+set_global_assignment -name VHDL_FILE bus_tri_8.vhd
+set_global_assignment -name VHDL_FILE pattern_generator.vhd
+set_global_assignment -name VHDL_FILE reg4_en_aclr.vhd
+set_global_assignment -name VHDL_FILE reg8_en.vhd
+set_global_assignment -name VHDL_FILE shorten.vhd
+set_global_assignment -name VHDL_FILE transmitter.vhd
+set_global_assignment -name VHDL_FILE trigger_generator.vhd
+set_global_assignment -name VHDL_FILE two_by_3bit_mux.vhd
+set_global_assignment -name VHDL_FILE trigger_counter_15bit.vhd
+set_global_assignment -name VHDL_FILE ctl_one.vhd
+set_global_assignment -name VHDL_FILE timeout_ctr.vhd
+set_global_assignment -name VHDL_FILE output_fifo_1024x32.vhd
+
+# Pin & Location Assignments
+# ==========================
+set_location_assignment PIN_G14 -to c1_dclk
+set_location_assignment PIN_D19 -to c1_m7d[0]
+set_location_assignment PIN_D20 -to c1_m7d[1]
+set_location_assignment PIN_D21 -to c1_m7d[2]
+set_location_assignment PIN_D22 -to c1_m7d[3]
+set_location_assignment PIN_E1 -to c1_m7d[4]
+set_location_assignment PIN_E2 -to c1_m7d[5]
+set_location_assignment PIN_G5 -to c1_m24
+set_location_assignment PIN_D1 -to c1_tdc[0]
+set_location_assignment PIN_D2 -to c1_tdc[1]
+set_location_assignment PIN_D3 -to c1_tdc[2]
+set_location_assignment PIN_D4 -to c1_tdc[3]
+set_location_assignment PIN_G16 -to c2_dclk
+set_location_assignment PIN_E5 -to c2_m7d[0]
+set_location_assignment PIN_E6 -to c2_m7d[1]
+set_location_assignment PIN_E7 -to c2_m7d[2]
+set_location_assignment PIN_E8 -to c2_m7d[3]
+set_location_assignment PIN_E9 -to c2_m7d[4]
+set_location_assignment PIN_E14 -to c2_m7d[5]
+set_location_assignment PIN_G7 -to c2_m24
+set_location_assignment PIN_D5 -to c2_tdc[0]
+set_location_assignment PIN_D6 -to c2_tdc[1]
+set_location_assignment PIN_D7 -to c2_tdc[2]
+set_location_assignment PIN_D8 -to c2_tdc[3]
+set_location_assignment PIN_G18 -to c3_dclk
+set_location_assignment PIN_E15 -to c3_m7d[0]
+set_location_assignment PIN_E16 -to c3_m7d[1]
+set_location_assignment PIN_E17 -to c3_m7d[2]
+set_location_assignment PIN_E18 -to c3_m7d[3]
+set_location_assignment PIN_E19 -to c3_m7d[4]
+set_location_assignment PIN_E20 -to c3_m7d[5]
+set_location_assignment PIN_G8 -to c3_m24
+set_location_assignment PIN_U1 -to ddl_spare
+set_location_assignment PIN_D9 -to c3_tdc[0]
+set_location_assignment PIN_D12 -to c3_tdc[1]
+set_location_assignment PIN_D13 -to c3_tdc[2]
+set_location_assignment PIN_D14 -to c3_tdc[3]
+set_location_assignment PIN_G19 -to c4_dclk
+set_location_assignment PIN_E21 -to c4_m7d[0]
+set_location_assignment PIN_E22 -to c4_m7d[1]
+set_location_assignment PIN_F1 -to c4_m7d[2]
+set_location_assignment PIN_F2 -to c4_m7d[3]
+set_location_assignment PIN_F3 -to c4_m7d[4]
+set_location_assignment PIN_F4 -to c4_m7d[5]
+set_location_assignment PIN_G9 -to c4_m24
+set_location_assignment PIN_D15 -to c4_tdc[0]
+set_location_assignment PIN_D16 -to c4_tdc[1]
+set_location_assignment PIN_D17 -to c4_tdc[2]
+set_location_assignment PIN_D18 -to c4_tdc[3]
+set_location_assignment PIN_F8 -to cmd1
+set_location_assignment PIN_U6 -to ddl_fidir
+set_location_assignment PIN_H3 -to enable_trayclks
+set_location_assignment PIN_H8 -to led1
+set_location_assignment PIN_H10 -to led2
+set_location_assignment PIN_H17 -to led3
+set_location_assignment PIN_F5 -to m7_gate
+set_location_assignment PIN_F9 -to mcuctl[0]
+set_location_assignment PIN_F10 -to mcuctl[1]
+set_location_assignment PIN_F14 -to mcuctl[2]
+set_location_assignment PIN_F15 -to mcuctl[3]
+set_location_assignment PIN_F17 -to mcud[0]
+set_location_assignment PIN_F18 -to mcud[1]
+set_location_assignment PIN_F21 -to mcud[2]
+set_location_assignment PIN_F22 -to mcud[3]
+set_location_assignment PIN_G1 -to mcud[4]
+set_location_assignment PIN_G2 -to mcud[5]
+set_location_assignment PIN_G3 -to mcud[6]
+set_location_assignment PIN_G4 -to mcud[7]
+set_location_assignment PIN_C14 -to reset_c[1]
+set_location_assignment PIN_C15 -to reset_c[2]
+set_location_assignment PIN_C16 -to reset_c[3]
+set_location_assignment PIN_C17 -to reset_c[4]
+set_location_assignment PIN_H1 -to rs232enb
+set_location_assignment PIN_G20 -to rs232sel[0]
+set_location_assignment PIN_G21 -to rs232sel[1]
+set_location_assignment PIN_G22 -to rs232sel[2]
+set_location_assignment PIN_C18 -to spare_c[1]
+set_location_assignment PIN_C19 -to spare_c[2]
+set_location_assignment PIN_C20 -to spare_c[3]
+set_location_assignment PIN_AB17 -to systrig1
+set_location_assignment PIN_AB16 -to systrigin
+set_location_assignment PIN_AB8 -to tcd_10_mhz
+set_location_assignment PIN_AB6 -to tcd_50mhz
+set_location_assignment PIN_AA21 -to tcd_cclk1
+set_location_assignment PIN_AB4 -to tcd_cclk2
+set_location_assignment PIN_AB12 -to tcd_d[0]
+set_location_assignment PIN_AB7 -to tcd_d[1]
+set_location_assignment PIN_AB15 -to tcd_d[2]
+set_location_assignment PIN_AB5 -to tcd_d[3]
+set_location_assignment PIN_F7 -to tdctrig
+set_location_assignment PIN_L21 -to pldclk0
+set_location_assignment PIN_E13 -to sloclk3
+set_location_assignment PIN_U17 -to tst13
+set_location_assignment PIN_W14 -to tst17
+set_location_assignment PIN_W15 -to tst19
+set_location_assignment PIN_P21 -to tsthi[21]
+set_location_assignment PIN_P20 -to tsthi[22]
+set_location_assignment PIN_P19 -to tsthi[23]
+set_location_assignment PIN_P17 -to tsthi[24]
+set_location_assignment PIN_P16 -to tsthi[25]
+set_location_assignment PIN_N21 -to tsthi[26]
+set_location_assignment PIN_N20 -to tsthi[27]
+set_location_assignment PIN_N17 -to tsthi[28]
+set_location_assignment PIN_N16 -to tsthi[29]
+set_location_assignment PIN_N15 -to tsthi[30]
+set_location_assignment PIN_K21 -to tsthi[31]
+set_location_assignment PIN_K20 -to tsthi[32]
+set_location_assignment PIN_K17 -to tsthi[33]
+set_location_assignment PIN_K16 -to tsthi[34]
+set_location_assignment PIN_K15 -to tsthi[35]
+set_location_assignment PIN_Y18 -to tstlo[1]
+set_location_assignment PIN_W18 -to tstlo[2]
+set_location_assignment PIN_Y19 -to tstlo[3]
+set_location_assignment PIN_W19 -to tstlo[4]
+set_location_assignment PIN_Y20 -to tstlo[5]
+set_location_assignment PIN_W20 -to tstlo[6]
+set_location_assignment PIN_Y21 -to tstlo[7]
+set_location_assignment PIN_W21 -to tstlo[8]
+set_location_assignment PIN_U15 -to tstlo[9]
+set_location_assignment PIN_W22 -to tstlo[10]
+set_location_assignment PIN_U16 -to tstlo[11]
+set_location_assignment PIN_H4 -to button
+set_location_assignment PIN_A12 -to io5
+set_location_assignment PIN_AA12 -to io19
+set_location_assignment PIN_AA13 -to io36
+set_location_assignment PIN_B13 -to io37
+set_location_assignment PIN_C12 -to io278
+set_location_assignment PIN_C13 -to io279
+set_location_assignment PIN_Y12 -to io295
+set_location_assignment PIN_Y13 -to io296
+set_location_assignment PIN_AB19 -to pld_int
+set_location_assignment PIN_AB18 -to systrig2
+set_location_assignment PIN_C21 -to spare_c[4]
+set_location_assignment PIN_N10 -to pgm[0]
+set_location_assignment PIN_M8 -to pgm[1]
+set_location_assignment PIN_R15 -to pgm[2]
+set_location_assignment PIN_U18 -to ddl_fbd[0]
+set_location_assignment PIN_U19 -to ddl_fbd[1]
+set_location_assignment PIN_U20 -to ddl_fbd[2]
+set_location_assignment PIN_U21 -to ddl_fbd[3]
+set_location_assignment PIN_U22 -to ddl_fbd[4]
+set_location_assignment PIN_V1 -to ddl_fbd[5]
+set_location_assignment PIN_V2 -to ddl_fbd[6]
+set_location_assignment PIN_V3 -to ddl_fbd[7]
+set_location_assignment PIN_V4 -to ddl_fbd[8]
+set_location_assignment PIN_V5 -to ddl_fbd[9]
+set_location_assignment PIN_V6 -to ddl_fbd[10]
+set_location_assignment PIN_V7 -to ddl_fbd[11]
+set_location_assignment PIN_V8 -to ddl_fbd[12]
+set_location_assignment PIN_V9 -to ddl_fbd[13]
+set_location_assignment PIN_V14 -to ddl_fbd[14]
+set_location_assignment PIN_V15 -to ddl_fbd[15]
+set_location_assignment PIN_V16 -to ddl_fbd[16]
+set_location_assignment PIN_V17 -to ddl_fbd[17]
+set_location_assignment PIN_V18 -to ddl_fbd[18]
+set_location_assignment PIN_V21 -to ddl_fbd[19]
+set_location_assignment PIN_V22 -to ddl_fbd[20]
+set_location_assignment PIN_W1 -to ddl_fbd[21]
+set_location_assignment PIN_W2 -to ddl_fbd[22]
+set_location_assignment PIN_W3 -to ddl_fbd[23]
+set_location_assignment PIN_W4 -to ddl_fbd[24]
+set_location_assignment PIN_W5 -to ddl_fbd[25]
+set_location_assignment PIN_W6 -to ddl_fbd[26]
+set_location_assignment PIN_W7 -to ddl_fbd[27]
+set_location_assignment PIN_W8 -to ddl_fbd[28]
+set_location_assignment PIN_W9 -to ddl_fbd[29]
+set_location_assignment PIN_W12 -to ddl_fbd[30]
+set_location_assignment PIN_W13 -to ddl_fbd[31]
+set_location_assignment PIN_U9 -to ddl_fbctrl_N
+set_location_assignment PIN_U14 -to ddl_fbten_N
+set_location_assignment PIN_U7 -to ddl_fiben_N
+set_location_assignment PIN_U8 -to ddl_filf_N
+set_location_assignment PIN_U2 -to ddl_fobsy_N
+set_location_assignment PIN_P9 -to fifo_empty
+set_location_assignment PIN_U5 -to ddl_foclk
+set_location_assignment PIN_J21 -to MS_LO
+set_location_assignment PIN_J20 -to tst37
+set_location_assignment PIN_J19 -to MS_sel
+set_location_assignment PIN_J17 -to tst39
+set_location_assignment PIN_J16 -to MS_HI
+set_location_assignment PIN_H2 -to MS_sel_out
+
+# Analysis & Synthesis Assignments
+# ================================
+set_global_assignment -name SAVE_DISK_SPACE OFF
+set_global_assignment -name DISABLE_OCP_HW_EVAL ON
+set_global_assignment -name DEVICE_FILTER_PACKAGE FBGA
+set_global_assignment -name DEVICE_FILTER_PIN_COUNT 484
+set_global_assignment -name FAMILY Stratix
+set_global_assignment -name TOP_LEVEL_ENTITY largepld1
+
+# Fitter Assignments
+# ==================
+set_global_assignment -name DEVICE EP1S10F484C7
+
+# EDA Netlist Writer Assignments
+# ==============================
+set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim-Altera (VHDL output from Quartus II)"
+
+# Assembler Assignments
+# =====================
+set_global_assignment -name ON_CHIP_BITSTREAM_DECOMPRESSION OFF
+set_global_assignment -name CONFIGURATION_CLOCK_DIVISOR 1.0
+set_global_assignment -name USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name STRATIX_CONFIGURATION_DEVICE EPC4
+set_global_assignment -name EPROM_USE_CHECKSUM_AS_USERCODE ON
+set_global_assignment -name AUTO_INCREMENT_CONFIG_DEVICE_JTAG_USER_CODE OFF
+
+# Simulator Assignments
+# =====================
+set_global_assignment -name ADD_DEFAULT_PINS_TO_SIMULATION_OUTPUT_WAVEFORMS OFF
+set_global_assignment -name POWER_ESTIMATION_START_TIME "0.0 ns"
+set_global_assignment -name GLITCH_INTERVAL "1.0 ns"
+set_global_assignment -name VECTOR_INPUT_SOURCE trigger_interface_sim1.vwf
+
+# LogicLock Region Assignments
+# ============================
+set_global_assignment -name LOGICLOCK_INCREMENTAL_COMPILE_ASSIGNMENT off
+
+# -------------------
+# start CLOCK(C_DCLK)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "80.0 MHz" -section_id C_DCLK
+
+# end CLOCK(C_DCLK)
+# -----------------
+
+# --------------------
+# start CLOCK(PLDCLK0)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "50.0 MHz" -section_id PLDCLK0
+
+# end CLOCK(PLDCLK0)
+# ------------------
+
+# ----------------------
+# start CLOCK(TCD_10MHZ)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name DUTY_CYCLE 20 -section_id TCD_10MHZ
+	set_global_assignment -name FMAX_REQUIREMENT "10.0 MHz" -section_id TCD_10MHZ
+
+# end CLOCK(TCD_10MHZ)
+# --------------------
+
+# ----------------------
+# start CLOCK(TCD_50MHZ)
+
+	# Timing Assignments
+	# ==================
+	set_global_assignment -name FMAX_REQUIREMENT "50.0 MHz" -section_id TCD_50MHZ
+
+# end CLOCK(TCD_50MHZ)
+# --------------------
+
+# ---------------------------------------
+# start EDA_TOOL_SETTINGS(eda_simulation)
+
+	# EDA Netlist Writer Assignments
+	# ==============================
+	set_global_assignment -name EDA_INCLUDE_VHDL_CONFIGURATION_DECLARATION ON -section_id eda_simulation
+	set_global_assignment -name EDA_OUTPUT_DATA_FORMAT VHDL -section_id eda_simulation
+
+# end EDA_TOOL_SETTINGS(eda_simulation)
+# -------------------------------------
+
+# -----------------------
+# start ENTITY(largepld1)
+
+	# Timing Assignments
+	# ==================
+	set_instance_assignment -name CLOCK_SETTINGS PLDCLK0 -to pldclk0
+	set_instance_assignment -name CLOCK_SETTINGS TCD_50MHZ -to tcd_50mhz
+	set_instance_assignment -name CLOCK_SETTINGS TCD_10MHZ -to tcd_10_mhz
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c1_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c2_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c3_dclk
+	set_instance_assignment -name CLOCK_SETTINGS C_DCLK -to c4_dclk
+
+# end ENTITY(largepld1)
+# ---------------------
