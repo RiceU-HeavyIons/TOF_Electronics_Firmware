@@ -185,7 +185,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 	// 3) write multiplicity gate value to FPGA address 0x8
 	// ****************************************************
 	addr = 8;
-	val = 0xd0; // multiplicity gate value (phase is upper 4 bits)
+	val = 0xf0; // multiplicity gate value (phase is upper 4 bits)
 	write_FPGA(addr, val);
 
 	// ****************************************************
