@@ -7,7 +7,7 @@
 -- Author     : 
 -- Company    : 
 -- Created    : 2006-09-01
--- Last update: 2012-05-24
+-- Last update: 2013-03-12
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -58,7 +58,6 @@ ARCHITECTURE a OF tcd IS
   TYPE rsState_type IS (R0l, R0h, R1, R2, R3, R4, R5);
   SIGNAL rsState : rsState_type;
 
-
   SIGNAL s_reg1           : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg2           : std_logic_vector (3 DOWNTO 0);
   SIGNAL s_reg3           : std_logic_vector (3 DOWNTO 0);
@@ -67,30 +66,21 @@ ARCHITECTURE a OF tcd IS
   SIGNAL s_reg20          : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_trgwrd         : std_logic_vector (19 DOWNTO 0);
   SIGNAL s_trg_unsync     : std_logic;
-  SIGNAL s_trg_short      : std_logic;
-  SIGNAL s_l0l_short      : std_logic;
   SIGNAL s_tstage1        : std_logic;
   SIGNAL s_tstage2        : std_logic;
-  SIGNAL s_tstage3        : std_logic;
   SIGNAL s_lstage1        : std_logic;
   SIGNAL s_lstage2        : std_logic;
-  SIGNAL s_lstage3        : std_logic;
   SIGNAL s_mstage1        : std_logic;
   SIGNAL s_mstage2        : std_logic;
-  SIGNAL s_mstage3        : std_logic;
   SIGNAL s_l0like         : std_logic;
   SIGNAL s_trigger        : std_logic;
   SIGNAL s_reset_n        : std_logic;
   SIGNAL s_mstr_rst       : std_logic;
-  SIGNAL missing_strobe_n : std_logic;
-  SIGNAL s_rhic_strobe    : std_logic;
-  SIGNAL counter          : integer RANGE 0 TO 63;
   
 BEGIN  -- ARCHITECTURE a
 
   -- reset the state machine on both an external reset (PLL lock)
-  -- and missing RHICstrobes
-  s_reset_n <= missing_strobe_n;
+  s_reset_n <= reset_n;
 
   -- capture the trigger data in a cascade of 5 4-bit registers
   -- with the tcd data clock on trailing clock edge.
@@ -109,14 +99,10 @@ BEGIN  -- ARCHITECTURE a
       s_trg_unsync <= '0';
       s_l0like     <= '0';
       s_mstr_rst   <= '0';
-
-      rsState <= R0l;
+      rsState      <= R0l;
       
     ELSIF falling_edge(data_strobe) THEN
       working <= '1';                   -- default: "it works"
-
-      s_trg_short <= '0';
-      s_l0l_short <= '0';
 
       CASE rsState IS
         WHEN R0l =>
@@ -184,20 +170,12 @@ BEGIN  -- ARCHITECTURE a
           s_trgwrd <= s_reg20;          -- latch current 20bits for output
           s_reg20  <= s_reg20;
 
-          -- shorten s_trg_unsync & l0like to 2 data strobe clock cycles
-          s_trg_short <= s_trg_unsync;
-          s_l0l_short <= s_l0like;
-
           s_reg3  <= data;              -- 3rd nibble
           rsState <= R4;
           
         WHEN R4 =>
           s_trgwrd <= s_trgwrd;
           s_reg20  <= s_reg20;
-
-          -- shorten s_trg_unsync & l0like to 2 data strobe clock cycles
-          s_trg_short <= s_trg_unsync;
-          s_l0l_short <= s_l0like;
 
           s_reg4  <= data;              -- 4th nibble
           rsState <= R5;
@@ -262,100 +240,32 @@ BEGIN  -- ARCHITECTURE a
 
   END PROCESS Main;
 
+
   -- when a valid trigger command is found, synchronize the resulting trigger
   -- to the 40MHz clock with a 3 stage DFF cascade and make the signal
   -- exactly 1 clock wide
   syncit : PROCESS (clock) IS
   BEGIN
     IF rising_edge(clock) THEN
-      s_tstage1 <= s_trg_short;
+      s_tstage1 <= s_trg_unsync;
       s_tstage2 <= s_tstage1;
-      s_tstage3 <= s_tstage2;
 
-      s_lstage1 <= s_l0l_short;
+      s_lstage1 <= s_l0like;
       s_lstage2 <= s_lstage1;
-      s_lstage3 <= s_lstage2;
 
       s_mstage1 <= s_mstr_rst;
       s_mstage2 <= s_mstage1;
-      s_mstage3 <= s_mstage2;
+
+      trgWord <= s_trgwrd;
+
     END IF;
   END PROCESS syncit;
 
-  s_trigger  <= s_tstage2 AND (NOT s_tstage3);
-  evt_trg    <= s_lstage2 AND (NOT s_lstage3);
-  master_rst <= s_mstage2 AND (NOT s_mstage3);
+  s_trigger  <= s_tstage2 AND (NOT s_tstage1);
+  evt_trg    <= s_lstage2 AND (NOT s_lstage1);
+  master_rst <= s_mstage2 AND (NOT s_mstage1);
 
   trigger <= s_trigger;
-  trgWord <= s_trgwrd;
 
--------------------------------------------------------------------------------
--- Attempt to discover a missing RHICstrobe
--------------------------------------------------------------------------------
-
-  -- flipflop to capture rhic strobe relative to 40MHz clock
-  rhicStrobeFF : PROCESS (clock, reset_n) IS
-  BEGIN
-    IF reset_n = '0' THEN               -- asynchronous reset (active low)
-      s_rhic_strobe <= '1';
-      
-    ELSIF falling_edge(clock) THEN
-      s_rhic_strobe <= rhic_strobe;
-    END IF;
-  END PROCESS;
-
-  -- if no RHICstrobe edges are seen within 32 40MHz clock periods, reset the
-  -- latchTrigger state machine
-  resetSM : PROCESS (clock, reset_n) IS
-  BEGIN
-    IF reset_n = '0' THEN               -- asynchronous reset (active low)
-      counter          <= 0;
-      missing_strobe_n <= '0';
-      resetState       <= rss1;
-      
-    ELSIF rising_edge(clock) THEN
-      CASE resetState IS
-
-        -- first start looking for one down edge and one up edge
-        WHEN rss1 =>                    -- look for rhic_strobe lo
-          missing_strobe_n <= '0';
-          IF s_rhic_strobe = '0' THEN
-            resetState <= rss2;
-          END IF;
-        WHEN rss2 =>                    -- look for rhic_strobe hi
-          counter          <= 0;
-          missing_strobe_n <= '0';
-          IF s_rhic_strobe = '1' THEN
-            resetState <= rss3;
-          END IF;
-
-          -- now release the latchTrig sm from reset.
-          -- then start looking for at least one up and one down edge
-          -- of the RHIC strobe in 32 clock strobes of the 40MHz clock
-          -- to verify that RHIC clock is still running
-        WHEN rss3 =>                    -- look for rhic_strobe lo
-          missing_strobe_n <= '1';
-          IF s_rhic_strobe = '0' THEN
-            resetState <= rss4;
-          ELSIF counter = 32 THEN  -- at least one strobe should have been seen
-            resetState <= rss1;
-          ELSE
-            counter <= counter + 1;
-          END IF;
-        WHEN rss4 =>                    -- look for rhic_strobe hi
-          missing_strobe_n <= '1';
-          IF s_rhic_strobe = '1' THEN
-            counter    <= 0;
-            resetState <= rss3;
-          ELSIF counter = 32 THEN  -- at least one strobe should have been seen
-            resetState <= rss1;
-          ELSE
-            counter <= counter + 1;
-          END IF;
-          
-      END CASE;
-      
-    END IF;
-  END PROCESS;
 
 END ARCHITECTURE a;
