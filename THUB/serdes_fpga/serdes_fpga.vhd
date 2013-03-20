@@ -7,7 +7,7 @@
 -- Author     : J. Schambach
 -- Company    : 
 -- Created    : 2005-12-19
--- Last update: 2010-07-21
+-- Last update: 2013-03-16
 -- Platform   : 
 -- Standard   : VHDL'93
 -------------------------------------------------------------------------------
@@ -134,20 +134,20 @@ ARCHITECTURE a OF serdes_fpga IS
   COMPONENT zbt_ctrl_top
     PORT (
       clk           : IN    std_logic;
-      RESET_N       : IN    std_logic;                      -- active LOW asynchronous reset
+      RESET_N       : IN    std_logic;  -- active LOW asynchronous reset
 -- local bus interface
       ADDR          : IN    std_logic_vector(18 DOWNTO 0);
       DATA_IN       : IN    std_logic_vector(31 DOWNTO 0);
       DATA_OUT      : OUT   std_logic_vector(31 DOWNTO 0);
-      RD_WR_N       : IN    std_logic;                      -- active LOW write
-      ADDR_ADV_LD_N : IN    std_logic;                      -- advance/load address (active LOW load)
-      DM            : IN    std_logic_vector(3 DOWNTO 0);   -- data mask bits                   
+      RD_WR_N       : IN    std_logic;  -- active LOW write
+      ADDR_ADV_LD_N : IN    std_logic;  -- advance/load address (active LOW load)
+      DM            : IN    std_logic_vector(3 DOWNTO 0);  -- data mask bits                   
 -- SRAM interface
       SA            : OUT   std_logic_vector(18 DOWNTO 0);  -- address bus to RAM   
       DQ            : INOUT std_logic_vector(31 DOWNTO 0);  -- data to/from RAM
-      RW_N          : OUT   std_logic;                      -- active LOW write
-      ADV_LD_N      : OUT   std_logic;                      -- active LOW load
-      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)    -- active LOW byte enables
+      RW_N          : OUT   std_logic;  -- active LOW write
+      ADV_LD_N      : OUT   std_logic;  -- active LOW load
+      BW_N          : OUT   std_logic_vector(3 DOWNTO 0)  -- active LOW byte enables
       );
   END COMPONENT;
 
@@ -300,7 +300,7 @@ ARCHITECTURE a OF serdes_fpga IS
   TYPE State_type IS (State0, State1, State1a, State2, State3);
   SIGNAL state : State_type;
 
-  TYPE LState_type IS (S0a, S0b, S1, S2);
+  TYPE LState_type IS (S0a, S0b, S0c, S1, S2);
   SIGNAL lstate : LState_type;
 
   TYPE CSState_type IS (Sync1, Sync2, Sync3);
@@ -437,10 +437,10 @@ BEGIN
 --  ma(35 DOWNTO 17) <= (OTHERS => 'Z');  -- tri-state unused outputs to master FPGA
 
   -- SERDES (S) to MASTER (M) interface
-  maO(15 DOWNTO 0) <= s_smif_dataout;     -- 16bit data from S to M
+  maO(15 DOWNTO 0) <= s_smif_dataout;   -- 16bit data from S to M
   maO(16)          <= s_smif_fifo_empty;  -- FIFO empty indicator from S to M
   s_smif_select    <= maI(18 DOWNTO 17);  -- select from M to S to select 1 of 4 FIFOs
-  s_smif_rdenable  <= maI(19);            -- read enable from M to S for FIFO
+  s_smif_rdenable  <= maI(19);          -- read enable from M to S for FIFO
 
   -- MASTER (M) to SERDES (S) interface
   s_smif_datain   <= maI(31 DOWNTO 20);  -- 12bit data from M to S 
@@ -511,7 +511,7 @@ BEGIN
 
   -- MUX for serdes TX
   WITH s_serdes_reg(4) SELECT
-    serdes_data <=                      -- goes to poweron sm first to be muxed with poweron data
+    serdes_data <=  -- goes to poweron sm first to be muxed with poweron data
     serdes_tst_data WHEN '0',           -- test data
     s_serdes_out    WHEN OTHERS;        -- "real" data
 
@@ -640,17 +640,25 @@ BEGIN
       CASE lstate IS
 
         WHEN S0a =>                     -- wait for smif read enable
+          s_ddio_in <= (OTHERS => '0');
+
           s_synced_rdenable <= '0';
-          s_ddio_in         <= (OTHERS => '0');
           s_latch1          <= '0';
 
           IF s_smif_rdenable = '1' THEN
             lstate <= S0b;
-          ELSE
           END IF;
 
         WHEN S0b =>                     -- delay one clock
-          s_ddio_in         <= (OTHERS => '0');
+          s_ddio_in <= s_rxfifo_out(31 DOWNTO 16);
+
+          s_synced_rdenable <= '0';
+          s_latch1          <= '0';
+
+          lstate <= S0c;
+
+        WHEN S0c =>                     -- delay one clock
+          s_ddio_in <= s_rxfifo_out(15 DOWNTO 0);
 
           s_synced_rdenable <= '0';
           s_latch1          <= '0';
@@ -660,26 +668,26 @@ BEGIN
           -- now start latching out the data in 4 nibbles
           -- via ddio
         WHEN S1 =>
-          s_synced_rdenable <= '0';
+          s_ddio_in <= s_rxfifo_out(31 DOWNTO 16);
 
-          -- upper 16 bits out to smif via ddio (two 8bit values per 80MHz)
-          s_ddio_in    <= s_rxfifo_out(31 DOWNTO 16);
+          s_synced_rdenable <= '0';
+          s_latch1          <= '0';
+
           -- latch the lower 16 bits from FIFO for later
           s_ddio_store <= s_rxfifo_out(15 DOWNTO 0);
-          s_latch1     <= '0';
 
           IF s_smif_rdenable = '1' THEN  -- continue
             lstate <= S2;
-          ELSE                          -- else: done
+          ELSE                           -- else: done
             lstate <= S0a;
           END IF;
 
         WHEN S2 =>
           -- previously latched lower 16 bits out to smif via ddio
           s_ddio_in <= s_ddio_store;
-          
-          IF s_smif_fifo_empty = '0' THEN  -- next FIFO value
-            s_latch1          <= '1';   -- create latch signal for smif
+
+          IF s_smif_fifo_empty = '0' THEN  -- get next FIFO value
+            s_latch1          <= '1';      -- create latch signal for smif
             s_synced_rdenable <= '1';
           ELSE
             s_latch1          <= '0';
@@ -688,7 +696,7 @@ BEGIN
 
           IF s_smif_rdenable = '1' THEN  -- continue
             lstate <= S1;
-          ELSE                          -- else: done
+          ELSE                           -- else: done
             lstate <= S0a;
           END IF;
           
