@@ -42,7 +42,7 @@
 set_global_assignment -name ORIGINAL_QUARTUS_VERSION "5.0 SP2"
 set_global_assignment -name PROJECT_CREATION_TIME_DATE "14:56:07  DECEMBER 14, 2005"
 set_global_assignment -name LAST_QUARTUS_VERSION 13.0
-set_global_assignment -name PROJECT_OUTPUT_DIRECTORY "D:\\Users\\jschamba\\Documents\\TOF\\THUB\\master_fpga\\outputs"
+set_global_assignment -name PROJECT_OUTPUT_DIRECTORY outputs
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_utilities.vhd
 set_global_assignment -name VHDL_FILE ../vhdl_common/my_conversions.vhd
 set_global_assignment -name VHDL_FILE ddio_in.vhd
