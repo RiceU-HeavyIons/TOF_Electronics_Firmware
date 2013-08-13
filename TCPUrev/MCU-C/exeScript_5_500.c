@@ -91,7 +91,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 	}
 
-	j = 0xcfff;	do {--j;} while (j != 0); // idle a little before checking
+	j = 0xffff;	do {--j;} while (j != 0); // idle a little before checking
 
 	// check for responses, expect 5, 
 	// but check more than necessary to account for time of responses to come back
@@ -119,12 +119,12 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 		else {
 			// no message received within timeout, send alert on CAN2
-			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
+			msg_id = (unsigned int)((0x20+board_id)<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
     		ecan2msgBuf[0][2] = 4; // length
 			ecan2msgBuf[0][3] = i; // data[1,0]
-			ecan2msgBuf[0][4] = numRcvd; // data[3,2]
+			ecan2msgBuf[0][4] = numRcvd | 0xF000; // data[3,2]
 			j = 0xffff;
 	    	do {--j;} while ((C1TR01CONbits.TXREQ0==1) && (j != 0));
 			if (j != 0)
