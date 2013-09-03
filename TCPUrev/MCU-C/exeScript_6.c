@@ -61,9 +61,9 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
    	//ecan1msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
 
 	numRcvd = 0; // keep track of number of responses
-	for (i=0x10; i<0x18; i++) {
-		// Don't do 0x11, and 0x17
-		if ((i==0x11) || (i==0x17)) continue;
+	for (i=0x10; i<0x17; i++) {
+		// Don't do 0x11
+		if (i==0x11) continue;
  
 	    // wait for transmit on CAN1 to complete or timeout
 		j = 0xfff;
@@ -119,7 +119,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 		else {
 			// no message received within timeout, send alert on CAN2
-			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
+			msg_id = (unsigned int)((0x20+board_id)<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
     		ecan2msgBuf[0][2] = 4; // length
@@ -144,9 +144,9 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 	ecan1msgBuf[0][4] = 0x0005; // data[3,2]
 
 	numRcvd = 0; // keep track of number of responses
-	for (i=0x10; i<0x18; i++) { 
-		// Don't do 0x11, and 0x17
-		if ((i==0x11) || (i==0x17)) continue;
+	for (i=0x10; i<0x17; i++) { 
+		// Don't do 0x11
+		if (i==0x11) continue;
 
 	    // wait for transmit on CAN1 to complete or timeout
 		j = 0xfff;
@@ -177,7 +177,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 		else {
 			// no message received within timeout, send alert on CAN2
-			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
+			msg_id = (unsigned int)((0x20+board_id)<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
     		ecan2msgBuf[0][2] = 4; // length

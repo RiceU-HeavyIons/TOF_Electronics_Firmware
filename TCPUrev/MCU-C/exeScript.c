@@ -113,7 +113,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 		else {
 			// no message received within timeout, send alert on CAN2
-			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
+			msg_id = (unsigned int)((0x20+board_id)<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
     		ecan2msgBuf[0][2] = 4; // length
@@ -168,7 +168,7 @@ int __attribute__((__section__(".script_buffer"))) exeScript(unsigned int board_
 		}
 		else {
 			// no message received within timeout, send alert on CAN2
-			msg_id = (unsigned int)(0x20<<6) | C_ALERT;
+			msg_id = (unsigned int)((0x20+board_id)<<6) | C_ALERT;
     		ecan2msgBuf[0][0] = msg_id;  // extended ID =0, no remote xmit
     		ecan2msgBuf[0][1] = 0;
     		ecan2msgBuf[0][2] = 4; // length
