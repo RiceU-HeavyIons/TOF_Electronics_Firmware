@@ -441,7 +441,7 @@ set_instance_assignment -name IO_STANDARD LVDS -to clk
 # ==============================
 set_global_assignment -name EDA_SIMULATION_TOOL "ModelSim (VHDL)"
 
-set_global_assignment -name LAST_QUARTUS_VERSION 13.0
+set_global_assignment -name LAST_QUARTUS_VERSION "13.0 SP1"
 set_global_assignment -name USE_CONFIGURATION_DEVICE ON
 set_global_assignment -name RESERVE_ALL_UNUSED_PINS "AS INPUT TRI-STATED"
 set_global_assignment -name STRATIX_DEVICE_IO_STANDARD "3.3-V LVTTL"
